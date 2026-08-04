@@ -26,7 +26,9 @@ const DEFAULT_SETTINGS = {
   language: 'en-US',
   voiceResponses: true,
   continuous: true,
-  wakeWord: true
+  wakeWord: true,
+  useBrain: true,
+  brainUrl: 'http://127.0.0.1:8420'
 };
 
 const JOKES = [
@@ -180,11 +182,42 @@ async function handleTranscript(rawText) {
   // 3) Normal command matching.
   const match = matchCommand(allCommands(), text);
   if (!match) {
-    respond('Sorry, I didn’t recognize that command. Say “help” to see what I understand.');
+    // 3b) Not a command → ask the Python brain (LLM + memory) if it's running.
+    const brain = await askBrain(text);
+    if (brain) {
+      respond(brain);
+      return;
+    }
+    respond('Sorry, I didn’t recognize that command. Say “help” to see what I understand. (Tip: run `python -m assistant --serve` to give me a brain.)');
     return;
   }
 
   await runMatch(match);
+}
+
+/**
+ * Ask the local Python assistant (assistant/server.py) anything.
+ * Connection-refused fails instantly, so this is cheap when it's not running.
+ */
+async function askBrain(text) {
+  if (state.settings.useBrain === false) return null;
+  const base = (state.settings.brainUrl || 'http://127.0.0.1:8420').replace(/\/+$/, '');
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 30000);
+    const res = await fetch(`${base}/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal: ctl.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.reply || null;
+  } catch {
+    return null;
+  }
 }
 
 /** Fill wildcard params into the action and response templates. */
@@ -708,6 +741,8 @@ function renderSettingsForm() {
   $('#voice-responses').checked = !!s.voiceResponses;
   $('#continuous').checked = !!s.continuous;
   $('#wake-word').checked = wakeWanted();
+  $('#use-brain').checked = s.useBrain !== false;
+  $('#brain-url').value = s.brainUrl || 'http://127.0.0.1:8420';
   $('#wake-wrap').classList.toggle('hidden', !desktop);
   $('#continuous-wrap').classList.toggle('hidden', desktop);
   if (!desktop) {
@@ -829,6 +864,8 @@ function bindUI() {
     state.settings.voiceResponses = $('#voice-responses').checked;
     state.settings.continuous = $('#continuous').checked;
     state.settings.wakeWord = $('#wake-word').checked;
+    state.settings.useBrain = $('#use-brain').checked;
+    state.settings.brainUrl = $('#brain-url').value.trim() || 'http://127.0.0.1:8420';
     await persistSettings();
     await refreshEngineChip();
     if (desktop) {

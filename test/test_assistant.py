@@ -78,11 +78,69 @@ class LlmTest(unittest.TestCase):
         reply = llm.ask(cfg, None, "hello")
         self.assertIn("offline demo mode", reply)
 
+    def test_stream_mock_yields_single_chunk(self):
+        cfg = dict(config.DEFAULTS)
+        cfg["llm_provider"] = "mock"
+        chunks = list(llm.ask_stream(cfg, None, "hello"))
+        self.assertEqual(len(chunks), 1)
+
     def test_system_prompt_includes_notes(self):
         cfg = dict(config.DEFAULTS)
         mem = Memory()
         mem.add_note("likes telugu movies")
         self.assertIn("telugu movies", llm.system_prompt(cfg, mem))
+
+
+class TtsTest(unittest.TestCase):
+    def test_split_sentences(self):
+        from assistant import tts
+
+        sentences, rest = tts.split_sentences("Hello there. How are you? Fine")
+        self.assertEqual(sentences, ["Hello there.", "How are you?"])
+        self.assertEqual(rest, "Fine")
+
+    def test_split_no_terminator(self):
+        from assistant import tts
+
+        sentences, rest = tts.split_sentences("still talking")
+        self.assertEqual(sentences, [])
+        self.assertEqual(rest, "still talking")
+
+
+class ServerTest(unittest.TestCase):
+    def test_status_and_chat_roundtrip(self):
+        import json
+        import urllib.request
+
+        from assistant.server import make_server
+
+        cfg = dict(config.DEFAULTS)
+        cfg["llm_provider"] = "mock"
+        server = make_server(cfg, port=0)  # ephemeral port
+        port = server.server_address[1]
+        import threading
+
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/status", timeout=5) as r:
+                self.assertEqual(json.load(r)["name"], cfg["name"])
+
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/chat",
+                data=json.dumps({"text": "what time is it"}).encode(),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=5) as r:
+                body = json.load(r)
+            self.assertTrue(body["ok"])
+            self.assertIn("It's", body["reply"])
+
+            # memory was stored server-side
+            self.assertTrue(any(m["role"] == "user" for m in server.assistant.memory.recent(4)))
+        finally:
+            server.shutdown()
+            server.server_close()
 
 
 if __name__ == "__main__":

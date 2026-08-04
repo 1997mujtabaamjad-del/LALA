@@ -43,37 +43,71 @@ def system_prompt(cfg, memory):
 
 def ask(cfg, memory, user_text, provider=None):
     """Return the assistant's reply text."""
+    return "".join(ask_stream(cfg, memory, user_text, provider))
+
+
+def ask_stream(cfg, memory, user_text, provider=None):
+    """Yield reply chunks as they arrive (Ollama/OpenAI streaming)."""
     provider = provider or resolve_provider(cfg)
     messages = [{"role": "system", "content": system_prompt(cfg, memory)}]
     messages += memory.recent(cfg.get("memory_window", 12)) if memory else []
     messages.append({"role": "user", "content": user_text})
 
     if provider == "ollama":
-        return _ask_ollama(cfg, messages)
+        return _stream_ollama(cfg, messages)
     if provider == "openai":
-        return _ask_openai(cfg, messages)
-    return _ask_mock(user_text)
+        return _stream_openai(cfg, messages)
+    return iter([_ask_mock(user_text)])
 
 
-def _ask_ollama(cfg, messages):
-    r = requests.post(
-        cfg["ollama_url"] + "/api/chat",
-        json={"model": cfg["ollama_model"], "messages": messages, "stream": False},
-        timeout=TIMEOUT,
-    )
-    r.raise_for_status()
-    return r.json()["message"]["content"].strip()
+def _stream_ollama(cfg, messages):
+    def gen():
+        with requests.post(
+            cfg["ollama_url"] + "/api/chat",
+            json={"model": cfg["ollama_model"], "messages": messages, "stream": True},
+            stream=True,
+            timeout=TIMEOUT,
+        ) as r:
+            r.raise_for_status()
+            for line in r.iter_lines():
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except ValueError:
+                    continue
+                frag = (data.get("message") or {}).get("content")
+                if frag:
+                    yield frag
+    return gen()
 
 
-def _ask_openai(cfg, messages):
-    r = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers={"Authorization": f"Bearer {cfg['openai_api_key']}"},
-        json={"model": cfg["openai_model"], "messages": messages, "max_tokens": 300},
-        timeout=TIMEOUT,
-    )
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"].strip()
+def _stream_openai(cfg, messages):
+    def gen():
+        with requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {cfg['openai_api_key']}"},
+            json={"model": cfg["openai_model"], "messages": messages,
+                  "max_tokens": 300, "stream": True},
+            stream=True,
+            timeout=TIMEOUT,
+        ) as r:
+            r.raise_for_status()
+            for line in r.iter_lines():
+                if not line or not line.startswith(b"data: "):
+                    continue
+                payload = line[6:].strip()
+                if payload == b"[DONE]":
+                    break
+                try:
+                    data = json.loads(payload)
+                except ValueError:
+                    continue
+                delta = (data.get("choices") or [{}])[0].get("delta") or {}
+                frag = delta.get("content")
+                if frag:
+                    yield frag
+    return gen()
 
 
 def _ask_mock(user_text):

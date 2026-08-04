@@ -105,7 +105,11 @@ class Assistant:
             reply = response + (" " + side_note if side_note else "")
         else:
             self.status("thinking")
-            reply = llm.ask(self.cfg, self.memory, text)
+            if spoken and tts.resolve_provider(self.cfg) != "none":
+                # Stream tokens into sentence-level TTS for minimal latency.
+                reply = tts.speak_stream(llm.ask_stream(self.cfg, self.memory, text), self.cfg)
+            else:
+                reply = llm.ask(self.cfg, self.memory, text)
 
         self.memory.add("user", text)
         self.memory.add("assistant", reply)

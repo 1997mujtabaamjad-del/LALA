@@ -33,7 +33,20 @@ pip install -r requirements.txt     # every part is optional — degrades gracef
 python -m assistant --setup         # check components + download the Piper voice
 python -m assistant                 # desktop GUI (tkinter)
 python -m assistant --chat          # terminal REPL (no mic needed — great first test)
+python -m assistant --serve         # local brain server for the Electron/web app
 ```
+
+### Streaming speech
+
+The brain streams tokens (Ollama/OpenAI) and Piper/ElevenLabs starts speaking the
+**first sentence while the model is still writing the rest** — much lower latency.
+
+### One brain, two bodies
+
+With `--serve` running, the **Electron/web LALA app** (below) gets the Python brain for
+free: any phrase that isn't a hard command is sent to `http://127.0.0.1:8420/chat` and
+answered by Ollama/OpenAI with the same conversation memory. Configure it in the app's
+Settings → *Python brain*. The bridge is CORS-open on localhost only.
 
 Skills in action:
 

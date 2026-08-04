@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:;" />
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:8420; media-src 'self' blob:; worker-src 'self' blob:;" />
   <title>LALA — Voice Command Assistant</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2322d3ee'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%230b1020' font-family='sans-serif' font-weight='bold'%3EL%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="styles.css" />
@@ -143,6 +143,16 @@
               <option value="whisper-1">whisper-1 (classic)</option>
               <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (newer, cheaper)</option>
             </select>
+          </label>
+        </div>
+
+        <div id="brain-section">
+          <h3>Python brain (LLM + memory)</h3>
+          <p class="muted">Run <code>python -m assistant --serve</code> once; anything that isn't a
+          hard command is then answered by Ollama/OpenAI with full conversation memory.</p>
+          <label class="checkbox"><input id="use-brain" type="checkbox" checked /> Ask the Python brain for unknown phrases</label>
+          <label>Brain URL
+            <input id="brain-url" type="text" value="http://127.0.0.1:8420" />
           </label>
         </div>
 

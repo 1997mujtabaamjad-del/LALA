@@ -81,6 +81,50 @@ def speak(text, cfg):
         pass
 
 
+def split_sentences(buffer):
+    """Split a buffer into complete sentences; returns (sentences, remainder)."""
+    import re
+
+    parts = re.split(r"(?<=[.!?])\s+", buffer)
+    if len(parts) > 1:
+        return parts[:-1], parts[-1]
+    return [], buffer
+
+
+def speak_stream(chunks, cfg):
+    """Speak a streaming reply with minimal latency: the first sentence is
+    synthesized while the LLM is still generating the rest. Returns full text."""
+    import queue
+    import threading
+
+    q = queue.Queue()
+
+    def worker():
+        while True:
+            item = q.get()
+            if item is None:
+                return
+            speak(item, cfg)
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+
+    buf = ""
+    full = []
+    for chunk in chunks:
+        buf += chunk
+        full.append(chunk)
+        sentences, buf = split_sentences(buf)
+        for sentence in sentences:
+            if sentence.strip():
+                q.put(sentence.strip())
+    if buf.strip():
+        q.put(buf.strip())
+    q.put(None)
+    thread.join(timeout=180)
+    return "".join(full)
+
+
 def _play_wav(path):
     try:
         import sounddevice as sd
