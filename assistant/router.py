@@ -1,0 +1,220 @@
+"""
+Deterministic voice commands (run BEFORE the LLM): open apps/websites,
+search, weather, time/date, volume, power, notes.
+
+`handle(text, memory)` returns (response_text, action).
+`perform(action)` executes the side effect. Both are importable/testable.
+"""
+
+import platform
+import re
+import shutil
+import subprocess
+import webbrowser
+from datetime import datetime
+from urllib.parse import quote
+
+SYSTEM = platform.system()  # Windows | Darwin | Linux
+
+APPS = {
+    # name: per-OS candidates (URIs are opened with webbrowser)
+    "youtube": {"url": "https://www.youtube.com"},
+    "google": {"url": "https://www.google.com"},
+    "github": {"url": "https://www.github.com"},
+    "gmail": {"url": "https://mail.google.com"},
+    "maps": {"url": "https://maps.google.com"},
+    "chatgpt": {"url": "https://chat.openai.com"},
+    "whatsapp": {"url": "https://web.whatsapp.com"},
+    "twitter": {"url": "https://x.com"},
+    "x": {"url": "https://x.com"},
+    "reddit": {"url": "https://www.reddit.com"},
+    "netflix": {"url": "https://www.netflix.com"},
+    "linkedin": {"url": "https://www.linkedin.com"},
+    "spotify": {"win": ["spotify.exe"], "mac": ["Spotify"], "linux": ["spotify"]},
+    "terminal": {"win": ["wt.exe", "cmd.exe"], "mac": ["Terminal"], "linux": ["gnome-terminal", "konsole", "xterm"]},
+    "notepad": {"win": ["notepad.exe"], "mac": ["TextEdit"], "linux": ["gedit", "kate", "mousepad"]},
+    "calculator": {"win": ["calc.exe"], "mac": ["Calculator"], "linux": ["gnome-calculator", "kcalc"]},
+    "files": {"win": ["explorer.exe"], "mac": ["Finder"], "linux": ["nautilus", "dolphin", "thunar"]},
+    "vs code": {"win": ["code.cmd"], "mac": ["Visual Studio Code"], "linux": ["code"]},
+    "vscode": {"win": ["code.cmd"], "mac": ["Visual Studio Code"], "linux": ["code"]},
+    "browser": {"win": ["msedge.exe", "chrome.exe"], "mac": ["Google Chrome", "Safari"], "linux": ["google-chrome", "firefox", "chromium"]},
+    "camera": {"win": ["microsoft.windows.camera:"], "mac": ["Photo Booth"], "linux": ["cheese"]},
+}
+
+
+def _norm(text):
+    return re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower()).strip()
+
+
+def _first(*cmds):
+    for c in cmds:
+        if shutil.which(c):
+            return c
+    return None
+
+
+def handle(text, memory=None):
+    """Return (response, action) or (None, None) when not a command."""
+    t = _norm(text)
+
+    m = re.match(r"^(?:open|launch) (.+)$", t)
+    if m:
+        target = m.group(1).replace("the ", "", 1)
+        target = target.replace("web", "").strip()
+        if target in APPS:
+            app = APPS[target]
+            if "url" in app:
+                return f"Opening {target}.", {"type": "url", "value": app["url"]}
+            key = {"Windows": "win", "Darwin": "mac", "Linux": "linux"}.get(SYSTEM, "linux")
+            return f"Opening {target}.", {"type": "app", "value": app.get(key, [])}
+        return f"Opening {target}.", {"type": "app-guess", "value": target}
+
+    m = re.match(r"^search for (.+)$|^search (.+)$|^google (.+)$", t)
+    if m:
+        q = next(g for g in m.groups() if g)
+        return f"Searching for {q}.", {"type": "url", "value": f"https://www.google.com/search?q={quote(q)}"}
+
+    m = re.match(r"^play (.+?)(?: on youtube)?$", t)
+    if m:
+        q = m.group(1)
+        return f"Playing {q} on YouTube.", {"type": "url", "value": f"https://www.youtube.com/results?search_query={quote(q)}"}
+
+    m = re.match(r"^weather(?: in| for)? ?(.*)$", t)
+    if m:
+        city = m.group(1)
+        url = f"https://wttr.in/{quote(city)}" if city else "https://wttr.in/"
+        return "Checking the weather.", {"type": "url", "value": url}
+
+    if t in ("what time is it", "time", "tell me the time"):
+        return f"It's {datetime.now().strftime('%I:%M %p')}.", {"type": "speak"}
+
+    if t in ("what's the date", "what is the date", "what day is it"):
+        return f"Today is {datetime.now():%A, %B %d, %Y}.", {"type": "speak"}
+
+    if t in ("volume up", "louder"):
+        return "Volume up.", {"type": "volume", "op": "up"}
+    if t in ("volume down", "quieter"):
+        return "Volume down.", {"type": "volume", "op": "down"}
+    if t in ("mute", "unmute"):
+        return "Toggling mute.", {"type": "volume", "op": "mute"}
+
+    m = re.match(r"^set volume to (\d+)(?: percent)?$", t)
+    if m:
+        return f"Setting volume to {m.group(1)}%.", {"type": "volume", "op": "set", "value": int(m.group(1))}
+
+    m = re.match(r"^(?:remember that|note that|remember) (.+)$", t)
+    if m and memory is not None:
+        # keep the user's original capitalization
+        orig = re.match(r"^(?:remember that|note that|remember) (.+)$", (text or "").strip(),
+                        re.IGNORECASE)
+        memory.add_note((orig or m).group(1).strip())
+        return "Got it — I'll remember that.", {"type": "speak"}
+
+    if t in ("what do you remember", "your notes", "list notes"):
+        if memory is not None and memory.notes:
+            return "I remember: " + "; ".join(n["text"] for n in memory.notes[-5:]) + ".", {"type": "speak"}
+        return "I don't have any notes yet.", {"type": "speak"}
+
+    if t in ("lock computer", "lock the computer", "lock screen"):
+        return "Locking the computer.", {"type": "power", "op": "lock"}
+    if t in ("sleep computer", "sleep mode", "go to sleep"):
+        return "Sleeping.", {"type": "power", "op": "sleep"}
+    if t in ("shut down computer", "shutdown computer", "turn off the computer"):
+        return "Shutting down — say nothing, you have a minute to cancel.", {"type": "power", "op": "shutdown", "confirm": True}
+    if t in ("restart computer", "reboot computer"):
+        return "Restarting — you have a minute to cancel.", {"type": "power", "op": "restart", "confirm": True}
+
+    return None, None
+
+
+# ---------------------------------------------------------------------------
+
+def perform(action):
+    """Execute a side effect. Best-effort, never raises."""
+    try:
+        kind = action["type"]
+        if kind == "url":
+            webbrowser.open(action["value"])
+        elif kind == "speak":
+            pass
+        elif kind == "app":
+            _launch(action["value"])
+        elif kind == "app-guess":
+            _launch([action["value"], f"{action['value']}.exe"])
+        elif kind == "volume":
+            _volume(action)
+        elif kind == "power":
+            _power(action)
+    except Exception as exc:  # noqa: BLE001 — voice assistant must not crash
+        return f"(action failed: {exc})"
+    return ""
+
+
+def _launch(candidates):
+    for cand in candidates:
+        if "://" in cand or cand.endswith(":"):
+            webbrowser.open(cand)
+            return True
+        try:
+            if SYSTEM == "Darwin":
+                subprocess.Popen(["open", "-a", cand], start_new_session=True)
+            else:
+                subprocess.Popen([cand], start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        except (OSError, ValueError):
+            continue
+    return False
+
+
+def _run(cmd):
+    subprocess.run(cmd, check=False, capture_output=True, timeout=8)
+
+
+def _volume(action):
+    op, val = action.get("op"), action.get("value", 0)
+    if SYSTEM == "Darwin":
+        if op == "up": _run(["osascript", "-e", "set volume output volume ((output volume of (get volume settings)) + 10)"])
+        elif op == "down": _run(["osascript", "-e", "set volume output volume ((output volume of (get volume settings)) - 10)"])
+        elif op == "mute": _run(["osascript", "-e", "set volume output muted (not (output muted of (get volume settings)))"])
+        elif op == "set": _run(["osascript", "-e", f"set volume output volume {val}"])
+    elif SYSTEM == "Linux":
+        tool = _first("pactl", "amixer")
+        if tool == "pactl":
+            arg = {"up": "+10%", "down": "-10%", "set": f"{val}%"}.get(op)
+            if op == "mute": _run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"])
+            elif arg: _run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", arg])
+        elif tool == "amixer":
+            arg = {"up": "10%+", "down": "10%-", "set": f"{val}%"}.get(op)
+            if op == "mute": _run(["amixer", "-q", "sset", "Master", "toggle"])
+            elif arg: _run(["amixer", "-q", "sset", "Master", arg])
+    else:  # Windows: send the hardware media keys via PowerShell SendInput
+        vk = {"up": "0xAF", "down": "0xAE", "mute": "0xAD"}[op if op != "set" else "down"]
+        loops = 1 if op != "set" else 0
+        script = (
+            "Add-Type -MemberDefinition '[DllImport(\"user32.dll\")]public static extern void keybd_event(byte bVk,byte bScan,uint dwFlags,uint dwExtraInfo);' -Name K -Namespace W;"
+        )
+        if op == "set":
+            script += f"1..50|%{{[W.K]::keybd_event(0xAE,0,0,0)}};1..{max(0, min(50, val//2))}|%{{[W.K]::keybd_event(0xAF,0,0,0)}}"
+        else:
+            script += f"1..{loops}|%{{[W.K]::keybd_event({vk},0,0,0)}}"
+        _run(["powershell.exe", "-NoProfile", "-Command", script])
+
+
+def _power(action):
+    op = action["op"]
+    if SYSTEM == "Windows":
+        if op == "lock": _run(["rundll32.exe", "user32.dll,LockWorkStation"])
+        elif op == "sleep": _run(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])
+        elif op == "shutdown": _run(["shutdown.exe", "/s", "/t", "60", "/c", "LALA shutdown — run shutdown /a to cancel"])
+        elif op == "restart": _run(["shutdown.exe", "/r", "/t", "60"])
+    elif SYSTEM == "Darwin":
+        if op == "lock": _run(["osascript", "-e", 'tell application "System Events" to keystroke "q" using {command down, control down}'])
+        elif op == "sleep": _run(["pmset", "sleepnow"])
+        elif op == "shutdown": _run(["osascript", "-e", 'tell application "System Events" to shut down'])
+        elif op == "restart": _run(["osascript", "-e", 'tell application "System Events" to restart'])
+    else:
+        if op == "lock": _run(["loginctl", "lock-session"])
+        elif op == "sleep": _run(["systemctl", "suspend"])
+        elif op == "shutdown": _run(["shutdown", "-h", "+1"])
+        elif op == "restart": _run(["shutdown", "-r", "+1"])

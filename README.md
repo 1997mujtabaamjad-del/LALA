@@ -1,8 +1,59 @@
 # LALA 🎙️
 
-**LALA** is a voice command assistant for your desktop. Talk to it and it opens apps and
-websites, controls volume & brightness, takes screenshots, dictates text to your clipboard,
-and can even lock, sleep, or shut down your computer.
+**LALA** is a voice command assistant for your desktop — now with **two engines**:
+
+1. **`assistant/` — the Python Jarvis-style assistant** (voice conversation, Q&A with a
+   real LLM, memory, wake word). See [Python assistant](#-python-assistant-jarvis-mode).
+2. **Electron desktop app + web preview** — command/control UI (apps, volume, screenshots,
+   dictation, custom commands). See [Electron / web app](#electron--web-app).
+
+---
+
+## 🐍 Python assistant (Jarvis mode)
+
+Implements the full spec:
+
+| Spec | Implementation |
+|---|---|
+| Python | `assistant/` package |
+| OpenAI API **or** local LLM (Ollama) | `assistant/llm.py` — auto-detects Ollama at `localhost:11434`, falls back to OpenAI, then to an offline demo mode |
+| Whisper (STT) | `assistant/stt.py` — local `faster-whisper`, or the OpenAI Whisper API |
+| ElevenLabs **or** Piper (TTS) | `assistant/tts.py` — local Piper (free, private) or ElevenLabs |
+| Wake word via OpenWakeWord | `assistant/wake.py` — **“Hey Jarvis”** default (also alexa / hey_mycroft / okay_nabu / tim) |
+| Voice conversation | continuous loop with silence endpointing + follow-up window |
+| Answer questions | LLM with concise spoken answers |
+| Remember previous conversation | `assistant/memory.py` — history + long-term notes persisted to disk |
+| Open apps | `assistant/router.py` — apps, websites, search, weather, volume, power |
+
+### Run it
+
+```bash
+cd assistant
+pip install -r requirements.txt     # every part is optional — degrades gracefully
+python -m assistant --setup         # check components + download the Piper voice
+python -m assistant                 # desktop GUI (tkinter)
+python -m assistant --chat          # terminal REPL (no mic needed — great first test)
+```
+
+Skills in action:
+
+```
+you> open youtube            → opens the browser
+you> remember that I like masala chai
+you> what do you remember?   → "I remember: I like masala chai."
+you> why is the sky blue?    → answered by Ollama/OpenAI, spoken by Piper/ElevenLabs
+```
+
+Say **“Hey Jarvis”** (or click 🎤 Talk) and the orb beeps, listens until silence,
+transcribes with Whisper, answers, and stays open a moment for a natural follow-up.
+Shut-down/restart always asks for confirmation.
+
+Everything degrades gracefully: no mic → text chat; no Ollama → OpenAI; no keys →
+offline demo mode. The Electron app in this repo remains the richer *command center* UI.
+
+---
+
+## Electron / web app
 
 It runs in **two modes from the same codebase**:
 

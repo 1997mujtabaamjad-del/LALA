@@ -1,0 +1,7 @@
+# LALA Python assistant — all components optional at runtime.
+numpy
+requests
+sounddevice        # microphone + playback (needs system portaudio)
+openwakeword       # "Hey Jarvis" wake word
+faster-whisper     # local Whisper STT
+piper-tts          # local TTS

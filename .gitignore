@@ -5,3 +5,7 @@ release/
 .DS_Store
 models/
 .env
+assistant/data/
+__pycache__/
+*.pyc
+.venv/
