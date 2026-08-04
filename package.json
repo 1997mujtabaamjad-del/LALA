@@ -1,0 +1,70 @@
+{
+  "name": "lala",
+  "productName": "LALA",
+  "version": "0.1.0",
+  "description": "LALA — a voice command assistant for your desktop. Works as an Electron desktop app and as a web app, with offline (Vosk) and cloud (OpenAI Whisper) speech recognition.",
+  "main": "electron/main.cjs",
+  "license": "MIT",
+  "author": "LALA Team",
+  "homepage": "https://github.com/1997mujtabaamjad-del/LALA",
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "electron . --dev",
+    "preview": "node scripts/preview-server.mjs",
+    "test": "node --test \"test/*.test.js\"",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "extract-zip": "^2.0.1"
+  },
+  "optionalDependencies": {
+    "vosk": "^0.3.39"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.lala.voiceassistant",
+    "productName": "LALA",
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icon.png"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "keywords": [
+    "voice",
+    "voice-command",
+    "assistant",
+    "electron",
+    "speech-recognition",
+    "whisper",
+    "vosk"
+  ]
+}

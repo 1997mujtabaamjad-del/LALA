@@ -1,0 +1,410 @@
+[
+  {
+    "id": "greeting",
+    "description": "Say hello",
+    "phrases": ["hello lala", "hi lala", "hey lala", "good morning", "good evening"],
+    "action": { "type": "speak", "value": "Hello! I'm LALA, your voice assistant. Say \"help\" to hear what I can do." },
+    "response": "Hello! Say \"help\" to see what I can do."
+  },
+  {
+    "id": "time",
+    "description": "Ask the time",
+    "phrases": ["what time is it", "tell me the time", "time please", "current time"],
+    "action": { "type": "info", "kind": "time" },
+    "response": ""
+  },
+  {
+    "id": "date",
+    "description": "Ask the date",
+    "phrases": ["what is the date", "what's the date", "what day is it", "today's date"],
+    "action": { "type": "info", "kind": "date" },
+    "response": ""
+  },
+  {
+    "id": "open-youtube",
+    "description": "Open YouTube",
+    "phrases": ["open youtube", "launch youtube", "youtube"],
+    "action": { "type": "url", "value": "https://www.youtube.com" },
+    "response": "Opening YouTube."
+  },
+  {
+    "id": "open-google",
+    "description": "Open Google",
+    "phrases": ["open google", "launch google"],
+    "action": { "type": "url", "value": "https://www.google.com" },
+    "response": "Opening Google."
+  },
+  {
+    "id": "open-github",
+    "description": "Open GitHub",
+    "phrases": ["open github", "launch github"],
+    "action": { "type": "url", "value": "https://github.com" },
+    "response": "Opening GitHub."
+  },
+  {
+    "id": "open-gmail",
+    "description": "Open Gmail",
+    "phrases": ["open gmail", "open email", "open mail"],
+    "action": { "type": "url", "value": "https://mail.google.com" },
+    "response": "Opening Gmail."
+  },
+  {
+    "id": "open-chatgpt",
+    "description": "Open ChatGPT",
+    "phrases": ["open chatgpt", "open chat gpt"],
+    "action": { "type": "url", "value": "https://chat.openai.com" },
+    "response": "Opening ChatGPT."
+  },
+  {
+    "id": "open-maps",
+    "description": "Open Google Maps",
+    "phrases": ["open maps", "open google maps"],
+    "action": { "type": "url", "value": "https://maps.google.com" },
+    "response": "Opening Maps."
+  },
+  {
+    "id": "search",
+    "description": "Google search with your voice",
+    "phrases": ["search for <query>", "search <query>", "google <query>"],
+    "action": { "type": "url", "value": "https://www.google.com/search?q={query}" },
+    "response": "Searching for {query}."
+  },
+  {
+    "id": "play-youtube",
+    "description": "Play something on YouTube",
+    "phrases": ["play <query>", "play <query> on youtube", "youtube <query>"],
+    "action": { "type": "url", "value": "https://www.youtube.com/results?search_query={query}" },
+    "response": "Playing {query} on YouTube."
+  },
+  {
+    "id": "open-browser",
+    "description": "Open the default browser",
+    "phrases": ["open browser", "open the browser", "open chrome"],
+    "action": {
+      "type": "app",
+      "value": {
+        "win32": ["msedge.exe", "chrome.exe"],
+        "darwin": ["Google Chrome", "Safari"],
+        "linux": ["google-chrome", "firefox", "chromium"]
+      }
+    },
+    "response": "Opening the browser."
+  },
+  {
+    "id": "open-terminal",
+    "description": "Open a terminal",
+    "phrases": ["open terminal", "open the terminal", "launch terminal"],
+    "action": {
+      "type": "app",
+      "value": {
+        "win32": ["wt.exe", "cmd.exe"],
+        "darwin": ["Terminal"],
+        "linux": ["gnome-terminal", "konsole", "xfce4-terminal", "xterm"]
+      }
+    },
+    "response": "Opening the terminal."
+  },
+  {
+    "id": "open-notepad",
+    "description": "Open a text editor",
+    "phrases": ["open notepad", "open text editor"],
+    "action": {
+      "type": "app",
+      "value": {
+        "win32": ["notepad.exe"],
+        "darwin": ["TextEdit"],
+        "linux": ["gedit", "kate", "mousepad", "xed"]
+      }
+    },
+    "response": "Opening a text editor."
+  },
+  {
+    "id": "open-calculator",
+    "description": "Open the calculator",
+    "phrases": ["open calculator", "launch calculator"],
+    "action": {
+      "type": "app",
+      "value": {
+        "win32": ["calc.exe"],
+        "darwin": ["Calculator"],
+        "linux": ["gnome-calculator", "kcalc"]
+      }
+    },
+    "response": "Opening the calculator."
+  },
+  {
+    "id": "open-files",
+    "description": "Open the file manager",
+    "phrases": ["open files", "open file manager", "open file explorer", "open finder"],
+    "action": {
+      "type": "app",
+      "value": {
+        "win32": ["explorer.exe"],
+        "darwin": ["Finder"],
+        "linux": ["nautilus", "dolphin", "thunar"]
+      }
+    },
+    "response": "Opening the file manager."
+  },
+  {
+    "id": "open-settings",
+    "description": "Open system settings",
+    "phrases": ["open settings", "open system settings"],
+    "action": {
+      "type": "app",
+      "value": {
+        "win32": ["ms-settings:"],
+        "darwin": ["System Settings"],
+        "linux": ["gnome-control-center", "systemsettings"]
+      }
+    },
+    "response": "Opening system settings."
+  },
+  {
+    "id": "volume-up",
+    "description": "Turn the volume up",
+    "phrases": ["volume up", "turn it up", "louder", "increase volume"],
+    "action": { "type": "volume", "op": "up" },
+    "response": "Turning the volume up."
+  },
+  {
+    "id": "volume-down",
+    "description": "Turn the volume down",
+    "phrases": ["volume down", "turn it down", "quieter", "decrease volume", "lower the volume"],
+    "action": { "type": "volume", "op": "down" },
+    "response": "Turning the volume down."
+  },
+  {
+    "id": "volume-mute",
+    "description": "Mute or unmute",
+    "phrases": ["mute", "unmute", "mute volume", "toggle mute"],
+    "action": { "type": "volume", "op": "toggle-mute" },
+    "response": "Toggling mute."
+  },
+  {
+    "id": "volume-set",
+    "description": "Set volume to a percentage",
+    "phrases": ["set volume to <n> percent", "set volume <n> percent", "volume <n> percent", "change volume to <n>"],
+    "action": { "type": "volume", "op": "set", "value": "{n}" },
+    "response": "Setting volume to {n} percent."
+  },
+  {
+    "id": "brightness-up",
+    "description": "Increase brightness",
+    "phrases": ["brightness up", "increase brightness", "brighter"],
+    "action": { "type": "brightness", "op": "up" },
+    "response": "Increasing brightness."
+  },
+  {
+    "id": "brightness-down",
+    "description": "Decrease brightness",
+    "phrases": ["brightness down", "decrease brightness", "dim the screen", "dimmer"],
+    "action": { "type": "brightness", "op": "down" },
+    "response": "Decreasing brightness."
+  },
+  {
+    "id": "screenshot",
+    "description": "Take a screenshot",
+    "phrases": ["take a screenshot", "take screenshot", "screenshot", "capture the screen"],
+    "action": { "type": "screenshot" },
+    "response": "Taking a screenshot."
+  },
+  {
+    "id": "window-minimize",
+    "description": "Minimize the LALA window",
+    "phrases": ["minimize window", "minimize"],
+    "action": { "type": "window", "op": "minimize" },
+    "response": "Minimizing."
+  },
+  {
+    "id": "window-maximize",
+    "description": "Maximize / restore the LALA window",
+    "phrases": ["maximize window", "maximize", "full screen"],
+    "action": { "type": "window", "op": "maximize" },
+    "response": "Maximizing."
+  },
+  {
+    "id": "window-close",
+    "description": "Close the LALA window",
+    "phrases": ["close window"],
+    "action": { "type": "window", "op": "close" },
+    "response": "Closing the window."
+  },
+  {
+    "id": "quit-lala",
+    "description": "Quit LALA",
+    "phrases": ["quit lala", "close lala", "exit lala", "goodbye lala", "good night lala"],
+    "action": { "type": "quit" },
+    "response": "Goodbye!"
+  },
+  {
+    "id": "dictation-start",
+    "description": "Start dictation mode",
+    "phrases": ["start dictation", "start dictating", "dictation mode"],
+    "action": { "type": "dictation", "op": "start" },
+    "response": "Dictation started."
+  },
+  {
+    "id": "dictation-stop",
+    "description": "Stop dictation mode",
+    "phrases": ["stop dictation", "stop dictating", "end dictation"],
+    "action": { "type": "dictation", "op": "stop" },
+    "response": "Dictation stopped."
+  },
+  {
+    "id": "copy-last",
+    "description": "Copy the last transcript to the clipboard",
+    "phrases": ["copy that", "copy it", "copy the last text"],
+    "action": { "type": "clipboard", "value": "$last" },
+    "response": "Copied."
+  },
+  {
+    "id": "lock",
+    "description": "Lock the computer",
+    "phrases": ["lock computer", "lock the computer", "lock screen", "lock my computer"],
+    "action": { "type": "lock" },
+    "response": "Locking the computer."
+  },
+  {
+    "id": "sleep",
+    "description": "Put the computer to sleep",
+    "phrases": ["sleep computer", "put the computer to sleep", "sleep mode"],
+    "action": { "type": "sleep" },
+    "response": "Putting the computer to sleep."
+  },
+  {
+    "id": "shutdown",
+    "description": "Shut down the computer (asks to confirm)",
+    "phrases": ["shut down computer", "shutdown computer", "shut down the computer", "turn off the computer"],
+    "action": { "type": "shutdown" },
+    "response": ""
+  },
+  {
+    "id": "restart",
+    "description": "Restart the computer (asks to confirm)",
+    "phrases": ["restart computer", "reboot computer", "reboot the computer", "restart the computer"],
+    "action": { "type": "restart" },
+    "response": ""
+  },
+  {
+    "id": "open-spotify",
+    "description": "Open Spotify",
+    "phrases": ["open spotify", "launch spotify", "play some music"],
+    "action": {
+      "type": "app",
+      "value": { "win32": ["spotify.exe"], "darwin": ["Spotify"], "linux": ["spotify"] }
+    },
+    "response": "Opening Spotify."
+  },
+  {
+    "id": "open-vscode",
+    "description": "Open VS Code",
+    "phrases": ["open vs code", "open vscode", "open code editor"],
+    "action": {
+      "type": "app",
+      "value": { "win32": ["code.cmd"], "darwin": ["Visual Studio Code"], "linux": ["code"] }
+    },
+    "response": "Opening VS Code."
+  },
+  {
+    "id": "open-camera",
+    "description": "Open the camera",
+    "phrases": ["open camera", "open the camera"],
+    "action": {
+      "type": "app",
+      "value": { "win32": ["microsoft.windows.camera:"], "darwin": ["Photo Booth"], "linux": ["cheese"] }
+    },
+    "response": "Opening the camera."
+  },
+  {
+    "id": "open-whatsapp",
+    "description": "Open WhatsApp Web",
+    "phrases": ["open whatsapp", "open whats app"],
+    "action": { "type": "url", "value": "https://web.whatsapp.com" },
+    "response": "Opening WhatsApp."
+  },
+  {
+    "id": "open-twitter",
+    "description": "Open X / Twitter",
+    "phrases": ["open twitter", "open x"],
+    "action": { "type": "url", "value": "https://x.com" },
+    "response": "Opening X."
+  },
+  {
+    "id": "open-reddit",
+    "description": "Open Reddit",
+    "phrases": ["open reddit"],
+    "action": { "type": "url", "value": "https://www.reddit.com" },
+    "response": "Opening Reddit."
+  },
+  {
+    "id": "open-netflix",
+    "description": "Open Netflix",
+    "phrases": ["open netflix"],
+    "action": { "type": "url", "value": "https://www.netflix.com" },
+    "response": "Opening Netflix."
+  },
+  {
+    "id": "open-linkedin",
+    "description": "Open LinkedIn",
+    "phrases": ["open linkedin"],
+    "action": { "type": "url", "value": "https://www.linkedin.com" },
+    "response": "Opening LinkedIn."
+  },
+  {
+    "id": "weather",
+    "description": "Local weather",
+    "phrases": ["weather", "what's the weather", "what is the weather"],
+    "action": { "type": "url", "value": "https://wttr.in/" },
+    "response": "Checking the weather."
+  },
+  {
+    "id": "weather-city",
+    "description": "Weather for a city",
+    "phrases": ["weather in <city>", "weather for <city>"],
+    "action": { "type": "url", "value": "https://wttr.in/{city}" },
+    "response": "Checking the weather in {city}."
+  },
+  {
+    "id": "calculate",
+    "description": "Quick calculator via search",
+    "phrases": ["calculate <expression>", "what is <expression>", "compute <expression>"],
+    "action": { "type": "url", "value": "https://www.google.com/search?q={expression}" },
+    "response": "Let me calculate that."
+  },
+  {
+    "id": "flip-coin",
+    "description": "Flip a coin",
+    "phrases": ["flip a coin", "coin flip", "heads or tails"],
+    "action": { "type": "coin" },
+    "response": ""
+  },
+  {
+    "id": "roll-dice",
+    "description": "Roll a dice",
+    "phrases": ["roll a dice", "roll the dice", "roll dice"],
+    "action": { "type": "dice" },
+    "response": ""
+  },
+  {
+    "id": "joke",
+    "description": "Tell a joke",
+    "phrases": ["tell me a joke", "joke", "make me laugh", "say something funny"],
+    "action": { "type": "joke" },
+    "response": ""
+  },
+  {
+    "id": "quiet",
+    "description": "Stop LALA from talking",
+    "phrases": ["stop talking", "be quiet", "quiet", "silence"],
+    "action": { "type": "quiet" },
+    "response": ""
+  },
+  {
+    "id": "help",
+    "description": "Show all commands",
+    "phrases": ["help", "show help", "what can i say", "what can you do", "list commands"],
+    "action": { "type": "help" },
+    "response": ""
+  }
+]

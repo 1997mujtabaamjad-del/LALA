@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:;" />
+  <title>LALA — Voice Command Assistant</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2322d3ee'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%230b1020' font-family='sans-serif' font-weight='bold'%3EL%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <h1>LALA</h1>
+      <span class="tagline">voice command assistant</span>
+    </div>
+    <div class="chips">
+      <button id="wake-toggle" class="chip chip-wake" title="Toggle the wake word">👂 “Hey LALA” on</button>
+      <span id="chip-mode" class="chip">…</span>
+      <span id="chip-engine" class="chip chip-accent">…</span>
+      <span id="chip-state" class="chip chip-state">idle</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ================= Stage ================= -->
+    <section class="stage panel">
+      <div id="dictation-bar" class="dictation-bar hidden">
+        <span class="rec-dot"></span> Dictating… say <b>“stop dictation”</b> when you’re done.
+      </div>
+
+      <div id="orb" class="orb" role="button" tabindex="0" aria-label="Talk to LALA">
+        <div class="orb-ring"></div>
+        <div class="orb-ring orb-ring-2"></div>
+        <div class="orb-core">
+          <svg viewBox="0 0 24 24" width="42" height="42" fill="currentColor" aria-hidden="true">
+            <path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-5a3.5 3.5 0 1 0-7 0v5A3.5 3.5 0 0 0 12 15z"/>
+            <path d="M19 11.5a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.93V20.5H8.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2H13v-2.57a7 7 0 0 0 6-6.93z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div id="hint" class="hint">Hold <kbd>Space</kbd> or click the orb, then speak</div>
+      <div id="status-line" class="status-line"></div>
+
+      <div id="interim" class="bubble interim hidden"></div>
+      <div id="response" class="bubble response hidden"></div>
+
+      <div id="confirm-card" class="confirm-card hidden">
+        <p id="confirm-text"></p>
+        <div class="confirm-actions">
+          <button id="confirm-yes" class="btn btn-danger">Confirm</button>
+          <button id="confirm-no" class="btn">Cancel</button>
+        </div>
+      </div>
+
+      <div class="suggestions">
+        <span class="suggestions-label">Try:</span>
+        <button class="sug" data-say="hello lala">hello lala</button>
+        <button class="sug" data-say="what time is it">what time is it</button>
+        <button class="sug" data-say="open youtube">open youtube</button>
+        <button class="sug" data-say="search for lofi beats">search for lofi beats</button>
+        <button class="sug" data-say="set volume to 40 percent">set volume to 40 percent</button>
+        <button class="sug" data-say="help">help</button>
+      </div>
+    </section>
+
+    <!-- ================= Sidebar ================= -->
+    <section class="side panel">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="log" role="tab">Log</button>
+        <button class="tab" data-tab="commands" role="tab">Commands</button>
+        <button class="tab" data-tab="settings" role="tab">Settings</button>
+        <button class="tab" data-tab="help" role="tab">Help</button>
+      </nav>
+
+      <!-- Log -->
+      <div id="tab-log" class="tabpane active">
+        <div id="log" class="log"></div>
+        <button id="clear-log" class="btn btn-small">Clear log</button>
+      </div>
+
+      <!-- Commands -->
+      <div id="tab-commands" class="tabpane">
+        <p class="muted">Your custom commands run <b>before</b> the built-ins. Wildcards: use
+        <code>&lt;name&gt;</code> in a phrase and <code>{name}</code> in the value.</p>
+
+        <form id="cmd-form" class="cmd-form">
+          <label>Phrases <span class="muted">(comma separated)</span>
+            <input id="cmd-phrases" type="text" placeholder="open notion, launch notion" required />
+          </label>
+          <div class="row">
+            <label>Action type
+              <select id="cmd-type">
+                <option value="url">Open URL</option>
+                <option value="app">Launch app / program</option>
+                <option value="shell">Run shell command</option>
+                <option value="speak">Say something</option>
+                <option value="clipboard">Copy text to clipboard</option>
+              </select>
+            </label>
+            <label>Response <span class="muted">(optional)</span>
+              <input id="cmd-response" type="text" placeholder="Opening Notion." />
+            </label>
+          </div>
+          <label>Value
+            <input id="cmd-value" type="text" placeholder="https://www.notion.so" required />
+          </label>
+          <button class="btn btn-accent" type="submit">Add command</button>
+        </form>
+
+        <ul id="cmd-list" class="cmd-list"></ul>
+        <button id="cmd-reset" class="btn btn-small">Delete all custom commands</button>
+      </div>
+
+      <!-- Settings -->
+      <div id="tab-settings" class="tabpane">
+        <h3>Speech engine</h3>
+        <div class="field">
+          <label><input type="radio" name="engine" value="auto" checked /> Auto
+            <span class="muted">(offline if ready, else cloud)</span></label>
+          <label><input type="radio" name="engine" value="offline" /> Offline — Vosk
+            <span class="muted">(private, English model)</span></label>
+          <label><input type="radio" name="engine" value="cloud" /> Cloud — OpenAI Whisper</label>
+        </div>
+
+        <div id="offline-section">
+          <h3>Offline model</h3>
+          <p id="model-status" class="muted">Checking…</p>
+          <div id="model-progress-wrap" class="progress hidden"><div id="model-progress" class="progress-bar"></div></div>
+          <button id="download-model" class="btn btn-accent">Download model (~40 MB)</button>
+        </div>
+
+        <div id="cloud-section">
+          <h3>Cloud settings</h3>
+          <label>OpenAI API key
+            <input id="openai-key" type="password" placeholder="sk-…" autocomplete="off" />
+          </label>
+          <label>Whisper model
+            <select id="whisper-model">
+              <option value="whisper-1">whisper-1 (classic)</option>
+              <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (newer, cheaper)</option>
+            </select>
+          </label>
+        </div>
+
+        <h3>General</h3>
+        <label>Language / accent
+          <select id="language">
+            <option value="en-US">English (US)</option>
+            <option value="en-IN">English (India)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="hi-IN">हिन्दी (Hindi)</option>
+            <option value="es-ES">Español</option>
+            <option value="fr-FR">Français</option>
+            <option value="de-DE">Deutsch</option>
+            <option value="ja-JP">日本語</option>
+          </select>
+        </label>
+        <p class="muted">Note: the offline Vosk model understands English only — use cloud for other languages.</p>
+        <label class="checkbox"><input id="voice-responses" type="checkbox" checked /> Speak responses out loud</label>
+        <label class="checkbox" id="wake-wrap"><input id="wake-word" type="checkbox" checked /> Listen for “Hey LALA” wake word (offline, private)</label>
+        <label class="checkbox" id="continuous-wrap"><input id="continuous" type="checkbox" checked /> Continuous listening (browser mode)</label>
+        <button id="save-settings" class="btn btn-accent">Save settings</button>
+        <p id="settings-saved" class="muted hidden">Saved ✓</p>
+      </div>
+
+      <!-- Help -->
+      <div id="tab-help" class="tabpane">
+        <p class="muted">Everything LALA understands. Wildcard commands accept anything after the fixed words.</p>
+        <div id="help-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
