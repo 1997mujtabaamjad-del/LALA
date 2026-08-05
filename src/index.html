@@ -31,16 +31,31 @@
         <span class="rec-dot"></span> Dictating… say <b>“stop dictation”</b> when you’re done.
       </div>
 
-      <div id="orb" class="orb" role="button" tabindex="0" aria-label="Talk to LALA">
-        <div class="orb-ring"></div>
-        <div class="orb-ring orb-ring-2"></div>
-        <div class="orb-core">
-          <svg viewBox="0 0 24 24" width="46" height="46" fill="currentColor" aria-hidden="true">
-            <path d="M9.5 3A2.5 2.5 0 0 0 7 5.5v.35A3.5 3.5 0 0 0 4.5 9.2c0 .55.13 1.08.37 1.55A3.6 3.6 0 0 0 4 13.4a3.6 3.6 0 0 0 2.55 3.45A3.1 3.1 0 0 0 9.6 20c.5 0 .98-.12 1.4-.34V5.5A2.5 2.5 0 0 0 9.5 3z"/>
-            <path d="M14.5 3A2.5 2.5 0 0 1 17 5.5v.35a3.5 3.5 0 0 1 2.5 3.35c0 .55-.13 1.08-.37 1.55.55.7.87 1.6.87 2.65a3.6 3.6 0 0 1-2.55 3.45A3.1 3.1 0 0 1 14.4 20c-.5 0-.98-.12-1.4-.34V5.5A2.5 2.5 0 0 1 14.5 3z"/>
-            <path d="M10.6 8.2c-.9.2-1.6.9-1.8 1.8M13.4 11.2c.9.2 1.6.9 1.8 1.8M10.6 13.7c-.7.2-1.3.7-1.6 1.4"
-                  stroke="#7deefc" stroke-width="0.9" fill="none" stroke-linecap="round"/>
-          </svg>
+      <div class="orbit-wrap">
+        <div class="orbit" aria-hidden="false">
+          <button class="node" style="--a:0deg"   data-say="weather in hyderabad"        title="Weather"><span class="node-inner">🌦</span></button>
+          <button class="node" style="--a:36deg"  data-say="add meeting tomorrow at 10am" title="Calendar"><span class="node-inner">📅</span></button>
+          <button class="node" style="--a:72deg"  data-say="lights to blue"              title="Smart lights"><span class="node-inner">💡</span></button>
+          <button class="node" style="--a:108deg" data-say="play lofi beats"             title="Music"><span class="node-inner">🎵</span></button>
+          <button class="node" style="--a:144deg" data-say="search for telugu food"      title="Web search"><span class="node-inner">🔎</span></button>
+          <button class="node" style="--a:180deg" data-say="open youtube"                title="Apps"><span class="node-inner">🖥</span></button>
+          <button class="node" style="--a:216deg" data-say="set volume to 40 percent"    title="System"><span class="node-inner">🎚</span></button>
+          <button class="node" style="--a:252deg" data-say="flip a coin"                 title="Fun"><span class="node-inner">🪙</span></button>
+          <button class="node" style="--a:288deg" data-say="tell me a joke"              title="Jokes"><span class="node-inner">😄</span></button>
+          <button class="node" style="--a:324deg" data-say="user guide"                  title="Guide"><span class="node-inner">📖</span></button>
+        </div>
+
+        <div id="orb" class="orb" role="button" tabindex="0" aria-label="Talk to LALA">
+          <div class="orb-ring"></div>
+          <div class="orb-ring orb-ring-2"></div>
+          <div class="orb-core">
+            <svg viewBox="0 0 24 24" width="46" height="46" fill="currentColor" aria-hidden="true">
+              <path d="M9.5 3A2.5 2.5 0 0 0 7 5.5v.35A3.5 3.5 0 0 0 4.5 9.2c0 .55.13 1.08.37 1.55A3.6 3.6 0 0 0 4 13.4a3.6 3.6 0 0 0 2.55 3.45A3.1 3.1 0 0 0 9.6 20c.5 0 .98-.12 1.4-.34V5.5A2.5 2.5 0 0 0 9.5 3z"/>
+              <path d="M14.5 3A2.5 2.5 0 0 1 17 5.5v.35a3.5 3.5 0 0 1 2.5 3.35c0 .55-.13 1.08-.37 1.55.55.7.87 1.6.87 2.65a3.6 3.6 0 0 1-2.55 3.45A3.1 3.1 0 0 1 14.4 20c-.5 0-.98-.12-1.4-.34V5.5A2.5 2.5 0 0 1 14.5 3z"/>
+              <path d="M10.6 8.2c-.9.2-1.6.9-1.8 1.8M13.4 11.2c.9.2 1.6.9 1.8 1.8M10.6 13.7c-.7.2-1.3.7-1.6 1.4"
+                    stroke="#7deefc" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
         </div>
       </div>
 

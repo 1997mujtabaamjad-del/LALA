@@ -1536,6 +1536,9 @@ function bindUI() {
   $$('.sug').forEach((b) => b.addEventListener('click', () => handleTranscript(b.dataset.say)));
   $('#demo-btn').addEventListener('click', () => runDemo());
 
+  // Orbiting feature nodes — click a capability to run it
+  $$('.node').forEach((n) => n.addEventListener('click', () => handleTranscript(n.dataset.say)));
+
   // Orb
   const orb = $('#orb');
   if (desktop) {
