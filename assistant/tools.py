@@ -120,78 +120,119 @@ def execute_tool(name, args, cfg):
 
 def chat_with_tools(cfg, memory, user_text, provider=None):
     """The agentic loop; final content only is returned for speech."""
+    return "".join(chat_with_tools_stream(cfg, memory, user_text, provider))
+
+
+def chat_with_tools_stream(cfg, memory, user_text, provider=None):
+    """Agentic loop that yields final-answer tokens as they are generated,
+    so TTS can start speaking mid-generation. Tool rounds run silently."""
     provider = provider or llm.resolve_provider(cfg)
     messages = llm.build_messages(cfg, memory, user_text)
     if provider == "openai" and cfg.get("openai_api_key"):
-        return _openai_loop(cfg, messages)
+        return _openai_loop_stream(cfg, messages)
     if provider == "ollama":
-        return _ollama_loop(cfg, messages)
-    return llm.ask(cfg, memory, user_text, provider)
+        return _ollama_loop_stream(cfg, messages)
+    return llm.ask_stream(cfg, memory, user_text, provider)
 
 
-def _openai_loop(cfg, messages):
-    for _ in range(MAX_LOOPS):
-        r = requests_post(cfg, messages)
-        if r is None:
-            break
-        msg = r["choices"][0]["message"]
-        messages.append(msg)
-        calls = msg.get("tool_calls") or []
-        if not calls:
-            return msg.get("content") or ""
-        for call in calls:
-            fn = call["function"]["name"]
-            try:
-                args = json.loads(call["function"].get("arguments") or "{}")
-            except ValueError:
-                args = {}
-            messages.append({"role": "tool", "tool_call_id": call["id"],
-                             "content": execute_tool(fn, args, cfg)})
-    return messages[-1].get("content") or ""
+def _accumulate_tool_call(slots, tc):
+    slot = slots.setdefault(tc.get("index", 0),
+                            {"id": None, "type": "function",
+                             "function": {"name": "", "arguments": ""}})
+    if tc.get("id"):
+        slot["id"] = tc["id"]
+    fn = tc.get("function") or {}
+    if fn.get("name"):
+        slot["function"]["name"] = fn["name"]
+    if fn.get("arguments"):
+        slot["function"]["arguments"] += fn["arguments"]
 
 
-def _ollama_loop(cfg, messages):
-    import requests
-
-    for _ in range(MAX_LOOPS):
+def _run_tool_round(messages, slots, cfg):
+    calls = [slots[i] for i in sorted(slots)]
+    messages.append({"role": "assistant", "tool_calls": calls})
+    for n, call in enumerate(calls):
         try:
-            r = requests.post(cfg["ollama_url"] + "/api/chat",
-                              json={"model": cfg["ollama_model"], "messages": messages,
-                                    "tools": TOOLS, "stream": False},
-                              timeout=60)
-            r.raise_for_status()
-            msg = r.json()["message"]
-        except Exception:  # noqa: BLE001
-            break
-        messages.append(msg)
-        calls = msg.get("tool_calls") or []
-        if not calls:
-            return msg.get("content") or ""
-        for call in calls:
-            fn = call["function"]["name"]
-            args = call["function"].get("arguments") or {}
-            if isinstance(args, str):
-                try:
-                    args = json.loads(args)
-                except ValueError:
-                    args = {}
-            messages.append({"role": "tool",
-                             "content": execute_tool(fn, args, cfg)})
-    return messages[-1].get("content") or ""
+            args = json.loads(call["function"]["arguments"] or "{}")
+        except ValueError:
+            args = {}
+        messages.append({"role": "tool",
+                         "tool_call_id": call["id"] or f"call_{n}",
+                         "content": execute_tool(call["function"]["name"], args, cfg)})
 
 
-def requests_post(cfg, messages):
+def _openai_loop_stream(cfg, messages):
     import requests
 
-    try:
-        r = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {cfg['openai_api_key']}"},
-            json={"model": cfg.get("openai_model", "gpt-4o-mini"),
-                  "messages": messages, "tools": TOOLS},
-            timeout=60,
-        )
-        r.raise_for_status()
-        return r.json()
-    except Exception:  # noqa: BLE001
-        return None
+    def gen():
+        for _ in range(MAX_LOOPS):
+            try:
+                with requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {cfg['openai_api_key']}"},
+                    json={"model": cfg.get("openai_model", "gpt-4o-mini"),
+                          "messages": messages, "tools": TOOLS, "stream": True},
+                    stream=True, timeout=60,
+                ) as r:
+                    r.raise_for_status()
+                    slots = {}
+                    for line in r.iter_lines():
+                        if not line or not line.startswith(b"data: "):
+                            continue
+                        payload = line[6:].strip()
+                        if payload == b"[DONE]":
+                            break
+                        try:
+                            data = json.loads(payload)
+                        except ValueError:
+                            continue
+                        delta = (data.get("choices") or [{}])[0].get("delta") or {}
+                        if delta.get("content"):
+                            yield delta["content"]
+                        for tc in delta.get("tool_calls") or []:
+                            _accumulate_tool_call(slots, tc)
+                if not slots:
+                    return
+                _run_tool_round(messages, slots, cfg)
+            except Exception:  # noqa: BLE001
+                return
+    return gen()
+
+
+def _ollama_loop_stream(cfg, messages):
+    import requests
+
+    def gen():
+        for _ in range(MAX_LOOPS):
+            try:
+                with requests.post(
+                    cfg["ollama_url"] + "/api/chat",
+                    json={"model": cfg["ollama_model"], "messages": messages,
+                          "tools": TOOLS, "stream": True},
+                    stream=True, timeout=60,
+                ) as r:
+                    r.raise_for_status()
+                    slots = {}
+                    for line in r.iter_lines():
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                        except ValueError:
+                            continue
+                        msg = data.get("message") or {}
+                        if msg.get("content"):
+                            yield msg["content"]
+                        for tc in msg.get("tool_calls") or []:
+                            _accumulate_tool_call(
+                                slots, {"index": len(slots), "id": f"ollama_{len(slots)}",
+                                        "function": tc.get("function")})
+                if not slots:
+                    return
+                _run_tool_round(messages, slots, cfg)
+            except Exception:  # noqa: BLE001
+                return
+    return gen()
+
+
+

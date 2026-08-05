@@ -14,6 +14,7 @@ import { matchCommand, normalize, fillTemplate, detectWakeWord } from './command
 import { createWebSpeech } from './web-speech.js';
 import { createWakeListener } from './wakeword.js';
 import { startStreamCapture } from './streamrecorder.js';
+import { applyDelta, finalizeToolCalls } from './stream.js';
 
 const desktop = typeof window.lala !== 'undefined';
 const $ = (sel) => document.querySelector(sel);
@@ -146,10 +147,10 @@ if ('speechSynthesis' in window) {
   speechSynthesis.onvoiceschanged = pickVoice;
 }
 
-function speak(text) {
+function speak(text, { cancel = true } = {}) {
   if (!state.settings.voiceResponses || !text) return;
   if (!('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
+  if (cancel) speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   if (preferredVoice) utter.voice = preferredVoice;
   utter.rate = 1.03;
@@ -208,10 +209,21 @@ async function handleTranscript(rawText) {
   // 3) Normal command matching.
   const match = matchCommand(allCommands(), text);
   if (!match) {
-    // 3a) Agentic: if an OpenAI key is set, let the LLM call tools in-app.
-    const toolReply = await llmToolLoop(text);
+    // 3a) Agentic + streaming: tokens speak sentence-by-sentence while the
+    //     model keeps generating; tool rounds run silently in between.
+    let streamed = '';
+    const toolReply = await llmToolLoopStream(text, (tok) => {
+      streamed += tok;
+      showResponse(streamed);
+      const parts = streamed.split(/(?<=[.!?])\s+/);
+      if (parts.length > 1) {
+        parts.slice(0, -1).forEach((s) => speak(s, { cancel: false }));
+        streamed = parts[parts.length - 1];
+      }
+    });
     if (toolReply) {
-      respond(toolReply);
+      if (streamed.trim()) speak(streamed, { cancel: false });
+      respond(toolReply, { silent: true });
       return;
     }
     // 3b) Then the Python brain; then a polite miss.
@@ -312,8 +324,8 @@ async function runTool(name, args) {
   }
 }
 
-/** OpenAI tools loop in the app: model decides → tools run → final reply only. */
-async function llmToolLoop(text) {
+/** Streaming agentic loop: tokens flow out live; tool rounds run silently. */
+async function llmToolLoopStream(text, onToken) {
   const key = state.settings.openaiKey;
   if (!key) return null;
   let messages = [
@@ -322,30 +334,50 @@ async function llmToolLoop(text) {
     { role: 'user', content: text }
   ];
   try {
-    for (let i = 0; i < 4; i++) {
+    for (let round = 0; round < 4; round++) {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
         body: JSON.stringify({
           model: state.settings.chatModel || 'gpt-4o-mini',
-          messages, tools: TOOLS_JS
+          messages, tools: TOOLS_JS, stream: true
         })
       });
-      if (!res.ok) return null;
-      const m = (await res.json()).choices[0].message;
-      messages.push(m);
-      const calls = m.tool_calls || [];
-      if (!calls.length) {
-        state.recentChat.push({ role: 'user', content: text },
-          { role: 'assistant', content: m.content || '' });
-        return m.content || '';
+      if (!res.ok || !res.body) return null;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      const acc = { toolCalls: new Map() };
+      let content = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, idx).trim();
+          buf = buf.slice(idx + 1);
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (payload === '[DONE]') continue;
+          let j;
+          try { j = JSON.parse(payload); } catch { continue; }
+          const token = applyDelta(acc, (j.choices && j.choices[0] && j.choices[0].delta) || {});
+          if (token) {
+            content += token;
+            onToken && onToken(token);
+          }
+        }
       }
+      const calls = finalizeToolCalls(acc);
+      if (!calls) return content;
+      messages.push({ role: 'assistant', tool_calls: calls });
       for (const c of calls) {
         let args = {};
         try { args = JSON.parse(c.function.arguments || '{}'); } catch { /* {} */ }
         addLog('sys', `🔧 ${c.function.name}(${JSON.stringify(args)})`);
         const out = await runTool(c.function.name, args);
-        messages.push({ role: 'tool', tool_call_id: c.id, content: String(out) });
+        messages.push({ role: 'tool', tool_call_id: c.id || `call_${messages.length}`, content: String(out) });
       }
     }
   } catch { /* offline / blocked → fall through to brain */ }

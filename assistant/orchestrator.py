@@ -84,9 +84,15 @@ class Assistant:
             self.status("thinking")
             provider = llm.resolve_provider(self.cfg)
             if provider in ("openai", "ollama"):
-                # Agentic: the LLM sees the tool list, calls tools, gets the
-                # results back, and only its final reply is spoken.
-                reply = tools.chat_with_tools(self.cfg, self.memory, text)
+                # Agentic + streaming: tool rounds run silently, final-answer
+                # tokens flow straight into sentence-level TTS while the model
+                # is still generating.
+                tokens = tools.chat_with_tools_stream(self.cfg, self.memory, text)
+                if spoken and tts.resolve_provider(self.cfg) != "none":
+                    reply = tts.speak_stream(tokens, self.cfg)
+                    spoken = False  # already spoken while streaming
+                else:
+                    reply = "".join(tokens)
             elif spoken and tts.resolve_provider(self.cfg) != "none":
                 # Stream tokens into sentence-level TTS for minimal latency.
                 reply = tts.speak_stream(llm.ask_stream(self.cfg, self.memory, text),

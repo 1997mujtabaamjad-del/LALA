@@ -103,6 +103,19 @@ Shut-down/restart always asks for confirmation.
 Everything degrades gracefully: no mic → text chat; no Ollama → OpenAI; no keys →
 offline demo mode. The Electron app in this repo remains the richer *command center* UI.
 
+### ⚡ Everything streams (fast feel)
+
+1. **STT streams**: partial transcript types along *while you speak* (Deepgram
+   WebSocket / Vosk / live partials in the app).
+2. **LLM streams**: tokens arrive as generated (Ollama & OpenAI SSE), including the
+   final answer of **tool-calling rounds** — tool execution stays silent.
+3. **Sentence-ready → TTS**: the moment a sentence closes it's sent to Piper /
+   ElevenLabs / speechSynthesis and spoken immediately.
+4. **Generation continues while speaking**: the TTS worker consumes the token
+   stream concurrently; barge-in still cancels instantly.
+
+Perceived latency ≈ first spoken sentence, not full answer.
+
 ### 🧰 Tool calling (actions)
 
 The LLM doesn't just chat — it **uses your skills as tools**:

@@ -185,6 +185,20 @@ class ToolsTest(unittest.TestCase):
         reply = tools.chat_with_tools(cfg, None, "hello")
         self.assertIn("offline demo mode", reply)
 
+    def test_tool_call_accumulation(self):
+        from assistant import tools
+
+        slots = {}
+        tools._accumulate_tool_call(slots, {"index": 0, "id": "c1",
+                                            "function": {"name": "get_time", "arguments": ""}})
+        tools._accumulate_tool_call(slots, {"index": 0,
+                                            "function": {"arguments": '{"a":'}})
+        tools._accumulate_tool_call(slots, {"index": 0, "function": {"arguments": "1}"}})
+        call = slots[0]
+        self.assertEqual(call["function"]["name"], "get_time")
+        import json as _json
+        self.assertEqual(_json.loads(call["function"]["arguments"]), {"a": 1})
+
 
 class MemorySpecTest(unittest.TestCase):
     """The 5-point spec: message list, user/assistant appends, 8–12 window,
