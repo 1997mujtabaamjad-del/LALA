@@ -11,6 +11,7 @@ import time
 
 from . import config, llm, mic, router, stt, tts, vad, wake
 from .memory import Memory
+from .pipeline import Pipeline
 
 
 class Assistant:
@@ -24,6 +25,7 @@ class Assistant:
         self._busy = threading.Event()
         self._last_action = None
         self._vad = None
+        self.pipeline = Pipeline(cfg, log=self.log, status=self.status)
 
     def get_vad(self):
         """Silero when available, energy VAD otherwise (created once)."""
@@ -87,39 +89,13 @@ class Assistant:
             next_max = 8.0
             while True:
                 self.status("listening")
-                transcriber = stt.StreamingTranscriber(self.cfg)
-
-                def _on_chunk(chunk, t=transcriber):
-                    partial = t.feed(chunk)
-                    if partial:
-                        self.status(f"“{partial}”")
-
-                audio = mic.record_until_silence(max_seconds=next_max,
-                                                 require_speech=True,
-                                                 on_chunk=_on_chunk,
-                                                 vad=self.get_vad())
-                if audio is None:
+                audio, text, _partials = self.pipeline.listen(next_max)
+                if audio is None or not text:
                     break
-                text = transcriber.finish()
-                if not text:
-                    try:
-                        text = stt.transcribe(audio, self.cfg)
-                    except Exception as exc:  # noqa: BLE001
-                        self.log("system", f"STT error: {exc}")
-                        break
-                if not text:
-                    break
-                if self.cfg.get("save_recordings", True):
-                    import os
-
-                    path = os.path.join(
-                        config.DATA_DIR, "recordings",
-                        f"lala-{int(time.time())}.wav")
-                    try:
-                        mic.save_wav(path, audio)
-                        self.log("system", f"🎙 recording saved: {os.path.basename(path)}")
-                    except Exception:  # noqa: BLE001
-                        pass
+                path = self.pipeline.save_recording(audio, text)
+                if path:
+                    self.log("system",
+                             f"🎙 recording saved: {os.path.basename(path)}")
                 self.process(text, follow_up=False, spoken=True)
                 if self._last_action == "end-conversation" or not continuous:
                     break
@@ -192,27 +168,8 @@ class Assistant:
             return False
 
     def _say(self, text, spoken=True):
-        self.log(self.cfg["name"], text)
-        if not spoken:
-            return
-
-        # Barge-in: if the user starts talking over us, stop playback and
-        # listen to what they say instead.
-        stop = threading.Event()
-        monitor = mic.BargeMonitor(stop, vad=self.get_vad()) if mic.available() else None
-        if monitor:
-            monitor.start()
-        tts.speak(text, self.cfg, stop_event=stop)
-        barged = bool(monitor and monitor.barged)
-        if monitor:
-            monitor.stop()
-        if barged:
-            self.log("system", "(barge-in — listening)")
-            self.status("listening")
-            audio = mic.record_until_silence()
-            try:
-                next_text = stt.transcribe(audio, self.cfg)
-            except Exception:  # noqa: BLE001
-                next_text = ""
-            if next_text:
-                self.process(next_text, follow_up=False, spoken=True)
+        # TTS with barge-in lives in the pipeline; an interruption becomes
+        # the next utterance.
+        interruption = self.pipeline.speak(text, spoken=spoken)
+        if interruption:
+            self.process(interruption, follow_up=False, spoken=True)

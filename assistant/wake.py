@@ -23,7 +23,7 @@ THRESHOLD = 0.5
 SUPPORTED = ["alexa", "hey_jarvis", "hey_mycroft", "okay_nabu", "tim"]
 
 # Fuzzy wake matcher: tolerates “laala”, “lala”, “la la”, with/without hey/ok.
-WAKE_RE = re.compile(r"(?:^|\s)(?:hey|ok|okay|hello|hi)?\s*(?:laala|lala|la\s+la)(?=\s|$)")
+WAKE_RE = re.compile(r"(?:^|\s)(?:hey|ok|okay|hello|hi)?\s*(?:laala|lala|la\s+la)(?=[\s,.!?]|$)")
 
 VOSK_MODEL_NAME = "vosk-model-small-en-us-0.15"
 VOSK_MODEL_URL = f"https://alphacephei.com/vosk/models/{VOSK_MODEL_NAME}.zip"

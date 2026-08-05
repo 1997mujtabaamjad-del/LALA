@@ -76,6 +76,30 @@ Shut-down/restart always asks for confirmation.
 Everything degrades gracefully: no mic → text chat; no Ollama → OpenAI; no keys →
 offline demo mode. The Electron app in this repo remains the richer *command center* UI.
 
+### 🏁 The milestone: one unified pipeline
+
+```bash
+python -m assistant --milestone          # add --speak to hear the TTS stage
+```
+```
+========== LALA PIPELINE MILESTONE ==========
+  [✔] wake word        detected in “hey laala, open youtube”
+  [✔] vad + record     600 ms speech segmented; runtime VAD: SileroVAD
+  [✔] streaming stt    simulated transcript (install faster-whisper/deepgram/vosk for live)
+  [✔] llm              provider: ollama
+  [✔] tts + playback   provider: piper (silent check; use --speak to hear it)
+  [✔] recording        milestone-1733….wav
+==============================================
+  MILESTONE ACHIEVED 🎉 full chain operational:
+  wake → record(+VAD) → streaming STT → LLM → TTS(+barge-in)
+```
+
+Every stage runs on real backends when installed and is honestly labeled
+*simulated* otherwise. At runtime the same chain lives in `assistant/pipeline.py`
+and the orchestrator delegates to it: wake fires → VAD-endpointed recording with
+live partials → best available STT final → router/LLM thinking with memory →
+streaming TTS you can barge into → utterance saved to disk.
+
 ### Power features
 
 - **Silero VAD**: endpointing and barge-in use the **Silero neural VAD**

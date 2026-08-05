@@ -7,6 +7,7 @@ Entry point.
   python -m assistant --serve    # local brain server for the Electron/web app
   python -m assistant --deploy   # guided ElevenLabs/Piper + service deployment
   python -m assistant --autostart on|off
+  python -m assistant --milestone [--speak]   # prove the full pipeline works
 """
 
 import argparse
@@ -100,6 +101,10 @@ def main():
     parser.add_argument("--set-elevenlabs", metavar="KEY", help="save ElevenLabs key")
     parser.add_argument("--remove-key", choices=["deepgram", "openai", "elevenlabs"],
                         help="remove a key from assistant/.env")
+    parser.add_argument("--milestone", action="store_true",
+                        help="run the full pipeline self-check (wake→record→stt→llm→tts)")
+    parser.add_argument("--speak", action="store_true",
+                        help="with --milestone: play the TTS stage aloud")
     args = parser.parse_args()
 
     if args.setup:
@@ -146,6 +151,19 @@ def main():
     if args.serve:
         from .server import main as server_main
         server_main()
+        return
+    if args.milestone:
+        from . import config, pipeline
+
+        print("\n========== LALA PIPELINE MILESTONE ==========")
+        ok_all = True
+        for stage, ok, note in pipeline.run_milestone(config.load(), speak=args.speak):
+            ok_all = ok_all and ok
+            print(f"  [{'✔' if ok else '✖'}] {stage:16} {note}")
+        print("=" * 46)
+        print("  MILESTONE ACHIEVED 🎉 full chain operational:"
+              if ok_all else "  MILESTONE INCOMPLETE — see ✖ stages above")
+        print("  wake → record(+VAD) → streaming STT → LLM → TTS(+barge-in)\n")
         return
     if args.chat:
         chat_repl()

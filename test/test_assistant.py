@@ -158,6 +158,28 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class MilestoneTest(unittest.TestCase):
+    def test_full_pipeline_milestone(self):
+        from assistant import pipeline
+
+        cfg = dict(config.DEFAULTS)
+        cfg["llm_provider"] = "mock"
+        results = pipeline.run_milestone(cfg)
+        stages = [s for s, _ok, _n in results]
+        self.assertEqual(stages, ["wake word", "vad + record", "streaming stt",
+                                  "llm", "tts + playback", "recording"])
+        for stage, ok, note in results:
+            self.assertTrue(ok, f"{stage}: {note}")
+
+    def test_endpoint_on_array(self):
+        from assistant import pipeline, vad
+
+        audio = pipeline.synthetic_utterance()
+        speech, silence = pipeline.endpoint_on_array(audio, vad.EnergyVAD())
+        self.assertGreaterEqual(speech, 400)
+        self.assertGreaterEqual(silence, 300)
+
+
 class VadTest(unittest.TestCase):
     def test_vad_plan(self):
         from assistant import vad
