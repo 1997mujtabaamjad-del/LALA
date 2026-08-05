@@ -25,7 +25,7 @@ function createWindow() {
     height: 820,
     minWidth: 940,
     minHeight: 620,
-    backgroundColor: '#0b1020',
+    backgroundColor: '#050507',
     title: 'LALA — Voice Command Assistant',
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     show: false,
