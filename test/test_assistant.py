@@ -267,6 +267,47 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class AutonomyTest(unittest.TestCase):
+    def test_parse_reminder(self):
+        from assistant import autonomy
+
+        when, msg = autonomy.parse_reminder("remind me to call asha at 5pm")
+        self.assertIsNotNone(when)
+        self.assertEqual(msg, "call asha")
+
+    def test_due_reminder_fires_once(self):
+        from datetime import datetime, timedelta
+
+        from assistant import autonomy
+
+        autonomy.save_tasks([])
+        autonomy.add_task("reminder", datetime.now() - timedelta(minutes=1),
+                          {"msg": "stand up"})
+        due = autonomy.due_tasks()
+        self.assertEqual(len(due), 1)
+        self.assertIn("stand up", autonomy.run_task(due[0], dict(config.DEFAULTS)))
+        self.assertEqual(autonomy.due_tasks(), [])  # one-shot, done
+
+    def test_goal_mock_returns_unlock_hint(self):
+        from assistant import autonomy
+
+        cfg = dict(config.DEFAULTS)
+        cfg["llm_provider"] = "mock"
+        summary, steps = autonomy.run_goal("research x", cfg)
+        self.assertIn("autonomous", summary.lower())
+        self.assertEqual(steps, [])
+
+    def test_router_autonomy_commands(self):
+        _r, action = router.handle("remind me to stretch at 9pm")
+        self.assertEqual(action["type"], "remind")
+        _r, action = router.handle("watch my calendar")
+        self.assertEqual((action["type"], action["kind"]), ("watch", "calendar_watch"))
+        _r, action = router.handle("take care of researching competitors")
+        self.assertEqual(action["type"], "goal")
+        _r, action = router.handle("run my morning routine")
+        self.assertEqual(action["type"], "routine")
+
+
 class RolesTest(unittest.TestCase):
     def test_normalize(self):
         from assistant import roles

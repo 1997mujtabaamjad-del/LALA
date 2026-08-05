@@ -147,6 +147,20 @@ calls tools that map onto the existing action executor, and each call shows as a
 polite miss. The deterministic router stays as the zero-latency fast path for
 exact commands.
 
+### 🤖 Autonomous LALA
+
+LALA doesn't just react — she acts on her own:
+
+- **Reminders** — *“remind me to call Asha at 5 pm”* → spoken alert at 5 pm
+- **Daily briefings** — *“every day at 9am brief me”* → calendar+weather+CRM roll-up, spoken
+- **Watchers** — *“watch my calendar”* (15-min heads-ups) · *“watch the weather”* (rain alerts)
+- **Morning routine** — *“run my morning routine”* runs the whole sequence now
+- **Autonomous goals** — *“take care of researching our top competitor”*: the LLM
+  plans and executes tool steps by itself (bounded rounds, steps logged) and
+  reports a spoken summary
+- A 30 s scheduler thread fires due tasks while the app runs; toggle with
+  `autonomy_enabled` in config. Tasks tab → 🤖 Autonomy for one-click demos.
+
 ### 💼 Specialist role modes
 
 Say **“switch to …”** (or use Tasks → Specialist roles) and LALA's LLM persona +

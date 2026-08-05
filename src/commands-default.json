@@ -534,6 +534,48 @@
     "response": ""
   },
   {
+    "id": "remind",
+    "description": "Set a reminder",
+    "phrases": ["remind me to <r>"],
+    "action": { "type": "remind", "text": "{r}" },
+    "response": ""
+  },
+  {
+    "id": "watch-calendar",
+    "description": "Proactive calendar heads-ups",
+    "phrases": ["watch my calendar", "watch the calendar"],
+    "action": { "type": "watch", "kind": "calendar_watch" },
+    "response": ""
+  },
+  {
+    "id": "watch-weather",
+    "description": "Rain/storm alerts",
+    "phrases": ["watch the weather", "watch weather"],
+    "action": { "type": "watch", "kind": "weather_watch" },
+    "response": ""
+  },
+  {
+    "id": "routine",
+    "description": "Run the morning routine now",
+    "phrases": ["run my morning routine", "morning routine", "start my day"],
+    "action": { "type": "routine" },
+    "response": ""
+  },
+  {
+    "id": "unwatch",
+    "description": "Clear proactive watchers",
+    "phrases": ["stop watching", "clear reminders", "cancel autonomy tasks"],
+    "action": { "type": "unwatch" },
+    "response": ""
+  },
+  {
+    "id": "goal",
+    "description": "Autonomous goal execution",
+    "phrases": ["take care of <goal>", "handle <goal>", "autonomously <goal>"],
+    "action": { "type": "goal", "goal": "{goal}" },
+    "response": ""
+  },
+  {
     "id": "stop-listening",
     "description": "End continuous conversation; wait for the wake word again",
     "phrases": ["stop listening", "stop listening lala", "that's all for now", "goodbye for now", "go idle"],

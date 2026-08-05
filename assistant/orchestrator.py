@@ -35,9 +35,21 @@ class Assistant:
             self.log("system",
                      "Wake word unavailable (needs mic + vosk/openwakeword). "
                      "Use push-to-talk / the GUI / --chat.")
+        if self.cfg.get("autonomy_enabled", True):
+            from . import autonomy, tts
+
+            def _announce(text):
+                self.log("lala", text)
+                tts.speak(text, self.cfg)
+
+            self._autonomy = autonomy.Autonomy(self.cfg, _announce)
+            self._autonomy.start()
+            self.log("system", "Autonomy on — reminders, briefings & watchers active.")
 
     def stop(self):
         self.pipeline.stop()
+        if getattr(self, "_autonomy", None):
+            self._autonomy.stop()
 
     # ------------------------------------------------------------ the loop
     def push_to_talk(self):

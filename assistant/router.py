@@ -15,7 +15,7 @@ import webbrowser
 from datetime import datetime
 from urllib.parse import quote
 
-from . import calendar_store, lights, roles, websearch, weather
+from . import autonomy, calendar_store, lights, roles, websearch, weather
 
 JOKES = [
     "Why do programmers prefer dark mode? Because light attracts bugs.",
@@ -164,6 +164,31 @@ def handle(text, memory=None):
              "thats all for now", "goodbye for now", "you can sleep now", "go idle"):
         return "Okay — I'll wait for the wake word.", {"type": "end-conversation"}
 
+    # ---- autonomy ----------------------------------------------------------
+    if t.startswith("remind me"):
+        when, msg = autonomy.parse_reminder(t)
+        if when:
+            return f"I'll remind you at {when:%I:%M %p}.", \
+                {"type": "remind", "when": when.isoformat(), "msg": msg}
+    if t in ("watch my calendar", "watch the calendar"):
+        return "Watching your calendar — I'll warn you 15 minutes before events.", \
+            {"type": "watch", "kind": "calendar_watch"}
+    if t in ("watch the weather", "watch weather"):
+        return "Watching the weather — I'll alert you on rain or storms.", \
+            {"type": "watch", "kind": "weather_watch"}
+    m = re.match(r"^(?:every day|daily)(?: at (\d{1,2}(?::\d{2})?\s*(?:am|pm)?))?\s*"
+                 r"(?:brief me|briefing)$|^brief me (?:every day|daily)(?: at "
+                 r"(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?$", t)
+    if m:
+        return "Daily briefing scheduled.", {"type": "schedule-briefing", "time": (m.group(1) or m.group(2) or "9am")}
+    if t in ("run my morning routine", "morning routine", "start my day"):
+        return "", {"type": "routine"}
+    if t in ("stop watching", "cancel autonomy tasks", "clear reminders"):
+        return "Autonomy tasks cleared.", {"type": "unwatch"}
+    m = re.match(r"^(?:take care of|handle|autonomously) (.+)$", t)
+    if m:
+        return "", {"type": "goal", "goal": m.group(1)}
+
     # ---- role modes ------------------------------------------------------
     if t in ("back to normal", "default mode", "switch to assistant", "normal mode"):
         return "Back to default assistant.", {"type": "role", "role": ""}
@@ -284,6 +309,44 @@ def perform(action):
             return llm.ask(config.load(), None,
                            f"Provide a concise SWOT analysis for: {action['topic']}. "
                            "Four short bullets (S/W/O/T) and one recommendation.")
+        elif kind == "remind":
+            from datetime import datetime as _dt
+
+            autonomy.add_task("reminder", _dt.fromisoformat(action["when"]),
+                              {"msg": action["msg"]})
+            return f"Reminder set for {_dt.fromisoformat(action['when']):%I:%M %p}: {action['msg']}."
+        elif kind == "schedule-briefing":
+            from datetime import datetime as _dt
+
+            m2 = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", action["time"])
+            h, mm = 9, 0
+            if m2:
+                h = int(m2.group(1))
+                mm = int(m2.group(2) or 0)
+                if m2.group(3) == "pm" and h < 12:
+                    h += 12
+            when = _dt.now().replace(hour=h, minute=mm, second=0, microsecond=0)
+            autonomy.add_task("briefing", when)
+            return f"Daily briefing scheduled at {when:%I:%M %p}."
+        elif kind == "watch":
+            autonomy.add_task(action["kind"])
+            return "On it — I'll speak up when something needs you."
+        elif kind == "unwatch":
+            autonomy.save_tasks([t for t in autonomy.load_tasks()
+                                 if t["kind"] not in
+                                 ("calendar_watch", "weather_watch") and t.get("done")])
+            return "Autonomy tasks cleared."
+        elif kind == "routine":
+            from . import config
+
+            return roles.briefing(config.load()) + " Routine complete — have a great day."
+        elif kind == "goal":
+            from . import config
+
+            summary, steps = autonomy.run_goal(action["goal"], config.load())
+            if steps:
+                return summary + f" (steps: {len(steps)})"
+            return summary
         elif kind == "guide":
             from . import config, guide
 

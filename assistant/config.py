@@ -71,6 +71,8 @@ DEFAULTS = {
     "stt_device": "auto",  # auto | cpu | cuda
     # Neural VAD (Silero) for endpointing + barge-in; energy VAD fallback
     "prefer_silero": True,
+    # Proactive behaviors: reminders, daily briefings, watchers, goals
+    "autonomy_enabled": True,
     # Smart lights: auto | hue | homeassistant | wled | none
     "lights_provider": "auto",
     "hue_ip": "",

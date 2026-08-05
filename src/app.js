@@ -482,6 +482,67 @@ async function runMatch(match) {
     return;
   }
 
+  // ---- autonomy (proactive LALA) ----
+  if (['remind', 'watch', 'routine', 'unwatch', 'goal'].includes(act.type)) {
+    if (desktop) {
+      const brain = await askBrain(state.lastTranscript);
+      if (brain) { respond(brain); return; }
+    }
+    if (act.type === 'remind') {
+      const m = act.text.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+      if (!m) { respond('When? Try “remind me to call Asha at 5 pm”.'); return; }
+      let h = +m[1], mm = +(m[2] || 0);
+      if (m[3] === 'pm' && h < 12) h += 12;
+      const when = new Date(); when.setHours(h, mm, 0, 0);
+      if (when < new Date()) when.setDate(when.getDate() + 1);
+      const msg = act.text.split(/\bat\b/)[0].trim();
+      setTimeout(() => { toast(`⏰ Reminder: ${msg}`); speak(`Reminder: ${msg}`); },
+        when - new Date());
+      respond(`I'll remind you at ${when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`);
+      return;
+    }
+    if (act.type === 'watch') {
+      state.watches = state.watches || {};
+      if (state.watches[act.kind]) clearInterval(state.watches[act.kind]);
+      state.watches[act.kind] = setInterval(async () => {
+        if (act.kind === 'calendar_watch') {
+          const evs = (desktop ? await window.lala.getCalendar() : JSON.parse(localStorage.getItem('lala.calendar') || '[]'))
+            .map((e) => ({ ...e, ts: Date.parse(e.when) }))
+            .filter((e) => e.ts > Date.now() && e.ts - Date.now() < 15 * 60000 && !e.announced);
+          for (const e of evs) {
+            e.announced = true;
+            toast(`📅 Heads up — ${e.title} in ${Math.max(1, Math.round((e.ts - Date.now()) / 60000))} min`);
+            speak(`Heads up, ${e.title} starts soon.`);
+          }
+        } else {
+          const wx = (await fetchWeather('')) || '';
+          if (/rain|storm|drizzle|thunder/i.test(wx)) { toast(`🌧 ${wx}`); speak('Weather alert: rain expected.'); }
+        }
+      }, 60000);
+      respond(act.kind === 'calendar_watch'
+        ? 'Watching your calendar — I’ll warn you 15 minutes before events.'
+        : 'Watching the weather — I’ll alert you on rain or storms.');
+      return;
+    }
+    if (act.type === 'unwatch') {
+      for (const k of Object.keys(state.watches || {})) clearInterval(state.watches[k]);
+      state.watches = {};
+      respond('Autonomy watchers cleared.');
+      return;
+    }
+    if (act.type === 'routine') {
+      const evs = (desktop ? await window.lala.getCalendar() : JSON.parse(localStorage.getItem('lala.calendar') || '[]'))
+        .map((e) => ({ ...e, ts: Date.parse(e.when) })).filter((e) => e.ts > Date.now() - 36e5);
+      const wx = await fetchWeather('');
+      respond(`Good morning! ${wx || ''} Today: ${evs.length ? evs.slice(0, 4).map((e) => e.title).join('; ') : 'no events — a clear runway.'} Routine complete.`);
+      return;
+    }
+    if (act.type === 'goal') {
+      respond(`Autonomous goals need the brain (run \`python -m assistant --serve\`) or an OpenAI key — then I'll plan and execute “${act.goal}” step by step.`);
+      return;
+    }
+  }
+
   if (act.type === 'role') {
     if (act.role === '?') { respond(`Currently in ${state.settings.role || 'default'} mode.`); return; }
     if (act.role === 'default') {
@@ -1575,6 +1636,14 @@ const TASKS = [
     ['Daily briefing', 'brief me'],
     ['SWOT analysis', 'swot for a voice assistant startup'],
     ['Back to default', 'back to normal'],
+  ]],
+  ['🤖 Autonomy', [
+    ['Morning routine', 'run my morning routine'],
+    ['Reminder (5 pm)', 'remind me to stretch at 5 pm'],
+    ['Watch calendar', 'watch my calendar'],
+    ['Watch weather', 'watch the weather'],
+    ['Autonomous goal', 'take care of researching our top competitor'],
+    ['Clear watchers', 'stop watching'],
   ]]
 ];
 
