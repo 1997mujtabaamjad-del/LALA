@@ -93,7 +93,7 @@ export function fillTemplate(template, params, encode = (v) => v) {
  */
 export function detectWakeWord(text) {
   const norm = normalize(text);
-  const re = /(?:^|\s)(?:hey |ok |okay |hello |hi )?(?:lala|la la)(?=\s|$)/;
+  const re = /(?:^|\s)(?:hey|ok|okay|hello|hi)?\s*(?:laala|lala|la la)(?=\s|$)/;
   const m = norm.match(re);
   if (!m) return { wake: false, rest: norm };
   const rest = (norm.slice(0, m.index) + ' ' + norm.slice(m.index + m[0].length))

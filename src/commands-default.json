@@ -394,6 +394,13 @@
     "response": ""
   },
   {
+    "id": "stop-listening",
+    "description": "End continuous conversation; wait for the wake word again",
+    "phrases": ["stop listening", "stop listening lala", "that's all for now", "goodbye for now", "go idle"],
+    "action": { "type": "end-conversation" },
+    "response": ""
+  },
+  {
     "id": "quiet",
     "description": "Stop LALA from talking",
     "phrases": ["stop talking", "be quiet", "quiet", "silence"],

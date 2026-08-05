@@ -115,6 +115,10 @@ def handle(text, memory=None):
             return "I remember: " + "; ".join(n["text"] for n in memory.notes[-5:]) + ".", {"type": "speak"}
         return "I don't have any notes yet.", {"type": "speak"}
 
+    if t in ("stop listening", "stop listening lala", "that s all for now",
+             "thats all for now", "goodbye for now", "you can sleep now", "go idle"):
+        return "Okay — I'll wait for the wake word.", {"type": "end-conversation"}
+
     if t in ("lock computer", "lock the computer", "lock screen"):
         return "Locking the computer.", {"type": "power", "op": "lock"}
     if t in ("sleep computer", "sleep mode", "go to sleep"):

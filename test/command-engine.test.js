@@ -97,6 +97,12 @@ test('fuzzy "la la" from a rough recognizer counts as wake', () => {
   assert.equal(r.rest, 'what time is it');
 });
 
+test('"hey laala" is the default wake phrase', () => {
+  const r = detectWakeWord('hey laala, open youtube');
+  assert.equal(r.wake, true);
+  assert.equal(r.rest, 'open youtube');
+});
+
 test('no wake word leaves text untouched', () => {
   const r = detectWakeWord('open youtube');
   assert.equal(r.wake, false);

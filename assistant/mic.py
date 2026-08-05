@@ -48,8 +48,9 @@ def open_stream(callback):
 
 
 def record_until_silence(max_seconds=8.0, speech_rms=0.012, silence_seconds=1.0,
-                         min_speech_seconds=0.25):
-    """Record from the mic until the user stops talking. Returns int16 array."""
+                         min_speech_seconds=0.25, require_speech=False):
+    """Record from the mic until the user stops talking. Returns int16 array,
+    or None when `require_speech` is set and no real speech was detected."""
     import sounddevice as sd
 
     frames = []
@@ -72,6 +73,8 @@ def record_until_silence(max_seconds=8.0, speech_rms=0.012, silence_seconds=1.0,
                 silence_ms += cb_ms
             if speech_ms >= min_speech_seconds * 1000 and silence_ms >= silence_seconds * 1000:
                 break
+    if require_speech and speech_ms < min_speech_seconds * 1000:
+        return None
     return np.concatenate(frames) if frames else np.zeros(1, dtype=np.int16)
 
 

@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS = {
   voiceResponses: true,
   continuous: true,
   wakeWord: true,
+  continuousConversation: true,
   useBrain: true,
   brainUrl: 'http://127.0.0.1:8420',
   hwAccel: true
@@ -55,7 +56,8 @@ const state = {
   lastTranscript: '',
   webSpeech: null,
   pttActive: false,
-  wakeListener: null
+  wakeListener: null,
+  followHold: false // set after “stop listening” until the next wake
 };
 
 /* ---------------------------------------------------------------- utils */
@@ -239,6 +241,12 @@ async function runMatch(match) {
   if (act.type === 'quiet') {
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     addLog('lala', '🤐 Going quiet.');
+    return;
+  }
+
+  if (act.type === 'end-conversation') {
+    state.followHold = true;
+    respond('Okay — I’ll wait for the wake word.');
     return;
   }
 
@@ -496,7 +504,7 @@ function updateWakeUI(active) {
   const btn = $('#wake-toggle');
   if (!btn) return;
   btn.classList.toggle('on', active);
-  btn.textContent = active ? '👂 “Hey LALA” on' : '👂‍ wake word off';
+  btn.textContent = active ? '👂 “Hey Laala” on' : '👂‍ wake word off';
   btn.title = active ? 'LALA is listening for the wake word (locally)' : 'Click to arm the wake word';
   const orb = $('#orb');
   orb.classList.toggle('wake-armed', active);
@@ -512,14 +520,22 @@ async function startWake() {
   try {
     state.wakeListener = createWakeListener({
       onWake: () => {
+        state.followHold = false;
         beep();
         setOrbMode('recording');
         setChipState('listening');
         setStatusLine('Yes? Speak your command…');
       },
+      onFollowEnd: () => {
+        setOrbMode('idle');
+        setChipState('idle');
+        setStatusLine('Say “Hey Laala” to wake me.');
+      },
+      continuous: () => state.settings.continuousConversation !== false && !state.followHold,
       onPartial: (t) => showInterim(t),
       onBarge: () => {
         // User talked over LALA: cut her voice, listen to them instead.
+        state.followHold = false;
         if ('speechSynthesis' in window) speechSynthesis.cancel();
         setOrbMode('recording');
         setChipState('listening');
@@ -530,14 +546,14 @@ async function startWake() {
         setOrbMode('idle');
         setChipState('idle');
         showInterim('');
-        setStatusLine('Say “Hey LALA” to wake me.');
+        setStatusLine('Say “Hey Laala” to wake me.');
         handleTranscript(text);
       }
     });
     await state.wakeListener.start(window.lala);
     updateWakeUI(true);
-    if (!state.pttActive) setStatusLine('Say “Hey LALA” to wake me.');
-    addLog('sys', 'Wake word armed — say “Hey LALA”.');
+    if (!state.pttActive) setStatusLine('Say “Hey Laala” to wake me.');
+    addLog('sys', 'Wake word armed — say “Hey Laala”.');
   } catch (err) {
     state.wakeListener = null;
     updateWakeUI(false);
@@ -755,8 +771,10 @@ function renderSettingsForm() {
   $('#use-brain').checked = s.useBrain !== false;
   $('#brain-url').value = s.brainUrl || 'http://127.0.0.1:8420';
   $('#hw-accel').checked = s.hwAccel !== false;
+  $('#continuous-conversation').checked = s.continuousConversation !== false;
   $('#wake-wrap').classList.toggle('hidden', !desktop);
   $('#hwaccel-wrap').classList.toggle('hidden', !desktop);
+  $('#contconv-wrap').classList.toggle('hidden', !desktop);
   $('#continuous-wrap').classList.toggle('hidden', desktop);
   if (!desktop) {
     $('#offline-section').classList.add('hidden');
@@ -877,6 +895,7 @@ function bindUI() {
     state.settings.voiceResponses = $('#voice-responses').checked;
     state.settings.continuous = $('#continuous').checked;
     state.settings.wakeWord = $('#wake-word').checked;
+    state.settings.continuousConversation = $('#continuous-conversation').checked;
     state.settings.useBrain = $('#use-brain').checked;
     state.settings.brainUrl = $('#brain-url').value.trim() || 'http://127.0.0.1:8420';
     state.settings.hwAccel = $('#hw-accel').checked;

@@ -21,6 +21,7 @@ class Assistant:
         self.memory = Memory()
         self.wake = None
         self._busy = threading.Event()
+        self._last_action = None
 
     # ------------------------------------------------------------ lifecycle
     def start(self):
@@ -69,9 +70,32 @@ class Assistant:
             if woke:
                 mic.beep()
                 self.log("system", "Yes? I'm listening…")
-            self.status("listening")
-            audio = mic.record_until_silence()
-            self._transcribe_and_process(audio, follow_up=True)
+
+            # Continuous conversation: after each reply, keep listening for
+            # follow-ups until the user goes quiet for the window or says
+            # "stop listening".
+            continuous = bool(self.cfg.get("continuous_conversation", True))
+            window = float(self.cfg.get("conversation_window_s", 8))
+            next_max = 8.0
+            while True:
+                self.status("listening")
+                audio = mic.record_until_silence(max_seconds=next_max,
+                                                 require_speech=True)
+                if audio is None:
+                    break
+                try:
+                    text = stt.transcribe(audio, self.cfg)
+                except Exception as exc:  # noqa: BLE001
+                    self.log("system", f"STT error: {exc}")
+                    break
+                if not text:
+                    break
+                self.process(text, follow_up=False, spoken=True)
+                if self._last_action == "end-conversation" or not continuous:
+                    break
+                self.log("system",
+                         "(still listening — say “stop listening” to hand me back to the wake word)")
+                next_max = window
         finally:
             self.status("idle")
             if self.wake:
@@ -97,6 +121,7 @@ class Assistant:
         self.log("you", text)
 
         response, action = router.handle(text, self.memory)
+        self._last_action = action["type"] if action else None
         if action is not None:
             if action.get("confirm") and not self.confirm_fn(text):
                 self._say("Okay, cancelled.", spoken)

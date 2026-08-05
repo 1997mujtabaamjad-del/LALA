@@ -68,7 +68,7 @@ function normalizeLite(text) {
 }
 
 function wakeLooksLike(text) {
-  return /(?:^|\s)(?:hey |ok |okay |hello |hi )?(?:lala|la la)(?=\s|$)/.test(normalizeLite(text));
+  return /(?:^|\s)(?:hey|ok|okay|hello|hi)?\s*(?:laala|lala|la\s+la)(?=\s|$)/.test(normalizeLite(text));
 }
 
 function wakeStart() {
@@ -110,7 +110,7 @@ function wakeFeed(pcmBuffer) {
 
 function splitWake(text) {
   const norm = normalizeLite(text);
-  const m = norm.match(/(?:^|\s)(?:hey |ok |okay |hello |hi )?(?:lala|la la)(?=\s|$)/);
+  const m = norm.match(/(?:^|\s)(?:hey|ok|okay|hello|hi)?\s*(?:laala|lala|la\s+la)(?=\s|$)/);
   if (!m) return { wake: false, rest: '' };
   const rest = (norm.slice(m.index + m[0].length)).trim();
   return { wake: true, rest };
@@ -141,6 +141,17 @@ function wakeFinish() {
   commandText = '';
   wakeMode = 'wake-wait';
   return { text: full };
+}
+
+/**
+ * After a command (or a timed-out follow-up window), drop back to wake-wait.
+ */
+function wakeReset() {
+  if (wakeRec) {
+    try { wakeRec.reset(); } catch { /* not critical */ }
+    wakeMode = 'wake-wait';
+    commandText = '';
+  }
 }
 
 function wakeStop() {
@@ -301,5 +312,6 @@ module.exports = {
   wakeFeed,
   wakeFinish,
   wakeBarge,
+  wakeReset,
   wakeStop
 };

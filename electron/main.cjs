@@ -190,6 +190,10 @@ function registerIpc() {
       return { ok: false, error: String(err.message || err) };
     }
   });
+  ipcMain.handle('wake:reset', () => {
+    asr.wakeReset();
+    return { ok: true };
+  });
   ipcMain.handle('wake:stop', () => {
     asr.wakeStop();
     return { ok: true };

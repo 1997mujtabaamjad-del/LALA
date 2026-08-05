@@ -143,6 +143,47 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class WakeBackendTest(unittest.TestCase):
+    def test_zoo_word_uses_openwakeword(self):
+        from assistant import wake
+
+        self.assertEqual(wake.backend_plan("hey_jarvis", True, False, True), "openwakeword")
+
+    def test_custom_model_preferred_over_vosk(self):
+        from assistant import wake
+
+        self.assertEqual(wake.backend_plan("hey_laala", True, True, True),
+                         "openwakeword-custom")
+
+    def test_any_phrase_falls_back_to_vosk(self):
+        from assistant import wake
+
+        self.assertEqual(wake.backend_plan("hey_laala", False, False, True), "vosk")
+        self.assertEqual(wake.backend_plan("hey_laala", True, False, True), "vosk")
+
+    def test_no_backend(self):
+        from assistant import wake
+
+        self.assertIsNone(wake.backend_plan("hey_laala", False, False, False))
+
+    def test_wake_regex_matches_laala_variants(self):
+        from assistant import wake
+
+        for text in ("hey laala", "hey laala open youtube", "ok laala", "hey la la"):
+            self.assertTrue(wake.WAKE_RE.search(text), text)
+        self.assertFalse(wake.WAKE_RE.search("open lalaland"))
+
+
+class ContinuousConversationTest(unittest.TestCase):
+    def test_stop_listening_ends_conversation(self):
+        resp, action = router.handle("stop listening")
+        self.assertEqual(action["type"], "end-conversation")
+
+    def test_followup_phrase(self):
+        resp, action = router.handle("that's all for now")
+        self.assertEqual(action["type"], "end-conversation")
+
+
 class BargeInTest(unittest.TestCase):
     def test_silence_never_barges(self):
         from assistant import mic

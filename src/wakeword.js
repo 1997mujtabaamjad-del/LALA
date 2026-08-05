@@ -1,5 +1,5 @@
 /**
- * Renderer-side continuous mic capture for the wake word ("Hey LALA").
+ * Renderer-side continuous mic capture for the wake word ("Hey Laala").
  *
  * Uses a ScriptProcessor to pull mono audio, downsamples it to 16 kHz
  * Int16 PCM and streams it into the Electron main process (Vosk).
@@ -13,7 +13,8 @@ const MIN_SPEECH_MS = 250;     // speech needed before we may endpoint
 const SILENCE_MS = 1000;       // silence after speech that ends the command
 const MAX_COMMAND_MS = 10000;  // hard cap on command capture
 
-export function createWakeListener({ onWake, onPartial, onCommand, onBarge, canBarge }) {
+export function createWakeListener({ onWake, onPartial, onCommand, onBarge, canBarge,
+  continuous, onFollowEnd, followWindowMs = 8000 }) {
   let ctx = null;
   let source = null;
   let processor = null;
@@ -27,6 +28,7 @@ export function createWakeListener({ onWake, onPartial, onCommand, onBarge, canB
   let silenceMs = 0;
   let startedAt = 0;
   let bargeMs = 0;
+  let followIdle = false; // in follow-up window, waiting for speech
 
   const BARGE_RMS = 0.05;   // louder than idle noise; must beat TTS bleed
   const BARGE_MS = 200;
@@ -127,8 +129,21 @@ export function createWakeListener({ onWake, onPartial, onCommand, onBarge, canB
         silenceMs += cbMs;
       }
       const elapsed = performance.now() - startedAt;
-      if ((speechMs >= MIN_SPEECH_MS && silenceMs >= SILENCE_MS) || elapsed > MAX_COMMAND_MS) {
+
+      // Continuous conversation: follow-up window with no speech → back to wake.
+      if (followIdle && speechMs === 0 && elapsed > followWindowMs) {
+        followIdle = false;
         mode = 'wake-wait';
+        bridge.wakeReset().catch(() => {});
+        onFollowEnd && onFollowEnd();
+        return;
+      }
+
+      if ((speechMs >= MIN_SPEECH_MS && silenceMs >= SILENCE_MS) || elapsed > MAX_COMMAND_MS) {
+        const wantFollow = !!(continuous && continuous());
+        followIdle = wantFollow;
+        mode = wantFollow ? 'command' : 'wake-wait';
+        startedAt = performance.now();
         speechMs = 0;
         silenceMs = 0;
         bridge

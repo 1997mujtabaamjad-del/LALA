@@ -8,10 +8,14 @@ DATA_DIR = os.path.join(HERE, "data")
 
 DEFAULTS = {
     "name": "LALA",
-    # Wake word model from the openWakeWord zoo:
-    # alexa | hey_jarvis | hey_mycroft | okay_nabu | tim
-    "wake_word": "hey_jarvis",
+    # Wake word: any phrase — fuzzy-spotted offline by Vosk by default.
+    # Zoo words (hey_jarvis, alexa, …) use OpenWakeWord when installed.
+    "wake_word": "hey_laala",
     "wake_enabled": True,
+    # Keep listening for follow-ups after each reply until you go quiet or
+    # say "stop listening".
+    "continuous_conversation": True,
+    "conversation_window_s": 8,
     # auto = try ollama, then openai, then offline mock
     "llm_provider": "auto",
     "openai_api_key": os.environ.get("OPENAI_API_KEY", ""),

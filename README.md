@@ -19,8 +19,8 @@ Implements the full spec:
 | OpenAI API **or** local LLM (Ollama) | `assistant/llm.py` — auto-detects Ollama at `localhost:11434`, falls back to OpenAI, then to an offline demo mode |
 | Whisper (STT) | `assistant/stt.py` — local `faster-whisper`, or the OpenAI Whisper API |
 | ElevenLabs **or** Piper (TTS) | `assistant/tts.py` — local Piper (free, private) or ElevenLabs |
-| Wake word via OpenWakeWord | `assistant/wake.py` — **“Hey Jarvis”** default (also alexa / hey_mycroft / okay_nabu / tim) |
-| Voice conversation | continuous loop with silence endpointing + follow-up window |
+| Wake word via OpenWakeWord | `assistant/wake.py` — **“Hey Laala”** default: any phrase fuzzy-spotted offline via Vosk; zoo words / custom .onnx use OpenWakeWord when installed |
+| Voice conversation | continuous conversation: keeps listening for follow-ups until you go quiet or say “stop listening” |
 | Answer questions | LLM with concise spoken answers |
 | Remember previous conversation | `assistant/memory.py` — history + long-term notes persisted to disk |
 | Open apps | `assistant/router.py` — apps, websites, search, weather, volume, power |
@@ -68,8 +68,9 @@ you> what do you remember?   → "I remember: I like masala chai."
 you> why is the sky blue?    → answered by Ollama/OpenAI, spoken by Piper/ElevenLabs
 ```
 
-Say **“Hey Jarvis”** (or click 🎤 Talk) and the orb beeps, listens until silence,
-transcribes with Whisper, answers, and stays open a moment for a natural follow-up.
+Say **“Hey Laala”** (or click 🎤 Talk) and the orb beeps, listens until silence,
+transcribes with Whisper, answers, and *keeps listening* for natural follow-ups —
+say “stop listening” to hand her back to the wake word.
 Shut-down/restart always asks for confirmation.
 
 Everything degrades gracefully: no mic → text chat; no Ollama → OpenAI; no keys →
