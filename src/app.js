@@ -79,6 +79,7 @@ const state = {
   pttActive: false,
   wakeListener: null,
   bargeMon: null,
+  demoRunning: false,
   followHold: false, // set after “stop listening” until the next wake
   recentChat: []     // last turns, fed to the in-app tool-calling loop
 };
@@ -1333,6 +1334,62 @@ function bindSkills() {
   renderCalendar();
 }
 
+/* ------------------------------------------------------------- demo mode */
+
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function waitSilence(timeoutMs = 5000) {
+  if (!('speechSynthesis' in window) || !state.settings.voiceResponses) return delay(700);
+  await delay(200);
+  const t0 = Date.now();
+  while ((speechSynthesis.speaking || speechSynthesis.pending) && Date.now() - t0 < timeoutMs) {
+    await delay(120);
+  }
+}
+
+const DEMO_SCRIPT = [
+  'hey laala',
+  'what time is it',
+  'weather in hyderabad',
+  'add demo meeting tomorrow at 10am',
+  'lights to blue',
+  'flip a coin',
+  'tell me a joke',
+  'stop listening'
+];
+
+async function runDemo() {
+  if (state.demoRunning) return;
+  state.demoRunning = true;
+  const btn = $('#demo-btn');
+  btn.disabled = true;
+  btn.textContent = '● demo running…';
+  try {
+    for (const text of DEMO_SCRIPT) {
+      setOrbMode('listening');
+      showInterim(text);
+      await delay(900);
+      showInterim('');
+      if (text === 'hey laala') {
+        addLog('you', text);
+        beep();
+        respond('Yes? I’m listening…');
+      } else {
+        await handleTranscript(text);
+      }
+      setOrbMode('idle');
+      await waitSilence();
+      await delay(350);
+    }
+    respond('That’s LALA — say “Hey Laala”, or click the orb, to try it yourself!');
+  } finally {
+    state.demoRunning = false;
+    btn.disabled = false;
+    btn.textContent = '▶ Run demo';
+    setOrbMode('idle');
+  }
+}
+
 /* ------------------------------------------------------------ UI binding */
 
 function switchTab(name) {
@@ -1477,6 +1534,7 @@ function bindUI() {
 
   // Suggestion chips
   $$('.sug').forEach((b) => b.addEventListener('click', () => handleTranscript(b.dataset.say)));
+  $('#demo-btn').addEventListener('click', () => runDemo());
 
   // Orb
   const orb = $('#orb');

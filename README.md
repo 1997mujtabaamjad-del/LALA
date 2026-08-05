@@ -24,6 +24,10 @@ lala --milestone    # prove the whole pipeline
 lala --keys         # add your API keys
 ```
 
+In the web preview, **▶ Run demo** plays a full scripted conversation (wake →
+time → live weather → calendar add → lights → coin → joke → sign-off) with
+spoken replies — no mic needed.
+
 Developers: `npm run dist` builds installers locally; `git tag v1.0 && git push --tags`
 triggers the release pipeline.
 
