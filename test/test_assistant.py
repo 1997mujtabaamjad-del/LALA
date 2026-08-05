@@ -158,6 +158,17 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class EnvTest(unittest.TestCase):
+    def test_parse_env(self):
+        from assistant import config
+
+        env = config.parse_env("# comment\nDEEPGRAM_API_KEY=abc123\n\n"
+                               "OPENAI_API_KEY=\"sk-x\"\nNOVALINE")
+        self.assertEqual(env["DEEPGRAM_API_KEY"], "abc123")
+        self.assertEqual(env["OPENAI_API_KEY"], "sk-x")
+        self.assertNotIn("NOVALINE", env)
+
+
 class DeepgramTest(unittest.TestCase):
     def test_parse_batch_response(self):
         from assistant import stt

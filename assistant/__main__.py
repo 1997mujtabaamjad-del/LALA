@@ -85,10 +85,16 @@ def main():
                         help="guided deployment (ElevenLabs voices, auto-start, service)")
     parser.add_argument("--autostart", choices=["on", "off"],
                         help="install/remove start-at-login")
+    parser.add_argument("--validate", action="store_true",
+                        help="test configured API keys (Ollama/Deepgram/OpenAI/ElevenLabs)")
     args = parser.parse_args()
 
     if args.setup:
         setup()
+        return
+    if args.validate:
+        from .validate import main as validate_main
+        validate_main()
         return
     if args.deploy:
         from .deploy import main as deploy_main

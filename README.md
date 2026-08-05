@@ -174,6 +174,13 @@ and the Python assistant's live partials upgrade from local Vosk to **true WebSo
 streaming** (`wss://api.deepgram.com …interim_results=true`) when the key is present.
 In the Electron app, pick *Cloud — Deepgram* under Speech engine.
 
+Keys are read from the environment or a gitignored `assistant/.env`
+(see `assistant/.env.example`). Test them all locally without exposing secrets:
+
+```bash
+python -m assistant --validate
+```
+
 ### 2. Cloud — OpenAI Whisper (any language, best accuracy)
 
 In the app: **Settings → paste your OpenAI API key**, pick a model

@@ -6,6 +6,36 @@ import os
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
 
+
+def parse_env(text):
+    """Pure .env parser (unit-tested): KEY=value lines, # comments."""
+    out = {}
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip("'\"")
+        if key:
+            out[key] = value
+    return out
+
+
+def _load_dotenv():
+    """Pick up keys from assistant/.env or <repo>/.env without any deps."""
+    for path in (os.path.join(HERE, ".env"),
+                 os.path.join(HERE, "..", ".env")):
+        try:
+            with open(path, "r", encoding="utf8") as fh:
+                for key, value in parse_env(fh.read()).items():
+                    os.environ.setdefault(key, value)
+        except OSError:
+            continue
+
+
+_load_dotenv()
+
 DEFAULTS = {
     "name": "LALA",
     # Wake word: any phrase — fuzzy-spotted offline by Vosk by default.
