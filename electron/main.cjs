@@ -119,6 +119,15 @@ function registerIpc() {
   }));
   ipcMain.handle('commands:saveCustom', (_e, custom) => store.saveCustomCommands(custom));
 
+  ipcMain.handle('calendar:get', () => store.getCalendar());
+  ipcMain.handle('calendar:add', (_e, event) => {
+    const events = store.getCalendar();
+    events.push(event);
+    return store.saveCalendar(events);
+  });
+  ipcMain.handle('calendar:del', (_e, id) =>
+    store.saveCalendar(store.getCalendar().filter((e) => e.id !== id)));
+
   ipcMain.handle('settings:get', () => store.getSettings());
   ipcMain.handle('settings:save', (_e, patch) => store.saveSettings(patch));
 

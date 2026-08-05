@@ -11,6 +11,11 @@ contextBridge.exposeInMainWorld('lala', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (patch) => ipcRenderer.invoke('settings:save', patch),
 
+  // Calendar
+  getCalendar: () => ipcRenderer.invoke('calendar:get'),
+  addCalendar: (event) => ipcRenderer.invoke('calendar:add', event),
+  delCalendar: (id) => ipcRenderer.invoke('calendar:del', id),
+
   // Actions
   executeAction: (action, ctx) => ipcRenderer.invoke('actions:execute', action, ctx),
 

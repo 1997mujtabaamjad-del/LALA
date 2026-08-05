@@ -447,10 +447,50 @@ code {
   transition: width 0.2s;
 }
 
+/* Skills panel */
+
+.skill-card {
+  margin: 8px 0 4px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.07);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.swatch:hover { transform: scale(1.15); }
+
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+input[type="time"] {
+  margin-top: 0;
+  padding: 8px 11px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--panel-border);
+  border-radius: 9px;
+  outline: none;
+}
+
 /* Help */
 
-.help-group { margin-bottom: 16px; }
-.help-group h4 { margin: 0 0 8px; font-size: 13px; color: var(--accent); }
+.help-group { margin-bottom: 16px; }.help-group h4 { margin: 0 0 8px; font-size: 13px; color: var(--accent); }
 
 .help-row {
   display: flex;

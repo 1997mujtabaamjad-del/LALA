@@ -780,6 +780,135 @@ function renderModelStatus() {
   }
 }
 
+/* ----------------------------------------------------------- skills panel */
+
+const LIGHT_COLORS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink', 'warm', 'white', 'cool'];
+const SWATCH_HEX = {
+  red: '#ef4444', orange: '#f97316', yellow: '#eab308', green: '#22c55e',
+  cyan: '#06b6d4', blue: '#3b82f6', purple: '#a855f7', pink: '#ec4899',
+  warm: '#ffd9a0', white: '#f8fafc', cool: '#bfdbfe'
+};
+
+async function skillLights(action) {
+  if (desktop) {
+    const r = await window.lala.executeAction({ type: 'lights', ...action }, {});
+    $('#lights-status').textContent = r.message || '';
+  } else {
+    $('#lights-status').textContent = 'Lights need the desktop app (Hue / Home Assistant).';
+  }
+}
+
+async function renderCalendar() {
+  const events = desktop
+    ? await window.lala.getCalendar()
+    : JSON.parse(localStorage.getItem('lala.calendar') || '[]');
+  const list = $('#cal-list');
+  list.innerHTML = '';
+  const sorted = events
+    .map((e) => ({ ...e, ts: Date.parse(e.when) }))
+    .filter((e) => !Number.isNaN(e.ts))
+    .sort((a, b) => a.ts - b.ts);
+  if (!sorted.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'Nothing scheduled — add one above or say “add … at 3pm”.';
+    list.appendChild(li);
+    return;
+  }
+  for (const e of sorted.slice(0, 12)) {
+    const li = document.createElement('li');
+    li.className = 'cmd-item';
+    const left = document.createElement('div');
+    const t = document.createElement('div');
+    t.className = 'cmd-phrases';
+    t.textContent = e.title;
+    const when = document.createElement('div');
+    when.className = 'cmd-meta';
+    when.textContent = new Date(e.ts).toLocaleString([], {
+      weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
+    left.append(t, when);
+    const del = document.createElement('button');
+    del.className = 'cmd-del';
+    del.title = 'Delete';
+    del.textContent = '✕';
+    del.onclick = async () => {
+      if (desktop) await window.lala.delCalendar(e.id);
+      else {
+        const rest = JSON.parse(localStorage.getItem('lala.calendar') || '[]')
+          .filter((x) => x.id !== e.id);
+        localStorage.setItem('lala.calendar', JSON.stringify(rest));
+      }
+      renderCalendar();
+    };
+    li.append(left, del);
+    list.appendChild(li);
+  }
+}
+
+function bindSkills() {
+  $('#skill-weather').addEventListener('click', async () => {
+    $('#weather-card').textContent = 'Fetching…';
+    const t = await fetchWeather($('#skill-city').value.trim());
+    $('#weather-card').textContent = t || 'Could not reach a weather service.';
+  });
+  $('#skill-city').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#skill-weather').click();
+  });
+
+  $('#skill-search').addEventListener('click', async () => {
+    const q = $('#skill-query').value.trim();
+    if (!q) return;
+    $('#search-card').textContent = 'Searching…';
+    const a = await fetchDdg(q);
+    $('#search-card').textContent = a || 'No instant answer found.';
+  });
+  $('#skill-query').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('#skill-search').click();
+  });
+
+  $('#cal-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = $('#cal-title').value.trim();
+    if (!title) return;
+    const day = $('#cal-day').value;
+    const [hh, mm] = $('#cal-time').value.split(':').map(Number);
+    const when = new Date();
+    if (/^\d+$/.test(day)) when.setDate(when.getDate() + Number(day));
+    else {
+      const names = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      when.setDate(when.getDate() + ((names.indexOf(day) - when.getDay() + 7) % 7 || 7));
+    }
+    when.setHours(hh, mm, 0, 0);
+    const ev = { id: `ev${Date.now()}`, when: when.toISOString(), title };
+    if (desktop) await window.lala.addCalendar(ev);
+    else {
+      const arr = JSON.parse(localStorage.getItem('lala.calendar') || '[]');
+      arr.push(ev);
+      localStorage.setItem('lala.calendar', JSON.stringify(arr));
+    }
+    $('#cal-title').value = '';
+    renderCalendar();
+    toast('Event added.');
+  });
+
+  $('#lights-on').addEventListener('click', () => skillLights({ op: 'on' }));
+  $('#lights-off').addEventListener('click', () => skillLights({ op: 'off' }));
+  $('#lights-bri').addEventListener('change', (e) => skillLights({ op: 'set', value: Number(e.target.value) }));
+
+  const wrap = $('#lights-colors');
+  for (const color of LIGHT_COLORS) {
+    const b = document.createElement('button');
+    b.className = 'swatch';
+    b.title = color;
+    b.style.background = SWATCH_HEX[color];
+    b.onclick = () => skillLights({ op: 'color', color });
+    wrap.appendChild(b);
+  }
+
+  renderCalendar();
+}
+
 /* ------------------------------------------------------------ UI binding */
 
 function switchTab(name) {
@@ -1063,6 +1192,7 @@ async function init() {
   }
 
   bindUI();
+  bindSkills();
   renderCommands();
   renderHelp();
   renderSettingsForm();

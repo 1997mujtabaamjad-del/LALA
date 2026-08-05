@@ -71,10 +71,58 @@
     <section class="side panel">
       <nav class="tabs" role="tablist">
         <button class="tab active" data-tab="log" role="tab">Log</button>
+        <button class="tab" data-tab="skills" role="tab">Skills</button>
         <button class="tab" data-tab="commands" role="tab">Commands</button>
         <button class="tab" data-tab="settings" role="tab">Settings</button>
         <button class="tab" data-tab="help" role="tab">Help</button>
       </nav>
+
+      <!-- Skills -->
+      <div id="tab-skills" class="tabpane">
+        <h3>🌦️ Weather</h3>
+        <div class="row">
+          <input id="skill-city" type="text" placeholder="City (blank = your location)" />
+          <button id="skill-weather" class="btn btn-accent">Get weather</button>
+        </div>
+        <div id="weather-card" class="skill-card muted">—</div>
+
+        <h3>🔎 Web answer</h3>
+        <div class="row">
+          <input id="skill-query" type="text" placeholder="who is ada lovelace…" />
+          <button id="skill-search" class="btn btn-accent">Ask</button>
+        </div>
+        <div id="search-card" class="skill-card muted">—</div>
+
+        <h3>📅 Calendar</h3>
+        <form id="cal-form" class="row">
+          <input id="cal-title" type="text" placeholder="Event title" required />
+          <select id="cal-day">
+            <option value="0">Today</option>
+            <option value="1">Tomorrow</option>
+            <option value="monday">Monday</option>
+            <option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+            <option value="saturday">Saturday</option>
+            <option value="sunday">Sunday</option>
+          </select>
+          <input id="cal-time" type="time" value="09:00" required />
+          <button class="btn btn-accent" type="submit">Add</button>
+        </form>
+        <ul id="cal-list" class="cmd-list"></ul>
+
+        <h3>💡 Smart lights</h3>
+        <div class="row">
+          <button id="lights-on" class="btn">On</button>
+          <button id="lights-off" class="btn">Off</button>
+        </div>
+        <label>Brightness
+          <input id="lights-bri" type="range" min="1" max="100" value="80" />
+        </label>
+        <div id="lights-colors" class="swatches"></div>
+        <p id="lights-status" class="muted"></p>
+      </div>
 
       <!-- Log -->
       <div id="tab-log" class="tabpane active">
