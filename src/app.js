@@ -34,6 +34,8 @@ const DEFAULT_SETTINGS = {
   useBrain: true,
   brainUrl: 'http://127.0.0.1:8420',
   saveRecordings: true,
+  preferSilero: true,
+  elevenlabsKey: '',
   hwAccel: true,
   lightsProvider: 'auto',
   hueIp: '',
@@ -1221,6 +1223,51 @@ function bindSkills() {
     renderCalendar();
     toast(`Imported ${imported.length} event(s).`);
     e.target.value = '';
+  });
+
+  // Config sync with the Python brain (one pair of keys, two bodies)
+  const SYNC_PAIRS = [
+    ['name', 'name'], ['openai_api_key', 'openaiKey'], ['deepgram_api_key', 'deepgramKey'],
+    ['elevenlabs_api_key', 'elevenlabsKey'], ['stt_language', 'language'],
+    ['save_recordings', 'saveRecordings'], ['continuous_conversation', 'continuousConversation'],
+    ['prefer_silero', 'preferSilero'], ['lights_provider', 'lightsProvider'],
+    ['hue_ip', 'hueIp'], ['hue_key', 'hueKey'], ['ha_url', 'haUrl'],
+    ['ha_token', 'haToken'], ['wled_ip', 'wledIp']
+  ];
+  $('#brain-pull').addEventListener('click', async () => {
+    const base = (state.settings.brainUrl || 'http://127.0.0.1:8420').replace(/\/+$/, '');
+    try {
+      const res = await fetch(`${base}/config`, { signal: AbortSignal.timeout(3000) });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'bad response');
+      for (const [py, js] of SYNC_PAIRS) {
+        if (j.config[py] !== undefined) state.settings[js] = j.config[py];
+      }
+      await persistSettings();
+      renderSettingsForm();
+      toast('Config pulled from the Python brain.');
+    } catch (err) {
+      toast(`Brain unreachable — is --serve running? (${err.message})`, 'warn');
+    }
+  });
+  $('#brain-push').addEventListener('click', async () => {
+    const base = (state.settings.brainUrl || 'http://127.0.0.1:8420').replace(/\/+$/, '');
+    const patch = {};
+    for (const [py, js] of SYNC_PAIRS) {
+      if (state.settings[js] !== undefined) patch[js] = state.settings[js];
+    }
+    try {
+      const res = await fetch(`${base}/config`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(patch),
+        signal: AbortSignal.timeout(3000)
+      });
+      const j = await res.json();
+      toast(j.ok ? `Pushed ${j.saved.length} settings to the brain.` : 'Push failed.', j.ok ? '' : 'error');
+    } catch {
+      toast('Brain unreachable — is --serve running?', 'warn');
+    }
   });
 
   renderCalendar();

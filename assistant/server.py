@@ -43,10 +43,26 @@ def make_server(cfg=None, port=DEFAULT_PORT):
         def do_GET(self):
             if self.path.rstrip("/") == "/status":
                 self._json(200, {"ok": True, "name": cfg["name"], "version": __version__})
+            elif self.path.rstrip("/") == "/config":
+                from . import sync
+
+                self._json(200, {"ok": True, "config": sync.to_electron(config.load())})
             else:
                 self._json(404, {"ok": False})
 
         def do_POST(self):
+            if self.path.rstrip("/") == "/config":
+                from . import sync
+
+                try:
+                    length = int(self.headers.get("Content-Length", 0))
+                    payload = json.loads(self.rfile.read(length) or b"{}")
+                    patch = sync.to_python(payload)
+                    config.save(patch)
+                    self._json(200, {"ok": True, "saved": list(patch)})
+                except Exception as exc:  # noqa: BLE001
+                    self._json(500, {"ok": False, "error": str(exc)})
+                return
             if self.path.rstrip("/") != "/chat":
                 self._json(404, {"ok": False})
                 return

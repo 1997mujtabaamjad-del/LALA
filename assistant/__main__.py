@@ -103,6 +103,8 @@ def main():
                         help="remove a key from assistant/.env")
     parser.add_argument("--milestone", action="store_true",
                         help="run the full pipeline self-check (wake→record→stt→llm→tts)")
+    parser.add_argument("--bench", action="store_true",
+                        help="latency report: ms per pipeline stage on this machine")
     parser.add_argument("--speak", action="store_true",
                         help="with --milestone: play the TTS stage aloud")
     args = parser.parse_args()
@@ -164,6 +166,14 @@ def main():
         print("  MILESTONE ACHIEVED 🎉 full chain operational:"
               if ok_all else "  MILESTONE INCOMPLETE — see ✖ stages above")
         print("  wake → record(+VAD) → streaming STT → LLM → TTS(+barge-in)\n")
+        return
+    if args.bench:
+        from . import bench, config
+
+        print("\n========== LALA LATENCY BENCH ==========")
+        for stage, ms, note in bench.run_bench(config.load()):
+            print(f"  {stage:26} {ms:8.1f} ms   {note}")
+        print("=========================================\n")
         return
     if args.chat:
         chat_repl()

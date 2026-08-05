@@ -134,6 +134,27 @@ calls tools that map onto the existing action executor, and each call shows as a
 polite miss. The deterministic router stays as the zero-latency fast path for
 exact commands.
 
+### 🔄 Config sync (one brain, two bodies)
+
+The brain server exposes `GET/PUT /config`; the app's Settings → *Python brain*
+has **⬇ Pull /  Push** buttons. Keys (OpenAI/Deepgram/ElevenLabs), name,
+language, recordings/continuous flags and all smart-light settings map 1:1
+(`assistant/sync.py`, pure + tested) — configure once, works in both apps.
+
+### ⏱️ Latency bench
+
+```bash
+python -m assistant --bench
+```
+```
+  wake match                      0.0 ms   regex over normalized text
+  vad / chunk                     0.4 ms   SileroVAD
+  stt (1 s audio)                12.1 ms   live / simulated
+  llm first token               240.0 ms   ollama
+  tts speak                     180.0 ms   piper
+  end-to-end (synthetic)         31.0 ms   vad+stt+llm+tts
+```
+
 ### 🏁 The milestone: one unified pipeline
 
 ```bash

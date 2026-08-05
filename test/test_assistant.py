@@ -267,6 +267,21 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class SyncTest(unittest.TestCase):
+    def test_config_mapping_roundtrip(self):
+        from assistant import sync
+
+        cfg = {"name": "LALA", "openai_api_key": "sk-x", "hue_ip": "1.2.3.4",
+               "stt_language": "en-IN"}
+        js = sync.to_electron(cfg)
+        self.assertEqual(js["openaiKey"], "sk-x")
+        self.assertEqual(js["hueIp"], "1.2.3.4")
+        self.assertEqual(js["language"], "en-IN")
+        back = sync.to_python(js)
+        self.assertEqual(back["openai_api_key"], "sk-x")
+        self.assertEqual(back["stt_language"], "en-IN")
+
+
 class LoopTest(unittest.TestCase):
     def _pipeline(self, cfg, think, end_check):
         from assistant import pipeline as pl
