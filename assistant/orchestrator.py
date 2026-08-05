@@ -9,7 +9,7 @@ Conversation state machine shared by the GUI and the terminal CLI:
 import threading
 import time
 
-from . import config, llm, mic, router, stt, tts, vad, wake
+from . import config, llm, mic, router, stt, tools, tts, vad, wake
 from .memory import Memory
 from .pipeline import Pipeline
 
@@ -82,9 +82,16 @@ class Assistant:
             reply = (response + (" " + side_note if side_note else "")).strip()
         else:
             self.status("thinking")
-            if spoken and tts.resolve_provider(self.cfg) != "none":
+            provider = llm.resolve_provider(self.cfg)
+            if provider in ("openai", "ollama"):
+                # Agentic: the LLM sees the tool list, calls tools, gets the
+                # results back, and only its final reply is spoken.
+                reply = tools.chat_with_tools(self.cfg, self.memory, text)
+            elif spoken and tts.resolve_provider(self.cfg) != "none":
                 # Stream tokens into sentence-level TTS for minimal latency.
-                reply = tts.speak_stream(llm.ask_stream(self.cfg, self.memory, text), self.cfg)
+                reply = tts.speak_stream(llm.ask_stream(self.cfg, self.memory, text),
+                                         self.cfg)
+                spoken = False  # already spoken while streaming
             else:
                 reply = llm.ask(self.cfg, self.memory, text)
 

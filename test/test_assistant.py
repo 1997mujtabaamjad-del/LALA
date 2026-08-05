@@ -143,6 +143,49 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class ToolsTest(unittest.TestCase):
+    def test_schema_wellformed(self):
+        from assistant import tools
+
+        names = [t["function"]["name"] for t in tools.TOOLS]
+        self.assertEqual(len(names), len(set(names)))
+        for t in tools.TOOLS:
+            self.assertEqual(t["type"], "function")
+            params = t["function"]["parameters"]
+            self.assertEqual(params["type"], "object")
+
+    def test_execute_time_and_date(self):
+        from assistant import tools
+
+        cfg = dict(config.DEFAULTS)
+        self.assertIn(":", tools.execute_tool("get_time", {}, cfg))
+        self.assertIn("2", tools.execute_tool("get_date", {}, cfg))  # year digits
+
+    def test_execute_calendar_roundtrip(self):
+        from assistant import calendar_store, tools
+
+        cfg = dict(config.DEFAULTS)
+        calendar_store.save([])
+        out = tools.execute_tool("calendar_add",
+                                 {"title": "standup", "when_text": "tomorrow at 9am"}, cfg)
+        self.assertIn("standup", out)
+        listed = tools.execute_tool("calendar_list", {}, cfg)
+        self.assertIn("standup", listed)
+
+    def test_unknown_tool_safe(self):
+        from assistant import tools
+
+        self.assertIn("Unknown tool", tools.execute_tool("nope", {}, dict(config.DEFAULTS)))
+
+    def test_chat_with_tools_mock_falls_back(self):
+        from assistant import tools
+
+        cfg = dict(config.DEFAULTS)
+        cfg["llm_provider"] = "mock"
+        reply = tools.chat_with_tools(cfg, None, "hello")
+        self.assertIn("offline demo mode", reply)
+
+
 class MemorySpecTest(unittest.TestCase):
     """The 5-point spec: message list, user/assistant appends, 8–12 window,
     Jarvis system prompt."""

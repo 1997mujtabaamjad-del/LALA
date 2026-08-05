@@ -103,6 +103,24 @@ Shut-down/restart always asks for confirmation.
 Everything degrades gracefully: no mic → text chat; no Ollama → OpenAI; no keys →
 offline demo mode. The Electron app in this repo remains the richer *command center* UI.
 
+### 🧰 Tool calling (actions)
+
+The LLM doesn't just chat — it **uses your skills as tools**:
+
+1. Every skill is a function schema (`assistant/tools.py`, OpenAI tools format):
+   `get_weather · web_search · control_lights · calendar_add · calendar_list ·
+   open_app · open_url · play_music · get_time · get_date`
+2. `chat_with_tools()` advertises them to Ollama/OpenAI with every request
+3. When the model emits `tool_calls`: each tool runs, its result is fed back as a
+   `tool` message, and the loop continues (max 4 rounds)
+4. Only the **final reply is spoken**
+
+The Electron/web app has the same loop in-app (Settings → OpenAI key): the model
+calls tools that map onto the existing action executor, and each call shows as a
+🔧 line in the Log. Unmatched phrases fall back to the Python brain, then to a
+polite miss. The deterministic router stays as the zero-latency fast path for
+exact commands.
+
 ### 🏁 The milestone: one unified pipeline
 
 ```bash

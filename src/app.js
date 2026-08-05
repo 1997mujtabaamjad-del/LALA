@@ -23,6 +23,7 @@ const DEFAULT_SETTINGS = {
   engine: 'auto',
   openaiKey: '',
   deepgramKey: '',
+  chatModel: 'gpt-4o-mini',
   whisperModel: 'whisper-1',
   language: 'en-US',
   voiceResponses: true,
@@ -74,7 +75,8 @@ const state = {
   webSpeech: null,
   pttActive: false,
   wakeListener: null,
-  followHold: false // set after “stop listening” until the next wake
+  followHold: false, // set after “stop listening” until the next wake
+  recentChat: []     // last turns, fed to the in-app tool-calling loop
 };
 
 /* ---------------------------------------------------------------- utils */
@@ -156,6 +158,8 @@ function speak(text) {
 
 function respond(text, { silent = false } = {}) {
   if (!text) return;
+  state.recentChat.push({ role: 'assistant', content: text });
+  if (state.recentChat.length > 20) state.recentChat = state.recentChat.slice(-20);
   addLog('lala', text);
   showResponse(text);
   if (!silent) speak(text);
@@ -176,6 +180,8 @@ async function handleTranscript(rawText) {
   if (!text) return;
 
   state.lastTranscript = text;
+  state.recentChat.push({ role: 'user', content: text });
+  if (state.recentChat.length > 20) state.recentChat = state.recentChat.slice(-20);
   addLog('you', text);
   showInterim('');
 
@@ -202,7 +208,13 @@ async function handleTranscript(rawText) {
   // 3) Normal command matching.
   const match = matchCommand(allCommands(), text);
   if (!match) {
-    // 3b) Not a command → ask the Python brain (LLM + memory) if it's running.
+    // 3a) Agentic: if an OpenAI key is set, let the LLM call tools in-app.
+    const toolReply = await llmToolLoop(text);
+    if (toolReply) {
+      respond(toolReply);
+      return;
+    }
+    // 3b) Then the Python brain; then a polite miss.
     const brain = await askBrain(text);
     if (brain) {
       respond(brain);
@@ -219,9 +231,133 @@ async function handleTranscript(rawText) {
  * Ask the local Python assistant (assistant/server.py) anything.
  * Connection-refused fails instantly, so this is cheap when it's not running.
  */
+/* ------------------------------------------------- LLM tool calling (agentic) */
+
+const LAALA_PERSONA =
+  'You are Laala, the user\'s warm, upbeat voice companion: friendly, a little ' +
+  'playful, genuinely helpful. Replies are spoken aloud — keep them to 1-3 ' +
+  'sentences unless asked for detail. Use the provided tools whenever a request ' +
+  'needs live data or an action, then answer naturally from the tool results.';
+
+const TOOLS_JS = [
+  { type: 'function', function: { name: 'get_weather', description: 'Current weather + 3-day outlook for a city, or the user\'s location if omitted.', parameters: { type: 'object', properties: { city: { type: 'string' } }, required: [] } } },
+  { type: 'function', function: { name: 'web_search', description: 'Look up a fact online; returns a short answer.', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
+  { type: 'function', function: { name: 'control_lights', description: 'Control smart lights.', parameters: { type: 'object', properties: { op: { type: 'string', enum: ['on', 'off', 'set', 'color'] }, value: { type: 'integer' }, color: { type: 'string' } }, required: ['op'] } } },
+  { type: 'function', function: { name: 'calendar_add', description: 'Add a calendar event.', parameters: { type: 'object', properties: { title: { type: 'string' }, when_text: { type: 'string' } }, required: ['title', 'when_text'] } } },
+  { type: 'function', function: { name: 'calendar_list', description: 'List upcoming calendar events.', parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'open_app', description: 'Launch a desktop app by name.', parameters: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] } } },
+  { type: 'function', function: { name: 'open_url', description: 'Open a website.', parameters: { type: 'object', properties: { url: { type: 'string' } }, required: ['url'] } } },
+  { type: 'function', function: { name: 'play_music', description: 'Play music via YouTube search.', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
+  { type: 'function', function: { name: 'get_time', description: 'Current local time.', parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'get_date', description: 'Today\'s date.', parameters: { type: 'object', properties: {} } } }
+];
+
+async function runTool(name, args) {
+  try {
+    switch (name) {
+      case 'get_weather': {
+        const t = await fetchWeather(args.city || '');
+        return t || 'Weather unavailable.';
+      }
+      case 'web_search':
+        return (await fetchDdg(args.query)) || 'No instant answer found.';
+      case 'calendar_list': {
+        const events = desktop ? await window.lala.getCalendar()
+          : JSON.parse(localStorage.getItem('lala.calendar') || '[]');
+        const upcoming = events.map((e) => ({ ...e, ts: Date.parse(e.when) }))
+          .filter((e) => e.ts > Date.now() - 3600e3).sort((a, b) => a.ts - b.ts).slice(0, 5);
+        return upcoming.length
+          ? 'Upcoming: ' + upcoming.map((e) => `${e.title} — ${new Date(e.ts).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`).join('; ')
+          : 'The calendar is clear.';
+      }
+      case 'calendar_add': {
+        const when = calParseWhen(args.when_text || '');
+        if (!when) return 'Could not parse a time — ask the user for e.g. "tomorrow at 3pm".';
+        const ev = { id: `ev${Date.now()}`, when: when.toISOString(), title: args.title || 'event' };
+        if (desktop) await window.lala.addCalendar(ev);
+        else {
+          const arr = JSON.parse(localStorage.getItem('lala.calendar') || '[]');
+          arr.push(ev);
+          localStorage.setItem('lala.calendar', JSON.stringify(arr));
+        }
+        return `Added '${ev.title}' for ${when.toDateString()} ${when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
+      }
+      case 'get_time':
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      case 'get_date':
+        return new Date().toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      case 'play_music':
+      case 'open_url': {
+        const url = name === 'play_music'
+          ? `https://www.youtube.com/results?search_query=${encodeURIComponent(args.query || '')}`
+          : args.url;
+        if (desktop) await window.lala.executeAction({ type: 'url', value: url }, {});
+        else window.open(url, '_blank', 'noopener');
+        return `Opened ${url}.`;
+      }
+      case 'open_app':
+      case 'control_lights': {
+        if (!desktop) return 'Needs the desktop app.';
+        const act = name === 'open_app'
+          ? { type: 'app', value: [args.name, `${args.name}.exe`] }
+          : { type: 'lights', op: args.op, value: args.value, color: args.color };
+        const r = await window.lala.executeAction(act, {});
+        return r.message || 'done';
+      }
+      default:
+        return `Unknown tool: ${name}`;
+    }
+  } catch (err) {
+    return `Tool ${name} failed: ${err.message || err}`;
+  }
+}
+
+/** OpenAI tools loop in the app: model decides → tools run → final reply only. */
+async function llmToolLoop(text) {
+  const key = state.settings.openaiKey;
+  if (!key) return null;
+  let messages = [
+    { role: 'system', content: LAALA_PERSONA },
+    ...state.recentChat.slice(-10),
+    { role: 'user', content: text }
+  ];
+  try {
+    for (let i = 0; i < 4; i++) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: state.settings.chatModel || 'gpt-4o-mini',
+          messages, tools: TOOLS_JS
+        })
+      });
+      if (!res.ok) return null;
+      const m = (await res.json()).choices[0].message;
+      messages.push(m);
+      const calls = m.tool_calls || [];
+      if (!calls.length) {
+        state.recentChat.push({ role: 'user', content: text },
+          { role: 'assistant', content: m.content || '' });
+        return m.content || '';
+      }
+      for (const c of calls) {
+        let args = {};
+        try { args = JSON.parse(c.function.arguments || '{}'); } catch { /* {} */ }
+        addLog('sys', `🔧 ${c.function.name}(${JSON.stringify(args)})`);
+        const out = await runTool(c.function.name, args);
+        messages.push({ role: 'tool', tool_call_id: c.id, content: String(out) });
+      }
+    }
+  } catch { /* offline / blocked → fall through to brain */ }
+  return null;
+}
+
+/**
+ * Ask the local Python assistant (assistant/server.py) anything.
+ * Connection-refused fails instantly, so this is cheap when it's not running.
+ */
 async function askBrain(text) {
   if (state.settings.useBrain === false) return null;
-  const base = (state.settings.brainUrl || 'http://127.0.0.1:8420').replace(/\/+$/, '');
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 30000);
