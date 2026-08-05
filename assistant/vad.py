@@ -38,35 +38,58 @@ class EnergyVAD:
 
 
 class SileroVAD:
-    """Neural speech probability, streamed in 512-sample windows."""
+    """Neural speech probability, streamed in 512-sample windows.
+    Uses the official silero-vad torch JIT per-chunk API when available
+    (the package ships torch); falls back to the bundled ONNX otherwise."""
 
     def __init__(self):
-        import onnxruntime as ort
-        import silero_vad
+        self._mode = None
+        try:
+            from silero_vad import load_silero_vad
 
-        path = os.path.join(os.path.dirname(silero_vad.__file__),
-                            "data", "silero_vad.onnx")
-        self.sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
-        self.state = np.zeros((2, 1, 128), dtype=np.float32)
+            self.model = load_silero_vad()
+            self.model.reset_states()
+            self._mode = "torch"
+        except Exception:  # noqa: BLE001
+            try:
+                import onnxruntime as ort
+                import silero_vad
+
+                path = os.path.join(os.path.dirname(silero_vad.__file__),
+                                    "data", "silero_vad.onnx")
+                self.sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+                self.state = np.zeros((2, 1, 128), dtype=np.float32)
+                self._mode = "onnx"
+            except Exception:  # noqa: BLE001
+                raise
         self._buf = np.zeros(0, dtype=np.float32)
 
     def reset(self):
-        self.state = np.zeros((2, 1, 128), dtype=np.float32)
         self._buf = np.zeros(0, dtype=np.float32)
+        if self._mode == "torch":
+            self.model.reset_states()
+        else:
+            self.state = np.zeros((2, 1, 128), dtype=np.float32)
 
     def prob(self, chunk):
         x = np.concatenate([self._buf, chunk.astype(np.float32) / 32768.0])
         best = 0.0
         i = 0
         while i + WINDOW <= len(x):
-            seg = x[i:i + WINDOW][None, :]
-            out, state_n = self.sess.run(
-                None,
-                {"input": seg, "state": self.state,
-                 "sr": np.array(16000, dtype=np.int64)},
-            )
-            self.state = state_n
-            best = max(best, float(np.array(out).ravel()[0]))
+            seg = x[i:i + WINDOW]
+            if self._mode == "torch":
+                import torch
+
+                with torch.no_grad():
+                    best = max(best, float(self.model(torch.from_numpy(seg), 16000)))
+            else:
+                out, state_n = self.sess.run(
+                    None,
+                    {"input": seg[None, :], "state": self.state,
+                     "sr": np.array(16000, dtype=np.int64)},
+                )
+                self.state = state_n
+                best = max(best, float(np.array(out).ravel()[0]))
             i += WINDOW
         self._buf = x[i:]
         return best
