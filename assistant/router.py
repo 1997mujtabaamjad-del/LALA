@@ -176,11 +176,11 @@ def handle(text, memory=None):
     if t in ("watch the weather", "watch weather"):
         return "Watching the weather — I'll alert you on rain or storms.", \
             {"type": "watch", "kind": "weather_watch"}
-    m = re.match(r"^(?:every day|daily)(?: at (\d{1,2}(?::\d{2})?\s*(?:am|pm)?))?\s*"
-                 r"(?:brief me|briefing)$|^brief me (?:every day|daily)(?: at "
-                 r"(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)?$", t)
+    _T = r"(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)"
+    m = (re.match(rf"^(?:every day|daily)(?: at {_T})?\s*(?:brief me|briefing)$", t)
+         or re.match(rf"^brief me (?:every day|daily)(?: at {_T})?$", t))
     if m:
-        return "Daily briefing scheduled.", {"type": "schedule-briefing", "time": (m.group(1) or m.group(2) or "9am")}
+        return "Daily briefing scheduled.", {"type": "schedule-briefing", "time": (m.group(1) or "9am")}
     if t in ("run my morning routine", "morning routine", "start my day"):
         return "", {"type": "routine"}
     if t in ("stop watching", "cancel autonomy tasks", "clear reminders"):
