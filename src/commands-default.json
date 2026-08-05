@@ -450,6 +450,20 @@
     "response": ""
   },
   {
+    "id": "memory-add",
+    "description": "Remember a fact about the user",
+    "phrases": ["remember that <note>", "note that <note>"],
+    "action": { "type": "memory", "op": "add", "note": "{note}" },
+    "response": ""
+  },
+  {
+    "id": "memory-list",
+    "description": "Recall stored memories",
+    "phrases": ["what do you remember", "your notes", "list notes"],
+    "action": { "type": "memory", "op": "list" },
+    "response": ""
+  },
+  {
     "id": "stop-listening",
     "description": "End continuous conversation; wait for the wake word again",
     "phrases": ["stop listening", "stop listening lala", "that's all for now", "goodbye for now", "go idle"],

@@ -102,11 +102,18 @@
     <section class="side panel">
       <nav class="tabs" role="tablist">
         <button class="tab active" data-tab="log" role="tab">Log</button>
+        <button class="tab" data-tab="tasks" role="tab">Tasks</button>
         <button class="tab" data-tab="skills" role="tab">Skills</button>
         <button class="tab" data-tab="commands" role="tab">Commands</button>
         <button class="tab" data-tab="settings" role="tab">Settings</button>
         <button class="tab" data-tab="help" role="tab">Help</button>
       </nav>
+
+      <!-- Tasks: one-click preview of every capability -->
+      <div id="tab-tasks" class="tabpane">
+        <p class="muted">Click ▶ to run any task right now — voice path included.</p>
+        <div id="task-list"></div>
+      </div>
 
       <!-- Skills -->
       <div id="tab-skills" class="tabpane">

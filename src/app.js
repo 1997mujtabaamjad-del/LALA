@@ -461,6 +461,23 @@ async function runMatch(match) {
     return;
   }
 
+  if (act.type === 'memory') {
+    const phrase = act.op === 'add' ? `remember that ${act.note}` : 'what do you remember';
+    if (desktop) {
+      const brain = await askBrain(phrase); // Python memory when the brain is up
+      if (brain) { respond(brain); return; }
+    }
+    const notes = JSON.parse(localStorage.getItem('lala.notes') || '[]');
+    if (act.op === 'add') {
+      notes.push(act.note);
+      localStorage.setItem('lala.notes', JSON.stringify(notes));
+      respond(`Got it — I’ll remember that: ${act.note}.`);
+    } else {
+      respond(notes.length ? `I remember: ${notes.slice(-5).join('; ')}.` : 'I don’t have any notes yet.');
+    }
+    return;
+  }
+
   if (act.type === 'guide') {
     // LLM-generated when the Python brain is reachable; static tips otherwise.
     const brain = await askBrain('user guide');
@@ -1258,18 +1275,7 @@ function bindSkills() {
   }
 
   // Calendar .ics interop (Google / Outlook / Apple)
-  $('#cal-export').addEventListener('click', async () => {
-    const events = desktop
-      ? await window.lala.getCalendar()
-      : JSON.parse(localStorage.getItem('lala.calendar') || '[]');
-    const blob = new Blob([buildIcs(events)], { type: 'text/calendar' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'lala-calendar.ics';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    toast('Calendar exported as .ics');
-  });
+  $('#cal-export').addEventListener('click', exportIcs);
   $('#cal-import').addEventListener('click', () => $('#cal-file').click());
   $('#cal-file').addEventListener('change', async (e) => {
     const file = e.target.files[0];
@@ -1389,6 +1395,99 @@ async function runDemo() {
     setOrbMode('idle');
   }
 }
+
+function exportIcs() {
+  const events = desktop
+    ? window.lala.getCalendar()
+    : Promise.resolve(JSON.parse(localStorage.getItem('lala.calendar') || '[]'));
+  Promise.resolve(events).then((evs) => {
+    const blob = new Blob([buildIcs(evs)], { type: 'text/calendar' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lala-calendar.ics';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Calendar exported as .ics');
+  });
+}
+
+/* ------------------------------------------------------- Tasks tab */
+
+const TASKS = [
+  ['🎙 Voice & pipeline', [
+    ['Wake word + reply', 'hey laala'],
+    ['Streaming answer', 'what time is it'],
+    ['Barge-in demo (interrupt the guide)', 'user guide'],
+    ['Full scripted demo', '@demo'],
+  ]],
+  ['ℹ️ Information', [
+    ['Time', 'what time is it'],
+    ['Date', "what's the date"],
+    ['Local weather', 'weather'],
+    ['City weather + forecast', 'weather in hyderabad'],
+  ]],
+  ['🔎 Web', [
+    ['Instant spoken answer', 'who is kalpana chawla'],
+    ['Search + open results', 'search for telugu food'],
+  ]],
+  ['📅 Calendar', [
+    ['Add event by voice', 'add demo meeting tomorrow at 10am'],
+    ['List upcoming', "what's on my calendar"],
+    ['Export .ics file', '@export'],
+  ]],
+  ['💡 Smart lights', [
+    ['Lights on', 'turn on the lights'],
+    ['Lights off', 'turn off the lights'],
+    ['Brightness 40%', 'set lights to 40 percent'],
+    ['Color blue', 'lights to blue'],
+  ]],
+  ['🎵 Media & apps', [
+    ['Play music', 'play lofi beats'],
+    ['Open YouTube', 'open youtube'],
+    ['Open VS Code', 'open vs code'],
+  ]],
+  ['🎚 System', [
+    ['Set volume', 'set volume to 40 percent'],
+    ['Volume up', 'volume up'],
+    ['Screenshot (desktop)', 'take a screenshot'],
+  ]],
+  ['🧿 Memory', [
+    ['Remember something', 'remember that I love biryani'],
+    ['Recall memories', 'what do you remember'],
+  ]],
+  ['😄 Fun & assistant', [
+    ['Flip a coin', 'flip a coin'],
+    ['Roll a dice', 'roll a dice'],
+    ['Tell a joke', 'tell me a joke'],
+    ['User guide', 'user guide'],
+    ['All commands', 'help'],
+    ['End conversation', 'stop listening'],
+  ]]
+];
+
+function renderTasks() {
+  const wrap = $('#task-list');
+  wrap.innerHTML = '';
+  for (const [group, items] of TASKS) {
+    const h = document.createElement('h4');
+    h.className = 'task-group';
+    h.textContent = group;
+    wrap.appendChild(h);
+    for (const [label, say] of items) {
+      const row = document.createElement('button');
+      row.className = 'task-row';
+      row.innerHTML = `<span class="task-run">▶</span> ${label}`;
+      row.onclick = () => {
+        if (say === '@demo') runDemo();
+        else if (say === '@export') exportIcs();
+        else handleTranscript(say);
+      };
+      wrap.appendChild(row);
+    }
+  }
+}
+
+/* ------------------------------------------------------- Tasks tab end */
 
 /* ------------------------------------------------------------ UI binding */
 
@@ -1684,6 +1783,7 @@ async function init() {
 
   bindUI();
   bindSkills();
+  renderTasks();
   renderCommands();
   renderHelp();
   renderSettingsForm();
