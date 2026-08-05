@@ -2,6 +2,33 @@
 
 **LALA** is a voice command assistant for your desktop — now with **two engines**:
 
+## ⬇️ One-click install
+
+**End users** — grab a ready installer from **GitHub Releases** (built automatically
+on every `v*` tag by the release pipeline shipped at `packaging/release.yml`;
+activate it once with the two commands noted in that file):
+- `LALA Setup .exe` (Windows NSIS) · `.dmg` (macOS) · `.AppImage` / `.deb` (Linux)
+- `lala-assistant(.exe)` — single-file Python assistant binary (PyInstaller)
+
+**From source** — double-click:
+- **Windows:** `install.bat`
+- **Linux / macOS:** `install.sh` (or `bash install.sh`)
+
+Both create a venv, install every dependency (STT/TTS/VAD/wake + optional Electron
+UI), add a **Start Menu / app-menu / Desktop launcher**, then offer the milestone
+self-check and start-at-login. Afterwards:
+
+```bash
+lala                # run the assistant   (.venv/bin/python -m assistant)
+lala --milestone    # prove the whole pipeline
+lala --keys         # add your API keys
+```
+
+Developers: `npm run dist` builds installers locally; `git tag v1.0 && git push --tags`
+triggers the release pipeline.
+
+---
+
 1. **`assistant/` — the Python Jarvis-style assistant** (voice conversation, Q&A with a
    real LLM, memory, wake word). See [Python assistant](#-python-assistant-jarvis-mode).
 2. **Electron desktop app + web preview** — command/control UI (apps, volume, screenshots,

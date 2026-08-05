@@ -1,0 +1,65 @@
+# Release pipeline: builds one-click installers on every v* tag.
+#
+# To activate (needs workflow push permission — run once on your machine):
+#   mkdir -p .github/workflows && cp packaging/release.yml .github/workflows/
+#   git add .github/workflows && git commit -m "ci: release pipeline" && git push
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  electron:
+    name: Electron installer (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            flags: --win
+          - os: macos-latest
+            flags: --mac
+          - os: ubuntu-latest
+            flags: --linux
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Build installer
+        run: npx electron-builder ${{ matrix.flags }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  python-binary:
+    name: Python one-file binary (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+          python -m pip install -r assistant/requirements.txt
+      - name: Build single-file binary
+        run: pyinstaller packaging/lala-assistant.spec --noconfirm
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/lala-assistant*
+          fail_on_unmatched_files: false
