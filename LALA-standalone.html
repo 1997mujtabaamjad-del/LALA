@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LALA — Voice Assistant (standalone)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E"/>
+<style>
+:root{--bg-0:#050507;--bg-1:#0a0a0e;--panel:rgba(255,255,255,.028);--pb:rgba(34,211,238,.28);
+--glow:0 0 14px rgba(34,211,238,.22),0 0 42px rgba(34,211,238,.10);--gs:0 0 10px rgba(34,211,238,.16);
+--gv:0 0 14px rgba(167,139,250,.25);--text:#eef1f8;--dim:#8f9ab0;--ac:#22d3ee;--ac2:#a78bfa;--ok:#34d399;--bad:#f87171}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{font-family:"Segoe UI",system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;overflow:hidden;
+background:radial-gradient(1200px 700px at 85% -10%,rgba(167,139,250,.07),transparent 60%),
+radial-gradient(1000px 700px at 8% 110%,rgba(34,211,238,.06),transparent 55%),
+repeating-linear-gradient(115deg,rgba(255,255,255,.014) 0 1px,transparent 1px 7px),
+linear-gradient(160deg,var(--bg-0),var(--bg-1) 55%,#060609)}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 22px}
+.brand{display:flex;gap:10px;align-items:baseline}
+.dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));box-shadow:0 0 10px var(--ac),0 0 26px rgba(34,211,238,.55);align-self:center}
+h1{margin:0;font-size:22px;letter-spacing:4px;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 8px rgba(34,211,238,.45))}
+.tag{color:var(--dim);font-size:12.5px}
+.chips{display:flex;gap:8px}
+.chip{font-size:12px;padding:5px 12px;border-radius:999px;border:1px solid var(--pb);background:rgba(34,211,238,.05);color:var(--dim);box-shadow:var(--gs)}
+.chip.ac{color:var(--ac)}
+main{flex:1;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(340px,1fr);gap:18px;padding:0 22px 22px;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--pb);border-radius:16px;box-shadow:var(--glow);animation:br 5s ease-in-out infinite;min-height:0}
+@keyframes br{0%,100%{box-shadow:var(--glow)}50%{box-shadow:0 0 20px rgba(34,211,238,.3),0 0 55px rgba(167,139,250,.12)}}
+.stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;position:relative;overflow:hidden}
+.ow{position:relative;width:440px;height:440px;display:grid;place-items:center;flex-shrink:0}
+.orbit{position:absolute;border-radius:50%}
+.orbit.in{inset:70px;animation:sp 26s linear infinite}
+.orbit.out{inset:0;animation:sp 44s linear infinite reverse}
+.orbit::before{content:"";position:absolute;border-radius:50%;border:1px dashed rgba(34,211,238,.22);box-shadow:var(--gs)}
+.orbit.in::before{inset:27px}.orbit.out::before{inset:15px;border-color:rgba(167,139,250,.2)}
+.ow:hover .orbit{animation-play-state:paused}
+@keyframes sp{to{transform:rotate(360deg)}}@keyframes csp{to{transform:rotate(-360deg)}}
+.node{position:absolute;top:50%;left:50%;width:46px;height:46px;margin:-23px;padding:0;border:1px solid var(--pb);border-radius:50%;background:rgba(5,5,8,.85);cursor:pointer;transform:rotate(var(--a)) translate(var(--r,118px)) rotate(calc(var(--a)*-1));box-shadow:var(--gs)}
+.orbit.out .node{--r:200px}
+.node:hover{border-color:var(--ac);box-shadow:0 0 18px rgba(34,211,238,.6);z-index:3}
+.ni{display:grid;place-items:center;width:100%;height:100%;font-size:20px;animation:csp 26s linear infinite;filter:drop-shadow(0 0 6px rgba(34,211,238,.7))}
+.orbit.out .ni{animation:csp 44s linear infinite reverse}
+.orb{position:relative;width:168px;height:168px;display:grid;place-items:center;cursor:pointer;user-select:none}
+.core{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;color:#04141c;background:radial-gradient(circle at 32% 30%,#9beefb,var(--ac) 55%,#0e7490);box-shadow:0 0 22px rgba(34,211,238,.65),0 0 60px rgba(34,211,238,.3),inset 0 -8px 22px rgba(0,0,0,.35);z-index:2;transition:transform .15s}
+.orb:hover .core{transform:scale(1.05)}
+.ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(34,211,238,.5);opacity:0;z-index:1}
+.orb.listening .core{transform:scale(1.08)}
+.orb.listening .ring{animation:pu 1.6s ease-out infinite}
+.orb.listening .ring2{animation-delay:.8s}
+@keyframes pu{0%{transform:scale(.62);opacity:.9}100%{transform:scale(1.18);opacity:0}}
+.hint{color:var(--dim);font-size:13px}
+.bubble{max-width:90%;padding:10px 16px;border-radius:14px;font-size:15px;text-align:center;line-height:1.45}
+.bubble.res{background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.45);box-shadow:var(--gv)}
+.bubble.int{background:rgba(34,211,238,.07);border:1px dashed rgba(34,211,238,.5);font-style:italic}
+.sugs{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center}
+.sugs label{color:var(--dim);font-size:12.5px}
+.sug,.btn{font-family:inherit;font-size:12.5px;color:var(--text);background:rgba(34,211,238,.05);border:1px solid var(--pb);border-radius:999px;padding:5px 12px;cursor:pointer;box-shadow:var(--gs)}
+.sug:hover,.btn:hover{border-color:var(--ac);box-shadow:0 0 14px rgba(34,211,238,.45)}
+.btn.accent{background:linear-gradient(135deg,rgba(34,211,238,.9),rgba(167,139,250,.9));color:#050508;font-weight:700;border:none;box-shadow:0 0 16px rgba(34,211,238,.5)}
+.side{display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--pb)}
+.tab{flex:1;padding:12px 6px;background:none;border:none;color:var(--dim);font-size:13px;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent}
+.tab.on{color:var(--ac);border-bottom-color:var(--ac);text-shadow:0 0 10px rgba(34,211,238,.7)}
+.pane{display:none;flex:1;overflow-y:auto;padding:16px}
+.pane.on{display:block}
+.muted{color:var(--dim);font-size:12.5px}
+.log{display:flex;flex-direction:column;gap:8px}
+.le{display:flex;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(34,211,238,.16);font-size:13.5px;line-height:1.4}
+.le .who{flex-shrink:0;font-size:11px;font-weight:700;letter-spacing:1px;padding:2px 8px;border-radius:999px}
+.le.you .who{background:rgba(34,211,238,.14);color:var(--ac)}
+.le.lala .who{background:rgba(167,139,250,.14);color:var(--ac2)}
+.le.sys .who{background:rgba(148,163,184,.14);color:var(--dim)}
+.tg{margin:14px 0 6px;font-size:12.5px;color:var(--ac);text-shadow:0 0 8px rgba(34,211,238,.5)}
+.tr{display:flex;gap:10px;align-items:center;width:100%;margin:4px 0;padding:8px 12px;font-family:inherit;font-size:13px;color:var(--text);text-align:left;background:rgba(255,255,255,.03);border:1px solid rgba(34,211,238,.16);border-radius:10px;cursor:pointer}
+.tr:hover{border-color:var(--ac);box-shadow:0 0 14px rgba(34,211,238,.4)}
+.tr .p{color:var(--ac);font-size:11px;text-shadow:0 0 8px rgba(34,211,238,.8)}
+input,select{width:100%;margin-top:5px;padding:8px 11px;font-family:inherit;font-size:13.5px;color:var(--text);background:rgba(0,0,0,.45);border:1px solid var(--pb);border-radius:9px;outline:none}
+input:focus{border-color:var(--ac);box-shadow:0 0 12px rgba(34,211,238,.4)}
+label{display:block;font-size:13px;margin:10px 0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.skill{margin:8px 0 4px;padding:10px 14px;border-radius:10px;background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.3);font-size:13.5px;line-height:1.5;white-space:pre-wrap;box-shadow:var(--gs)}
+.sw{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.sw button{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer}
+.sw button:hover{transform:scale(1.15);box-shadow:0 0 12px currentColor}
+.helprow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(34,211,238,.15);font-size:13px}
+.helprow .d{color:var(--dim);margin-right:auto}
+.pc{font-size:12px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.35);color:var(--text);border-radius:999px;padding:2px 10px;cursor:pointer}
+.pc:hover{background:rgba(34,211,238,.2)}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:rgba(8,8,12,.95);border:1px solid var(--pb);border-radius:12px;padding:11px 20px;font-size:13.5px;box-shadow:var(--glow);z-index:50;display:none}
+@media (max-width:1150px){.ow{width:360px;height:360px}.node{transform:rotate(var(--a)) translate(calc(var(--r,118px)*.8)) rotate(calc(var(--a)*-1))}.orbit.in{inset:58px}}
+@media (max-width:980px){body{overflow:auto}main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="dot"></div><h1>LALA</h1><span class="tag">standalone · say “Hey Laala”</span></div>
+  <div class="chips"><span class="chip">single-file</span><span class="chip ac" id="chipState">idle</span></div>
+</header>
+<main>
+  <section class="panel stage">
+    <div class="ow">
+      <div class="orbit in">
+        <button class="node" style="--a:0deg"   data-say="hey laala" title="Wake word"><span class="ni">🗣</span></button>
+        <button class="node" style="--a:45deg"  data-say="what time is it" title="Streaming STT"><span class="ni">🎙</span></button>
+        <button class="node" style="--a:90deg"  data-say="tell me a joke" title="LLM brain"><span class="ni">🧠</span></button>
+        <button class="node" style="--a:135deg" data-say="hello lala" title="TTS"><span class="ni">🔊</span></button>
+        <button class="node" style="--a:180deg" data-say="user guide" title="Barge-in"><span class="ni">✋</span></button>
+        <button class="node" style="--a:225deg" data-say="remember that I love biryani" title="Memory"><span class="ni">🧿</span></button>
+        <button class="node" style="--a:270deg" data-say="lights to warm" title="Tools"><span class="ni">🧰</span></button>
+        <button class="node" style="--a:315deg" data-say="weather in hyderabad" title="Streaming"><span class="ni">⚡</span></button>
+      </div>
+      <div class="orbit out">
+        <button class="node" style="--a:0deg"   data-say="weather in hyderabad" title="Weather"><span class="ni">🌦</span></button>
+        <button class="node" style="--a:36deg"  data-say="add meeting tomorrow at 10am" title="Calendar"><span class="ni">📅</span></button>
+        <button class="node" style="--a:72deg"  data-say="lights to blue" title="Lights"><span class="ni">💡</span></button>
+        <button class="node" style="--a:108deg" data-say="play lofi beats" title="Music"><span class="ni">🎵</span></button>
+        <button class="node" style="--a:144deg" data-say="search for telugu food" title="Search"><span class="ni">🔎</span></button>
+        <button class="node" style="--a:180deg" data-say="open youtube" title="Apps"><span class="ni">🖥</span></button>
+        <button class="node" style="--a:216deg" data-say="take a screenshot" title="Screenshot"><span class="ni">📸</span></button>
+        <button class="node" style="--a:252deg" data-say="start dictation" title="Dictation"><span class="ni">✂️</span></button>
+        <button class="node" style="--a:288deg" data-say="set volume to 40 percent" title="System"><span class="ni">🎚</span></button>
+        <button class="node" style="--a:324deg" data-say="help" title="All commands"><span class="ni">📖</span></button>
+      </div>
+      <div class="orb" id="orb" title="Click to listen (mic)">
+        <div class="ring"></div><div class="ring ring2"></div>
+        <div class="core">
+          <svg viewBox="0 0 24 24" width="46" height="46" fill="currentColor">
+            <path d="M9.5 3A2.5 2.5 0 0 0 7 5.5v.35A3.5 3.5 0 0 0 4.5 9.2c0 .55.13 1.08.37 1.55A3.6 3.6 0 0 0 4 13.4a3.6 3.6 0 0 0 2.55 3.45A3.1 3.1 0 0 0 9.6 20c.5 0 .98-.12 1.4-.34V5.5A2.5 2.5 0 0 0 9.5 3z"/>
+            <path d="M14.5 3A2.5 2.5 0 0 1 17 5.5v.35a3.5 3.5 0 0 1 2.5 3.35c0 .55-.13 1.08-.37 1.55.55.7.87 1.6.87 2.65a3.6 3.6 0 0 1-2.55 3.45A3.1 3.1 0 0 1 14.4 20c-.5 0-.98-.12-1.4-.34V5.5A2.5 2.5 0 0 1 14.5 3z"/>
+            <path d="M10.6 8.2c-.9.2-1.6.9-1.8 1.8M13.4 11.2c.9.2 1.6.9 1.8 1.8M10.6 13.7c-.7.2-1.3.7-1.6 1.4" stroke="#7deefc" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="hint">Click the brain & speak (Chrome/Edge) · hover the rings · click any node</div>
+    <div id="interim" class="bubble int" style="display:none"></div>
+    <div id="response" class="bubble res" style="display:none"></div>
+    <div class="sugs">
+      <label>Try:</label>
+      <button class="btn accent" id="demo">▶ Run demo</button>
+      <button class="sug" data-say="hey laala">hey laala</button>
+      <button class="sug" data-say="what time is it">what time is it</button>
+      <button class="sug" data-say="weather in hyderabad">weather</button>
+      <button class="sug" data-say="flip a coin">coin</button>
+      <button class="sug" data-say="help">help</button>
+    </div>
+  </section>
+
+  <section class="panel side">
+    <div class="tabs">
+      <button class="tab on" data-t="log">Log</button>
+      <button class="tab" data-t="tasks">Tasks</button>
+      <button class="tab" data-t="skills">Skills</button>
+      <button class="tab" data-t="help">Help</button>
+    </div>
+    <div class="pane on" id="p-log"><div class="log" id="log"></div></div>
+    <div class="pane" id="p-tasks"><p class="muted">▶ runs the real behavior + speaks the reply.</p><div id="tasks"></div></div>
+    <div class="pane" id="p-skills">
+      <div class="tg">🌦 Weather</div>
+      <div class="row"><input id="w-city" placeholder="City (blank = your location)"/><button class="btn" id="w-go">Get</button></div>
+      <div class="skill" id="w-out">—</div>
+      <div class="tg">📅 Calendar</div>
+      <div class="row"><input id="c-title" placeholder="Event title"/><input id="c-time" type="time" value="09:00"/></div>
+      <select id="c-day"><option value="0">Today</option><option value="1">Tomorrow</option></select>
+      <div class="row"><button class="btn" id="c-add">Add</button><button class="btn" id="c-exp">Export .ics</button></div>
+      <div class="skill" id="c-out">—</div>
+      <div class="tg">💡 Lights</div>
+      <div class="row"><button class="btn" id="l-on">On</button><button class="btn" id="l-off">Off</button></div>
+      <div class="sw" id="l-sw"></div>
+      <div class="skill" id="l-out">Demo mode — desktop app drives real bulbs.</div>
+    </div>
+    <div class="pane" id="p-help"><div id="help"></div></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const norm=t=>(t||"").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu," ").replace(/\s+/g," ").trim();
+const JOKES=["Why do programmers prefer dark mode? Because light attracts bugs.","I told my computer I needed a break — it said: no problem, I'll go to sleep.","Why did the developer go broke? He used up all his cache.","There are 10 kinds of people: those who understand binary and those who don't.","I'd tell you a UDP joke, but you might not get it."];
+const GUIDE="Here's how to talk to me. Say “Hey Laala” and wait for the beep, then speak. Or click the brain and release when done. You can interrupt me any time — just start talking. After I answer, keep talking; I listen on until you pause or say “stop listening”. Try “open youtube”, “weather in hyderabad”, “add meeting tomorrow at 3 pm”, or “lights to warm”. Say “help” for everything.";
+
+function toast(m){const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(t._x);t._x=setTimeout(()=>t.style.display="none",4200);}
+function log(w,m){const d=document.createElement("div");d.className="le "+w;d.innerHTML='<span class="who">'+(w==="you"?"YOU":w==="lala"?"LALA":"SYS")+"</span><span></span>";d.lastChild.textContent=m;$("#log").prepend(d);}
+function speak(t){if(!("speechSynthesis" in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=1.03;speechSynthesis.speak(u);}
+function respond(t){log("lala",t);const r=$("#response");r.textContent=t;r.style.display="block";speak(t);}
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+async function waitSilence(){if(!("speechSynthesis" in window))return delay(500);await delay(200);const t0=Date.now();while((speechSynthesis.speaking||speechSynthesis.pending)&&Date.now()-t0<5000)await delay(120);}
+
+/* ---- skills ---- */
+const store=k=>JSON.parse(localStorage.getItem(k)||"[]"), save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+async function weather(city){
+  try{
+    let lat,lon,name;
+    if(city){const g=await(await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(city)+"&count=1")).json();const p=(g.results||[])[0];if(!p)return null;lat=p.latitude;lon=p.longitude;name=p.name;}
+    else{const j=await(await fetch("https://wttr.in/?format=j1")).json();lat=+j.nearest_area[0].latitude;lon=+j.nearest_area[0].longitude;name=j.nearest_area[0].areaName[0].value;}
+    const j=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=3&timezone=auto`)).json();
+    const c=j.current,W={0:"clear skies",1:"mostly clear",2:"partly cloudy",3:"overcast",45:"foggy",48:"foggy",51:"light drizzle",61:"light rain",63:"rain",65:"heavy rain",71:"light snow",73:"snow",80:"rain showers",95:"thunderstorms"};
+    let s=`It's ${Math.round(c.temperature_2m)}°C in ${name}, ${W[c.weather_code]||"cloudy"}, feels like ${Math.round(c.apparent_temperature)}°, wind ${Math.round(c.wind_speed_10m)} km/h.`;
+    if(j.daily)s+=" Ahead: "+[0,1,2].map(i=>`${i===0?"Today":i===1?"Tomorrow":new Date(j.daily.time[i]).toLocaleDateString([],{weekday:"short"})} ${Math.round(j.daily.temperature_2m_min[i])}–${Math.round(j.daily.temperature_2m_max[i])}°`).join("; ")+".";
+    return s;
+  }catch{return null;}
+}
+async function wiki(q){try{const r=await(await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(q))).json();return r.extract||null;}catch{return null;}}
+
+/* ---- commands ---- */
+const CMDS=[
+ {p:["what time is it","time"],d:"Time",f:()=> "It's "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+"."},
+ {p:["what's the date","what is the date","date"],d:"Date",f:()=>"Today is "+new Date().toLocaleDateString([],{weekday:"long",year:"numeric",month:"long",day:"numeric"})+"."},
+ {p:["weather","what's the weather"],d:"Local weather",w:"__weather__"},
+ {p:["weather in <c>","weather for <c>"],d:"City weather",w:"__weather__"},
+ {p:["who is <q>","what is <q>","tell me about <q>"],d:"Web answer",w:"__wiki__"},
+ {p:["search for <q>","search <q>","google <q>"],d:"Search",f:m=>{window.open("https://www.google.com/search?q="+encodeURIComponent(m.q),"_blank");return "Searching for "+m.q+".";}},
+ {p:["play <q>","play <q> on youtube"],d:"Music",f:m=>{window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(m.q),"_blank");return "Playing "+m.q+" on YouTube.";}},
+ {p:["open <a>"],d:"Open apps/sites",f:m=>{const U={youtube:"https://youtube.com",google:"https://google.com",github:"https://github.com",gmail:"https://mail.google.com",maps:"https://maps.google.com",chatgpt:"https://chat.openai.com",whatsapp:"https://web.whatsapp.com",twitter:"https://x.com",reddit:"https://reddit.com",netflix:"https://netflix.com",linkedin:"https://linkedin.com"};const u=U[m.a]||("https://www.google.com/search?q="+encodeURIComponent(m.a));window.open(u,"_blank");return "Opening "+m.a+".";}},
+ {p:["add <x>"],d:"Calendar add",f:m=>{const w=parseWhen(m.x);if(!w)return "I need a time — try “add dentist tomorrow at 3 pm”.";const t=calTitle(m.x);const ev=store("lala.cal");ev.push({id:"ev"+Date.now(),when:w.toISOString(),title:t});save("lala.cal",ev);renderCal();return `Added “${t}” for ${w.toLocaleString([],{weekday:"long",hour:"2-digit",minute:"2-digit"})}.`;}},
+ {p:["what's on my calendar","my calendar","my schedule"],d:"Calendar list",f:()=>{const ev=calList();return ev.length?"Up next: "+ev.map(e=>e.title+" — "+new Date(e.ts).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"})).join("; ")+".":"Your calendar is clear.";}},
+ {p:["turn on the lights","lights on"],d:"Lights on",f:()=>{lights("on");return "Lights on.";}},
+ {p:["turn off the lights","lights off"],d:"Lights off",f:()=>{lights("off");return "Lights off.";}},
+ {p:["set lights to <n> percent","set the lights to <n> percent"],d:"Brightness",f:m=>{lights("set",+m.n);return `Lights set to ${m.n}%.`;}},
+ {p:["lights to <c>","set lights to <c>"],d:"Light color",f:m=>{lights("color",m.c);return "Lights set to "+m.c+".";}},
+ {p:["set volume to <n> percent","volume <n> percent"],d:"Volume",f:m=>"Volume "+m.n+"% (desktop app applies it system-wide)."},
+ {p:["volume up","louder"],d:"Vol up",f:()=>"Volume up (desktop)."},
+ {p:["volume down","quieter"],d:"Vol down",f:()=>"Volume down (desktop)."},
+ {p:["take a screenshot","screenshot"],d:"Screenshot",f:()=>"Screenshot is a desktop feature — run the full app!"},
+ {p:["start dictation"],d:"Dictation",f:()=>{dict=true;toast("Dictating — say “stop dictation” to copy.");return "Dictation started — speak freely.";}},
+ {p:["stop dictation"],d:"Dictation stop",f:()=>{dict=false;const t=dictBuf.join(" ");dictBuf=[];if(t){navigator.clipboard&&navigator.clipboard.writeText(t);return `Copied ${t.split(/\s+/).length} words to your clipboard.`;}return "Nothing captured.";}},
+ {p:["remember that <n>","note that <n>"],d:"Remember",f:m=>{const n=store("lala.notes");n.push(m.n);save("lala.notes",n);return "Got it — I'll remember that: "+m.n+".";}},
+ {p:["what do you remember","your notes"],d:"Recall",f:()=>{const n=store("lala.notes");return n.length?"I remember: "+n.slice(-5).join("; ")+".":"No notes yet.";}},
+ {p:["flip a coin","coin flip","heads or tails"],d:"Coin",f:()=>Math.random()<.5?"Heads!":"Tails!"},
+ {p:["roll a dice","roll dice"],d:"Dice",f:()=>"You rolled a "+(1+Math.floor(Math.random()*6))+"."},
+ {p:["tell me a joke","joke","make me laugh"],d:"Joke",f:()=>JOKES[Math.floor(Math.random()*JOKES.length)]},
+ {p:["user guide","tutorial","how do i use you"],d:"Guide",f:()=>GUIDE},
+ {p:["hello lala","hi lala","hey lala"],d:"Greeting",f:()=>"Hello! I'm LALA. Say “help” to see what I can do."},
+ {p:["stop listening"],d:"End chat",f:()=>"Okay — I'll wait for the wake word."},
+ {p:["help","what can i say","list commands"],d:"Help",f:()=>{switchTab("help");return "Here's everything I understand — see the Help tab.";}},
+];
+let dict=false,dictBuf=[];
+function parseWhen(t){const m=norm(t).match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);if(!m)return null;let h=+m[1],mm=+(m[2]||0);if(m[3]==="pm"&&h<12)h+=12;const d=new Date();if(/\btomorrow\b/.test(t))d.setDate(d.getDate()+1);d.setHours(h,mm,0,0);return d;}
+function calTitle(t){return t.split(/\b(?:today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at)\b/)[0].replace(/\b(?:to|on) my calendar\b/,"").trim()||"event";}
+function calList(){return store("lala.cal").map(e=>({...e,ts:Date.parse(e.when)})).filter(e=>e.ts>Date.now()-36e5).sort((a,b)=>a.ts-b.ts).slice(0,6);}
+function renderCal(){const ev=calList();$("#c-out").textContent=ev.length?ev.map(e=>`${e.title} — ${new Date(e.ts).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"})}`).join("\n"):"—";}
+const LC={red:"#ef4444",orange:"#f97316",yellow:"#eab308",green:"#22c55e",cyan:"#06b6d4",blue:"#3b82f6",purple:"#a855f7",pink:"#ec4899",warm:"#ffd9a0",white:"#f8fafc",cool:"#bfdbfe"};
+function lights(op,v){const o=$("#l-out");if(op==="on")o.textContent="💡 ON";else if(op==="off")o.textContent="💡 OFF";else if(op==="set")o.textContent=`💡 brightness ${v}%`;else{o.textContent="💡 "+v;o.style.color=LC[v]||"#fff";}}
+
+function match(text){const n=norm(text);
+ for(const c of CMDS)for(const p of c.p){if(!p.includes("<")&&norm(p)===n)return{c,m:{}};}
+ for(const c of CMDS)for(const p of c.p){if(!p.includes("<"))continue;const params=[];const parts=norm(p).split(/<([^>]+)>/);const re=new RegExp("^"+parts.map((s,i)=>i%2?(params.push(s.trim()),"(.+?)"):s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).filter(Boolean).join("\\s+")+"$");const r=n.match(re);if(r){const m={};params.forEach((k,i)=>m[k]=r[i+1].trim());return{c,m};}}
+ return null;}
+
+async function handle(text){text=(text||"").trim();if(!text)return;log("you",text);$("#interim").style.display="none";
+ if(dict&&!"stop dictation".includes(norm(text))){dictBuf.push(text);$("#interim").textContent="“"+text+"”";$("#interim").style.display="block";return;}
+ const hit=match(text);
+ if(!hit){respond("Sorry, I didn't recognize that. Say “help” to see my skills.");return;}
+ const{c,m}=hit;
+ let reply;
+ if(c.w==="__weather__")reply=await weather(m.c||"")||"I couldn't reach a weather service right now.";
+ else if(c.w==="__wiki__")reply=await wiki(m.q)||"No instant answer — opening search would need the full app.";
+ else reply=c.f(m);
+ respond(reply);}
+
+/* ---- demo ---- */
+const DEMO=["hey laala","what time is it","weather in hyderabad","add demo meeting tomorrow at 10am","lights to blue","flip a coin","tell me a joke","stop listening"];
+let demoing=false;
+async function runDemo(){if(demoing)return;demoing=true;$("#demo").disabled=true;
+ for(const t of DEMO){$("#orb").classList.add("listening");$("#interim").textContent="“"+t+"”";$("#interim").style.display="block";await delay(900);$("#orb").classList.remove("listening");await handle(t);await waitSilence();await delay(350);}
+ respond("That's LALA — click the brain and speak to try it yourself!");demoing=false;$("#demo").disabled=false;}
+
+/* ---- mic (Web Speech) ---- */
+function setupMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast("Mic needs Chrome/Edge.");return;}
+ const rec=new SR();rec.continuous=true;rec.interimResults=true;let on=false;
+ rec.onresult=e=>{let inter="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)handle(r[0].transcript);else inter+=r[0].transcript;}if(inter){$("#interim").textContent="“"+inter+"”";$("#interim").style.display="block";}};
+ rec.onend=()=>{if(on)try{rec.start();}catch{}};
+ $("#orb").addEventListener("click",()=>{on=!on;if(on){try{rec.start();}catch{}$("#orb").classList.add("listening");$("#chipState").textContent="listening";}else{rec.stop();$("#orb").classList.remove("listening");$("#chipState").textContent="idle";}});}
+
+/* ---- UI build ---- */
+const TASKS=[["🎙 Voice",[["Wake + reply","hey laala"],["Streaming answer","what time is it"],["Barge-in demo","user guide"],["Full demo","@demo"]]],
+["ℹ️ Info",[["Time","what time is it"],["Date","what's the date"],["Local weather","weather"],["City weather","weather in hyderabad"]]],
+["🔎 Web",[["Instant answer","who is kalpana chawla"],["Search","search for telugu food"]]],
+["📅 Calendar",[["Add event","add demo meeting tomorrow at 10am"],["List","what's on my calendar"]]],
+["💡 Lights",[["On","turn on the lights"],["Off","turn off the lights"],["40%","set lights to 40 percent"],["Blue","lights to blue"]]],
+["🎵 Media",[["Music","play lofi beats"],["YouTube","open youtube"]]],
+["🧿 Memory",[["Remember","remember that I love biryani"],["Recall","what do you remember"]]],
+["😄 Fun",[["Coin","flip a coin"],["Dice","roll a dice"],["Joke","tell me a joke"],["Guide","user guide"],["Help","help"]]]];
+function renderTasks(){const w=$("#tasks");w.innerHTML="";for(const[g,items]of TASKS){const h=document.createElement("div");h.className="tg";h.textContent=g;w.appendChild(h);for(const[l,s]of items){const b=document.createElement("button");b.className="tr";b.innerHTML='<span class="p">▶</span> '+l;b.onclick=()=>s==="@demo"?runDemo():handle(s);w.appendChild(b);}}}
+function renderHelp(){const w=$("#help");w.innerHTML="";for(const c of CMDS){const r=document.createElement("div");r.className="helprow";const d=document.createElement("span");d.className="d";d.textContent=c.d;r.appendChild(d);for(const p of c.p){const b=document.createElement("button");b.className="pc";b.textContent=p;b.onclick=()=>handle(p.replace(/<[^>]+>/g,"something"));r.appendChild(b);}w.appendChild(r);}}
+function switchTab(t){$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.t===t));$$(".pane").forEach(p=>p.classList.toggle("on",p.id==="p-"+t));}
+$$(".tab").forEach(b=>b.onclick=()=>switchTab(b.dataset.t));
+$$(".sug").forEach(b=>b.onclick=()=>handle(b.dataset.say));
+$$(".node").forEach(n=>n.onclick=()=>handle(n.dataset.say));
+$("#demo").onclick=runDemo;
+$("#w-go").onclick=async()=>{$("#w-out").textContent="Fetching…";$("#w-out").textContent=await weather($("#w-city").value.trim())||"Unreachable.";speak($("#w-out").textContent);};
+$("#c-add").onclick=()=>handle(`add ${$("#c-title").value||"meeting"} ${$("#c-day").value==="1"?"tomorrow":"today"} at ${$("#c-time").value}`);
+$("#c-exp").onclick=()=>{const ev=calList();const pad=n=>String(n).padStart(2,"0");let ics="BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//LALA//EN\r\n";for(const e of ev){const d=new Date(e.ts);ics+=`BEGIN:VEVENT\r\nUID:${e.id}@lala\r\nDTSTART:${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00\r\nSUMMARY:${e.title}\r\nEND:VEVENT\r\n`;}ics+="END:VCALENDAR\r\n";const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));a.download="lala-calendar.ics";a.click();toast("Exported .ics");};
+$("#l-on").onclick=()=>handle("turn on the lights");$("#l-off").onclick=()=>handle("turn off the lights");
+for(const[c,hex]of Object.entries(LC)){const b=document.createElement("button");b.style.background=hex;b.title=c;b.onclick=()=>handle("lights to "+c);$("#l-sw").appendChild(b);}
+renderTasks();renderHelp();renderCal();setupMic();
+log("sys","Standalone LALA loaded — click ▶ Run demo or the brain.");
+</script>
+</body>
+</html>
