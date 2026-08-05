@@ -22,6 +22,7 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 const DEFAULT_SETTINGS = {
   engine: 'auto',
   openaiKey: '',
+  deepgramKey: '',
   whisperModel: 'whisper-1',
   language: 'en-US',
   voiceResponses: true,
@@ -585,8 +586,10 @@ async function pickEngine() {
   const pref = state.settings.engine;
   if (pref === 'offline') return status.modelReady ? 'offline' : null;
   if (pref === 'cloud') return state.settings.openaiKey ? 'cloud' : null;
+  if (pref === 'deepgram') return state.settings.deepgramKey ? 'deepgram' : null;
   // auto
   if (status.modelReady) return 'offline';
+  if (state.settings.deepgramKey) return 'deepgram';
   if (state.settings.openaiKey) return 'cloud';
   return null;
 }
@@ -639,7 +642,7 @@ async function endPTT() {
     const r = await window.lala.sttFinish();
     text = (r && r.text) || '';
   } else {
-    const result = await window.lala.transcribe({ engine: 'cloud', pcm });
+    const result = await window.lala.transcribe({ engine: state._engine, pcm });
     await window.lala.sttFinish();
     if (!result.ok) {
       toast(result.error || 'Transcription failed.', 'error');
@@ -853,8 +856,10 @@ async function refreshEngineChip() {
   state.status = await window.lala.asrStatus();
   const s = state.status;
   const key = state.settings.openaiKey;
-  if (s.modelReady && key) $('#chip-engine').textContent = 'Offline + Cloud ready';
+  const dg = state.settings.deepgramKey;
+  if (s.modelReady && (key || dg)) $('#chip-engine').textContent = 'Offline + Cloud ready';
   else if (s.modelReady) $('#chip-engine').textContent = 'Offline ready';
+  else if (dg) $('#chip-engine').textContent = 'Deepgram ready';
   else if (key) $('#chip-engine').textContent = 'Cloud (Whisper) ready';
   else $('#chip-engine').textContent = 'Engine setup needed';
   renderModelStatus();
@@ -1131,6 +1136,7 @@ function renderSettingsForm() {
   const s = state.settings;
   $$('input[name="engine"]').forEach((r) => { r.checked = r.value === s.engine; });
   $('#openai-key').value = s.openaiKey || '';
+  $('#deepgram-key').value = s.deepgramKey || '';
   $('#whisper-model').value = s.whisperModel || 'whisper-1';
   $('#language').value = s.language || 'en-US';
   $('#voice-responses').checked = !!s.voiceResponses;
@@ -1265,6 +1271,7 @@ function bindUI() {
   $('#save-settings').addEventListener('click', async () => {
     state.settings.engine = ($$('input[name="engine"]').find((r) => r.checked) || {}).value || 'auto';
     state.settings.openaiKey = $('#openai-key').value.trim();
+    state.settings.deepgramKey = $('#deepgram-key').value.trim();
     state.settings.whisperModel = $('#whisper-model').value;
     state.settings.language = $('#language').value;
     state.settings.voiceResponses = $('#voice-responses').checked;

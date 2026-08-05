@@ -17,7 +17,7 @@ Implements the full spec:
 |---|---|
 | Python | `assistant/` package |
 | OpenAI API **or** local LLM (Ollama) | `assistant/llm.py` — auto-detects Ollama at `localhost:11434`, falls back to OpenAI, then to an offline demo mode |
-| Whisper (STT) | `assistant/stt.py` — local `faster-whisper`, or the OpenAI Whisper API |
+| Whisper (STT) | `assistant/stt.py` — local `faster-whisper`, **Deepgram nova-2** (with true WebSocket streaming partials), or the OpenAI Whisper API |
 | ElevenLabs **or** Piper (TTS) | `assistant/tts.py` — local Piper (free, private) or ElevenLabs |
 | Wake word via OpenWakeWord | `assistant/wake.py` — **“Hey Laala”** default: any phrase fuzzy-spotted offline via Vosk; zoo words / custom .onnx use OpenWakeWord when installed |
 | Voice conversation | continuous conversation: keeps listening for follow-ups until you go quiet or say “stop listening” |
@@ -166,6 +166,13 @@ npx electron-rebuild -f -w vosk
 
 The offline engine also powers the **“Hey LALA” wake word** — LALA listens locally with a
 lightweight streaming recognizer, beeps when it hears you, and endpoints on silence.
+
+### 1½. Deepgram — lowest-latency cloud STT
+
+Set `DEEPGRAM_API_KEY` (or paste it in Settings). Batch transcription uses **nova-2**,
+and the Python assistant's live partials upgrade from local Vosk to **true WebSocket
+streaming** (`wss://api.deepgram.com …interim_results=true`) when the key is present.
+In the Electron app, pick *Cloud — Deepgram* under Speech engine.
 
 ### 2. Cloud — OpenAI Whisper (any language, best accuracy)
 

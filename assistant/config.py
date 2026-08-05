@@ -24,8 +24,9 @@ DEFAULTS = {
     "openai_model": "gpt-4o-mini",
     "ollama_model": "llama3.1",
     "ollama_url": "http://localhost:11434",
-    # auto = faster-whisper if installed else OpenAI API
+    # auto = faster-whisper if installed else Deepgram if keyed else OpenAI API
     "stt_provider": "auto",
+    "deepgram_api_key": os.environ.get("DEEPGRAM_API_KEY", ""),
     # auto = piper if model present else elevenlabs if key else silent
     "tts_provider": "auto",
     "elevenlabs_api_key": os.environ.get("ELEVENLABS_API_KEY", ""),

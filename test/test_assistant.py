@@ -158,6 +158,36 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class DeepgramTest(unittest.TestCase):
+    def test_parse_batch_response(self):
+        from assistant import stt
+
+        payload = {"results": {"channels": [
+            {"alternatives": [{"transcript": "hello world"}]}]}}
+        self.assertEqual(stt.parse_deepgram(payload), "hello world")
+        self.assertEqual(stt.parse_deepgram({}), "")
+
+    def test_parse_streaming_message(self):
+        from assistant import stt
+
+        interim = {"channel": {"alternatives": [{"transcript": "hello"}]},
+                   "is_final": False}
+        final = {"channel": {"alternatives": [{"transcript": "hello world"}]},
+                 "is_final": True}
+        self.assertEqual(stt.parse_dg_message(interim), ("hello", False))
+        self.assertEqual(stt.parse_dg_message(final), ("hello world", True))
+        self.assertEqual(stt.parse_dg_message({"junk": 1}), ("", False))
+
+    def test_provider_order(self):
+        from assistant import stt
+
+        cfg = dict(config.DEFAULTS)
+        cfg["stt_provider"] = "auto"
+        cfg["deepgram_api_key"] = "k"
+        if not stt.local_available():
+            self.assertEqual(stt.resolve_provider(cfg), "deepgram")
+
+
 class RecordingSttTest(unittest.TestCase):
     def test_save_wav_header(self):
         import numpy as np

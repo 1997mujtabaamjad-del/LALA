@@ -152,6 +152,8 @@ function registerIpc() {
           ? Buffer.from(payload.recBytes)
           : asr.pcmToWav(Buffer.from(payload.pcm));
         text = await asr.transcribeCloud(bytes, payload.recMime || 'audio/wav', settings);
+      } else if (payload.engine === 'deepgram') {
+        text = await asr.transcribeDeepgram(Buffer.from(payload.pcm), settings);
       } else if (payload.engine === 'offline') {
         text = await asr.transcribeOffline(Buffer.from(payload.pcm));
       } else {

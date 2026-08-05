@@ -178,6 +178,8 @@
             <span class="muted">(offline if ready, else cloud)</span></label>
           <label><input type="radio" name="engine" value="offline" /> Offline — Vosk
             <span class="muted">(private, English model)</span></label>
+          <label><input type="radio" name="engine" value="deepgram" /> Cloud — Deepgram
+            <span class="muted">(fastest, nova-2)</span></label>
           <label><input type="radio" name="engine" value="cloud" /> Cloud — OpenAI Whisper</label>
         </div>
 
@@ -190,6 +192,9 @@
 
         <div id="cloud-section">
           <h3>Cloud settings</h3>
+          <label>Deepgram API key
+            <input id="deepgram-key" type="password" placeholder="…" autocomplete="off" />
+          </label>
           <label>OpenAI API key
             <input id="openai-key" type="password" placeholder="sk-…" autocomplete="off" />
           </label>

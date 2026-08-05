@@ -242,6 +242,40 @@ async function transcribeOffline(pcmBuffer) {
 }
 
 /**
+ * Transcribe via Deepgram (nova-2). Raw PCM is wrapped into WAV first.
+ */
+async function transcribeDeepgram(pcmBuffer, settings) {
+  if (!settings.deepgramKey) {
+    throw new Error('Add your Deepgram API key in Settings to use Deepgram STT.');
+  }
+  const res = await fetch(
+    'https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${settings.deepgramKey}`,
+        'Content-Type': 'audio/wav'
+      },
+      body: pcmToWav(Buffer.from(pcmBuffer))
+    }
+  );
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body && body.err_msg) message = body.err_msg;
+    } catch { /* ignore */ }
+    throw new Error(`Deepgram error: ${message}`);
+  }
+  const json = await res.json();
+  try {
+    return json.results.channels[0].alternatives[0].transcript.trim();
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Transcribe via the OpenAI Whisper API. Accepts any container the renderer
  * recorded (typically audio/webm).
  */
@@ -359,6 +393,7 @@ module.exports = {
   init,
   status,
   transcribeOffline,
+  transcribeDeepgram,
   transcribeCloud,
   downloadModel,
   sttStart,

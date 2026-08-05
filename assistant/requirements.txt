@@ -2,6 +2,7 @@
 numpy
 requests
 sounddevice        # microphone + playback (needs system portaudio)
+websocket-client   # Deepgram streaming STT
 openwakeword       # "Hey Jarvis" wake word
 faster-whisper     # local Whisper STT
 piper-tts          # local TTS
