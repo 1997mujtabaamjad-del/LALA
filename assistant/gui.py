@@ -175,6 +175,10 @@ class Gui:
         row(win, "ElevenLabs API key", "elevenlabs_api_key", show="*")
         row(win, "STT provider (auto | local | openai)", "stt_provider")
         row(win, "TTS provider (auto | piper | elevenlabs | none)", "tts_provider")
+        row(win, "Hue bridge IP (for smart lights)", "hue_ip")
+        row(win, "Hue username/key", "hue_key")
+        row(win, "Home Assistant URL", "ha_url")
+        row(win, "Home Assistant token", "ha_token", show="*")
 
         gpu_var = tk.BooleanVar(value=bool(self.cfg.get("prefer_gpu", True)))
         tk.Checkbutton(win, text="Use GPU (CUDA) for Whisper/Piper when available",

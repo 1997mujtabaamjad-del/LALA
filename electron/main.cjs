@@ -125,7 +125,7 @@ function registerIpc() {
   // ---- Action execution ----------------------------------------------------
   ipcMain.handle('actions:execute', async (_e, action, ctx) => {
     try {
-      return await actions.execute(action, ctx || {}, { win: mainWindow });
+      return await actions.execute(action, ctx || {}, { win: mainWindow, store });
     } catch (err) {
       return { ok: false, message: `Action failed: ${err.message || err}` };
     }

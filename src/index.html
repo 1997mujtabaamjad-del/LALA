@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:8420; media-src 'self' blob:; worker-src 'self' blob:;" />
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:8420 https://api.open-meteo.com https://geocoding-api.open-meteo.com https://wttr.in https://api.duckduckgo.com; media-src 'self' blob:; worker-src 'self' blob:;" />
   <title>LALA — Voice Command Assistant</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2322d3ee'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%230b1020' font-family='sans-serif' font-weight='bold'%3EL%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="styles.css" />
@@ -143,6 +143,30 @@
               <option value="whisper-1">whisper-1 (classic)</option>
               <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe (newer, cheaper)</option>
             </select>
+          </label>
+        </div>
+
+        <div id="lights-section">
+          <h3>Smart lights (Hue / Home Assistant)</h3>
+          <label>Provider
+            <select id="lights-provider">
+              <option value="auto">Auto-detect</option>
+              <option value="hue">Philips Hue</option>
+              <option value="homeassistant">Home Assistant</option>
+              <option value="none">None</option>
+            </select>
+          </label>
+          <label>Hue bridge IP
+            <input id="hue-ip" type="text" placeholder="192.168.1.20" />
+          </label>
+          <label>Hue username / key
+            <input id="hue-key" type="text" placeholder="press link button, then create user" />
+          </label>
+          <label>Home Assistant URL
+            <input id="ha-url" type="text" placeholder="http://homeassistant.local:8123" />
+          </label>
+          <label>HA long-lived token
+            <input id="ha-token" type="password" />
           </label>
         </div>
 

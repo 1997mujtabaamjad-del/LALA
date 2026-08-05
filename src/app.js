@@ -30,7 +30,12 @@ const DEFAULT_SETTINGS = {
   continuousConversation: true,
   useBrain: true,
   brainUrl: 'http://127.0.0.1:8420',
-  hwAccel: true
+  hwAccel: true,
+  lightsProvider: 'auto',
+  hueIp: '',
+  hueKey: '',
+  haUrl: '',
+  haToken: ''
 };
 
 const JOKES = [
@@ -227,7 +232,9 @@ async function askBrain(text) {
 function hydrate(action, response, params) {
   const act = JSON.parse(JSON.stringify(action));
   const encode = act.type === 'url' ? encodeURIComponent : (v) => v;
-  if (typeof act.value === 'string') act.value = fillTemplate(act.value, params, encode);
+  for (const [key, value] of Object.entries(act)) {
+    if (typeof value === 'string') act[key] = fillTemplate(value, params, encode);
+  }
   const filledResponse = fillTemplate(response || '', params);
   return { act, filledResponse };
 }
@@ -336,6 +343,57 @@ function confirmPending(confirmed) {
 
 /* ------------------------------------------------- browser-mode fallback */
 
+async function fetchWeather(city) {
+  try {
+    if (city) {
+      const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+      const gj = await g.json();
+      const place = (gj.results || [])[0];
+      if (!place) return null;
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m`);
+      const c = (await r.json()).current;
+      const words = { 0: 'clear skies', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast', 61: 'light rain', 63: 'rain', 95: 'thunderstorms' };
+      return `It's ${Math.round(c.temperature_2m)}°C in ${place.name}, ${words[c.weather_code] || 'cloudy'}, feels like ${Math.round(c.apparent_temperature)}°, humidity ${c.relative_humidity_2m}%.`;
+    }
+    const r = await fetch('https://wttr.in/?format=j1');
+    const j = await r.json();
+    return `It's ${j.current_condition[0].temp_C}°C in ${j.nearest_area[0].areaName[0].value}, humidity ${j.current_condition[0].humidity}%.`;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchDdg(query) {
+  try {
+    const r = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&no_redirect=1`);
+    const j = await r.json();
+    let text = j.AbstractText || j.Answer || '';
+    if (!text && (j.RelatedTopics || []).length) text = j.RelatedTopics[0].Text || '';
+    return text ? String(text).slice(0, 400) : null;
+  } catch {
+    return null;
+  }
+}
+
+function calParseWhen(text) {
+  const t = String(text || '').toLowerCase();
+  const m = t.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2] || '0', 10);
+  if (m[3] === 'pm' && h < 12) h += 12;
+  const days = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+  const now = new Date();
+  const day = new Date(now);
+  if (t.includes('tomorrow')) day.setDate(day.getDate() + 1);
+  else {
+    const wd = Object.keys(days).find((d) => new RegExp(`\\b${d}\\b`).test(t));
+    if (wd) day.setDate(day.getDate() + ((days[wd] - now.getDay() + 7) % 7 || 7));
+  }
+  day.setHours(h, min, 0, 0);
+  return day;
+}
+
 function browserExecute(act, fallbackResponse) {
   switch (act.type) {
     case 'url':
@@ -352,6 +410,49 @@ function browserExecute(act, fallbackResponse) {
     }
     case 'speak':
       respond(act.value);
+      return;
+    case 'weather':
+      fetchWeather(act.city || '').then((t) =>
+        respond(t || 'I couldn’t reach a weather service right now.'));
+      return;
+    case 'websearch': {
+      const q = act.query || '';
+      fetchDdg(q).then((a) => {
+        if (a) respond(a);
+        else {
+          window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener');
+          respond('No instant answer — I opened the search results.');
+        }
+      });
+      return;
+    }
+    case 'calendar': {
+      const events = JSON.parse(localStorage.getItem('lala.calendar') || '[]');
+      if (act.op === 'list') {
+        const upcoming = events
+          .map((e) => ({ ...e, ts: Date.parse(e.when) }))
+          .filter((e) => e.ts > Date.now() - 3600e3)
+          .sort((a, b) => a.ts - b.ts)
+          .slice(0, 5);
+        respond(upcoming.length
+          ? 'Up next: ' + upcoming.map((e) => `${e.title} — ${new Date(e.ts).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`).join('; ') + '.'
+          : 'Your calendar is clear — nothing scheduled.');
+        return;
+      }
+      const when = calParseWhen(act.text || '');
+      if (!when) {
+        respond('I need a time — try “add dentist appointment tomorrow at 3 pm”.');
+        return;
+      }
+      const title = (act.text || '').replace(/\b(?:to|on) my calendar\b/g, '')
+        .split(/\b(?:today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at)\b/)[0].trim() || 'event';
+      events.push({ when: when.toISOString(), title });
+      localStorage.setItem('lala.calendar', JSON.stringify(events));
+      respond(`Added “${title}” to your calendar.`);
+      return;
+    }
+    case 'lights':
+      respond('Smart lights need the desktop app — configure Hue or Home Assistant in its Settings.');
       return;
     case 'clipboard':
       navigator.clipboard
@@ -772,6 +873,11 @@ function renderSettingsForm() {
   $('#brain-url').value = s.brainUrl || 'http://127.0.0.1:8420';
   $('#hw-accel').checked = s.hwAccel !== false;
   $('#continuous-conversation').checked = s.continuousConversation !== false;
+  $('#lights-provider').value = s.lightsProvider || 'auto';
+  $('#hue-ip').value = s.hueIp || '';
+  $('#hue-key').value = s.hueKey || '';
+  $('#ha-url').value = s.haUrl || '';
+  $('#ha-token').value = s.haToken || '';
   $('#wake-wrap').classList.toggle('hidden', !desktop);
   $('#hwaccel-wrap').classList.toggle('hidden', !desktop);
   $('#contconv-wrap').classList.toggle('hidden', !desktop);
@@ -899,6 +1005,11 @@ function bindUI() {
     state.settings.useBrain = $('#use-brain').checked;
     state.settings.brainUrl = $('#brain-url').value.trim() || 'http://127.0.0.1:8420';
     state.settings.hwAccel = $('#hw-accel').checked;
+    state.settings.lightsProvider = $('#lights-provider').value;
+    state.settings.hueIp = $('#hue-ip').value.trim();
+    state.settings.hueKey = $('#hue-key').value.trim();
+    state.settings.haUrl = $('#ha-url').value.trim();
+    state.settings.haToken = $('#ha-token').value.trim();
     await persistSettings();
     await refreshEngineChip();
     if (desktop) {

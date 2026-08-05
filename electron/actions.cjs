@@ -286,6 +286,142 @@ async function power(kind) {
 }
 
 // ---------------------------------------------------------------------------
+// Weather / web search / calendar / smart lights
+// ---------------------------------------------------------------------------
+
+const WMO = {
+  0: 'clear skies', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast',
+  45: 'foggy', 48: 'foggy', 51: 'light drizzle', 53: 'drizzle', 55: 'heavy drizzle',
+  61: 'light rain', 63: 'rain', 65: 'heavy rain', 71: 'light snow', 73: 'snow',
+  75: 'heavy snow', 80: 'rain showers', 82: 'violent showers', 95: 'thunderstorms',
+  96: 'thunderstorms with hail', 99: 'thunderstorms with hail'
+};
+
+async function weatherSummary(city) {
+  try {
+    if (city) {
+      const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+      const gj = await g.json();
+      const place = (gj.results || [])[0];
+      if (!place) return null;
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m`);
+      const j = await r.json();
+      const c = j.current;
+      return `It's ${Math.round(c.temperature_2m)}°C in ${place.name}, ${WMO[c.weather_code] || 'cloudy'}, feels like ${Math.round(c.apparent_temperature)}°, wind ${Math.round(c.wind_speed_10m)} km/h, humidity ${c.relative_humidity_2m}%.`;
+    }
+    const r = await fetch('https://wttr.in/?format=j1');
+    const j = await r.json();
+    const cur = j.current_condition[0];
+    const place = j.nearest_area[0].areaName[0].value;
+    return `It's ${cur.temp_C}°C in ${place}, ${cur.weatherDesc[0].value.toLowerCase()}, humidity ${cur.humidity}%.`;
+  } catch {
+    return null;
+  }
+}
+
+async function ddgAnswer(query) {
+  try {
+    const r = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&no_redirect=1`);
+    const j = await r.json();
+    let text = j.AbstractText || j.Answer || '';
+    if (!text && (j.RelatedTopics || []).length) text = j.RelatedTopics[0].Text || '';
+    text = String(text || '').trim();
+    return text ? text.slice(0, 400) : null;
+  } catch {
+    return null;
+  }
+}
+
+const CAL_DAYS = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+function parseCalendarWhen(text) {
+  const t = String(text || '').toLowerCase();
+  const m = t.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2] || '0', 10);
+  if (m[3] === 'pm' && h < 12) h += 12;
+  const now = new Date();
+  let day = new Date(now);
+  if (t.includes('tomorrow')) day.setDate(day.getDate() + 1);
+  else {
+    const wd = Object.keys(CAL_DAYS).find((d) => new RegExp(`\\b${d}\\b`).test(t));
+    if (wd) {
+      const delta = (CAL_DAYS[wd] - now.getDay() + 7) % 7 || 7;
+      day.setDate(day.getDate() + delta);
+    }
+  }
+  day.setHours(h, min, 0, 0);
+  return day;
+}
+
+function calendar(action, store) {
+  if (action.op === 'add') {
+    const events = store.getCalendar();
+    events.push({ id: `ev${events.length}${Date.now()}`, when: action.when, title: action.title });
+    store.saveCalendar(events);
+    return 'Saved to your calendar.';
+  }
+  const now = Date.now();
+  const events = store.getCalendar()
+    .map((e) => ({ ...e, ts: Date.parse(e.when) }))
+    .filter((e) => !Number.isNaN(e.ts) && e.ts > now - 3600e3)
+    .sort((a, b) => a.ts - b.ts)
+    .slice(0, 5);
+  if (!events.length) return 'Your calendar is clear — nothing scheduled.';
+  const lines = events.map((e) => {
+    const d = new Date(e.ts);
+    return `${e.title} — ${d.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`;
+  });
+  return `Up next: ${lines.join('; ')}.`;
+}
+
+const LIGHT_HUE = { red: 0, orange: 7000, yellow: 12000, green: 25000, cyan: 32000, blue: 46000, purple: 50000, pink: 56000 };
+const LIGHT_CT = { warm: 500, white: 370, cool: 200 };
+
+function huePayload(action) {
+  if (action.op === 'on') return { on: true };
+  if (action.op === 'off') return { on: false };
+  if (action.op === 'set') return { on: true, bri: Math.round(Math.max(1, Math.min(100, action.value)) * 254 / 100) };
+  if (action.op === 'color') {
+    if (LIGHT_CT[action.color]) return { on: true, ct: LIGHT_CT[action.color] };
+    if (LIGHT_HUE[action.color]) return { on: true, hue: LIGHT_HUE[action.color], sat: 254 };
+  }
+  return { on: true };
+}
+
+async function controlLights(settings, action) {
+  const payload = huePayload(action);
+  const provider =
+    settings.lightsProvider === 'hue' || (settings.lightsProvider !== 'homeassistant' && settings.hueIp && settings.hueKey)
+      ? 'hue'
+      : settings.haUrl && settings.haToken ? 'homeassistant' : null;
+  try {
+    if (provider === 'hue') {
+      const r = await fetch(`http://${settings.hueIp}/api/${settings.hueKey}/groups/0/action`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    } else if (provider === 'homeassistant') {
+      const on = payload.on !== false;
+      const body = on ? (payload.bri ? { brightness: payload.bri } : {}) : {};
+      const r = await fetch(`${settings.haUrl.replace(/\/+$/, '')}/api/services/light/${on ? 'turn_on' : 'turn_off'}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${settings.haToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    } else {
+      return 'No smart-light provider configured — add Hue or Home Assistant details in Settings.';
+    }
+  } catch (err) {
+    return `Lights unreachable: ${err.message}`;
+  }
+  return { on: 'Lights on.', off: 'Lights off.', set: `Lights set to ${action.value}%.`, color: `Lights set to ${action.color}.` }[action.op] || 'Lights updated.';
+}
+
+// ---------------------------------------------------------------------------
 // Misc
 // ---------------------------------------------------------------------------
 
@@ -354,6 +490,38 @@ async function execute(action, ctx, deps = {}) {
 
     case 'dictation':
       return ok(action.op === 'start' ? 'Dictation started — speak freely, then say "stop dictation".' : 'Dictation stopped.');
+
+    case 'weather': {
+      const text = await weatherSummary(action.city || '');
+      return ok(text || "I couldn't reach a weather service right now.");
+    }
+
+    case 'websearch': {
+      const q = action.query || action.value || '';
+      const answer = await ddgAnswer(q);
+      if (answer) return ok(answer);
+      await shell.openExternal(`https://www.google.com/search?q=${encodeURIComponent(q)}`);
+      return ok('No instant answer — I opened the search results.');
+    }
+
+    case 'calendar': {
+      if (!deps.store) return fail('Calendar unavailable.');
+      if (action.op === 'list') return ok(calendar(action, deps.store));
+      const when = parseCalendarWhen(action.text || '');
+      if (!when) {
+        return ok('I need a time — try “add dentist appointment tomorrow at 3 pm”.');
+      }
+      const title = (action.text || '')
+        .replace(/\b(?:to|on) my calendar\b/g, '')
+        .split(/\b(?:today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at)\b/)[0]
+        .trim() || 'event';
+      return ok(calendar({ op: 'add', when: when.toISOString(), title }, deps.store));
+    }
+
+    case 'lights': {
+      const settings = deps.store ? deps.store.getSettings() : {};
+      return ok(await controlLights(settings, action));
+    }
 
     case 'help':
       return ok('Here is everything I understand.', { payload: { type: 'help' } });

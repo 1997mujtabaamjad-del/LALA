@@ -48,7 +48,7 @@ class RouterTest(unittest.TestCase):
         self.assertIn("masala chai", mem.notes_text())
 
     def test_not_a_command(self):
-        resp, action = router.handle("what is the meaning of life")
+        resp, action = router.handle("fly me to the moon please")
         self.assertIsNone(resp)
         self.assertIsNone(action)
 
@@ -141,6 +141,66 @@ class ServerTest(unittest.TestCase):
         finally:
             server.shutdown()
             server.server_close()
+
+
+class SkillsTest(unittest.TestCase):
+    def test_weather_describe(self):
+        from assistant import weather
+
+        self.assertEqual(weather.describe(61), "light rain")
+        self.assertEqual(weather.describe(0), "clear skies")
+        self.assertEqual(weather.describe(9999), "cloudy")
+
+    def test_websearch_parse(self):
+        from assistant import websearch
+
+        self.assertEqual(websearch.parse_ddg({"AbstractText": "A poet."}), "A poet.")
+        self.assertEqual(websearch.parse_ddg({"RelatedTopics": [{"Text": "T."}]}), "T.")
+        self.assertIsNone(websearch.parse_ddg({}))
+
+    def test_lights_payloads(self):
+        from assistant import lights
+
+        self.assertEqual(lights.build_hue_payload("on"), {"on": True})
+        self.assertEqual(lights.build_hue_payload("off"), {"on": False})
+        self.assertEqual(lights.build_hue_payload("set", 100), {"on": True, "bri": 254})
+        self.assertEqual(lights.build_hue_payload("color", None, "blue"),
+                         {"on": True, "hue": 46000, "sat": 254})
+        self.assertEqual(lights.build_hue_payload("color", None, "warm"), {"on": True, "ct": 500})
+
+    def test_calendar_add_and_list(self):
+        from assistant import calendar_store
+
+        calendar_store.save([])
+        event = calendar_store.add("standup", "standup tomorrow at 9am")
+        self.assertIsNotNone(event)
+        pairs = calendar_store.upcoming()
+        self.assertEqual(pairs[0][1]["title"], "standup")
+        self.assertIn("9:00 AM", calendar_store.fmt(pairs[0]))
+
+    def test_calendar_needs_time(self):
+        from assistant import calendar_store
+
+        self.assertIsNone(calendar_store.parse_when("meeting sometime"))
+
+    def test_router_lights(self):
+        resp, action = router.handle("turn on the lights")
+        self.assertEqual((action["type"], action["op"]), ("lights", "on"))
+        resp, action = router.handle("set lights to 40 percent")
+        self.assertEqual(action["value"], 40)
+
+    def test_router_calendar(self):
+        resp, action = router.handle("add dentist appointment tomorrow at 3pm")
+        self.assertEqual(action["type"], "calendar")
+        self.assertEqual(action["title"], "dentist appointment")
+
+    def test_router_websearch(self):
+        resp, action = router.handle("who is ada lovelace")
+        self.assertEqual((action["type"], action["query"]), ("websearch", "ada lovelace"))
+
+    def test_router_weather(self):
+        resp, action = router.handle("weather in hyderabad")
+        self.assertEqual((action["type"], action["city"]), ("weather", "hyderabad"))
 
 
 class WakeBackendTest(unittest.TestCase):

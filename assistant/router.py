@@ -14,6 +14,8 @@ import webbrowser
 from datetime import datetime
 from urllib.parse import quote
 
+from . import calendar_store, lights, websearch, weather
+
 SYSTEM = platform.system()  # Windows | Darwin | Linux
 
 APPS = {
@@ -81,15 +83,43 @@ def handle(text, memory=None):
 
     m = re.match(r"^weather(?: in| for)? ?(.*)$", t)
     if m:
-        city = m.group(1)
-        url = f"https://wttr.in/{quote(city)}" if city else "https://wttr.in/"
-        return "Checking the weather.", {"type": "url", "value": url}
+        return "Checking the weather.", {"type": "weather", "city": m.group(1)}
 
     if t in ("what time is it", "time", "tell me the time"):
         return f"It's {datetime.now().strftime('%I:%M %p')}.", {"type": "speak"}
 
     if t in ("what's the date", "what is the date", "what day is it"):
         return f"Today is {datetime.now():%A, %B %d, %Y}.", {"type": "speak"}
+
+    m = re.match(r"^(?:who is|what is|what are|tell me about) (.+)$", t)
+    if m:
+        return "Let me look that up.", {"type": "websearch", "query": m.group(1)}
+
+    m = re.match(r"^(?:add|schedule|put) (.+)$", t)
+    if m:
+        rest = re.sub(r"\b(?:to|on) my calendar\b", "", m.group(1)).strip()
+        when = calendar_store.parse_when(rest)
+        if when:
+            title = calendar_store.split_title(rest)
+            return (f"Added “{title}” for {when:%A at %I:%M %p}.",
+                    {"type": "calendar", "op": "add", "title": title,
+                     "when": when.isoformat()})
+
+    if t in ("what s on my calendar", "my schedule", "my calendar",
+             "what s on my calendar today", "what's on my calendar"):
+        return "Here's your schedule.", {"type": "calendar", "op": "list"}
+
+    if t in ("turn on the lights", "lights on", "light on", "switch on the lights"):
+        return "Lights on.", {"type": "lights", "op": "on"}
+    if t in ("turn off the lights", "lights off", "light off", "switch off the lights"):
+        return "Lights off.", {"type": "lights", "op": "off"}
+    m = re.match(r"^set (?:the )?lights? to (\d{1,3})(?: percent)?$", t)
+    if m:
+        return f"Setting lights to {m.group(1)}%.", {"type": "lights", "op": "set", "value": int(m.group(1))}
+    m = re.match(r"^(?:set |make |turn )?(?:the )?lights? "
+                 r"(red|orange|yellow|green|cyan|blue|purple|pink|warm|white|cool)$", t)
+    if m:
+        return f"Setting lights to {m.group(1)}.", {"type": "lights", "op": "color", "color": m.group(1)}
 
     if t in ("volume up", "louder"):
         return "Volume up.", {"type": "volume", "op": "up"}
@@ -139,6 +169,23 @@ def perform(action):
         kind = action["type"]
         if kind == "url":
             webbrowser.open(action["value"])
+        elif kind == "weather":
+            note = weather.current_for_city(action.get("city", ""))
+            return note or "I couldn't reach a weather service right now."
+        elif kind == "websearch":
+            answer = websearch.answer(action["query"])
+            if answer:
+                return answer
+            webbrowser.open(f"https://www.google.com/search?q={quote(action['query'])}")
+            return "No instant answer — I opened the search results."
+        elif kind == "calendar":
+            return _calendar(action)
+        elif kind == "lights":
+            from . import config
+
+            _ok, msg = lights.control(config.load(), action["op"],
+                                      action.get("value"), action.get("color"))
+            return msg
         elif kind == "speak":
             pass
         elif kind == "app":
@@ -152,6 +199,19 @@ def perform(action):
     except Exception as exc:  # noqa: BLE001 — voice assistant must not crash
         return f"(action failed: {exc})"
     return ""
+
+
+def _calendar(action):
+    if action["op"] == "add":
+        events = calendar_store.load()
+        events.append({"id": f"ev{len(events)}", "when": action["when"],
+                       "title": action["title"]})
+        calendar_store.save(events)
+        return "Saved to your calendar."
+    pairs = calendar_store.upcoming()
+    if not pairs:
+        return "Your calendar is clear — nothing scheduled."
+    return "Up next: " + "; ".join(calendar_store.fmt(p) for p in pairs) + "."
 
 
 def _launch(candidates):

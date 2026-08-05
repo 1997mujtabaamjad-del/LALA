@@ -188,6 +188,13 @@ Say things like:
 - *"copy that"* — copies your last transcript
 - *"what time is it"*, *"what's the date"*
 - *"flip a coin"*, *"roll a dice"*, *"tell me a joke"*
+- **Weather (spoken)**: *"weather"*, *"weather in hyderabad"* — Open-Meteo (no key), wttr.in fallback
+- **Web answers (spoken)**: *"who is ada lovelace"*, *"what is rayleigh scattering"* —
+  DuckDuckGo instant answers; opens a browser search when there's none
+- **Calendar**: *"add dentist appointment tomorrow at 3pm"*, *"what's on my calendar"* —
+  persisted locally, spoken summaries
+- **Smart lights**: *"lights on/off"*, *"set lights to 40 percent"*, *"lights to warm/blue"* —
+  Philips Hue bridge or Home Assistant (Settings → Smart lights)
 - *"lock computer"*, *"sleep computer"*
 - *"shut down computer"*, *"restart computer"* — **LALA always asks you to confirm first**
 - *"help"* — shows everything it understands

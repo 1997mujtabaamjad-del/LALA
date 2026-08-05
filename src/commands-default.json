@@ -353,17 +353,66 @@
   },
   {
     "id": "weather",
-    "description": "Local weather",
-    "phrases": ["weather", "what's the weather", "what is the weather"],
-    "action": { "type": "url", "value": "https://wttr.in/" },
-    "response": "Checking the weather."
+    "description": "Spoken local weather",
+    "phrases": ["weather", "what's the weather", "what is the weather", "how's the weather"],
+    "action": { "type": "weather" },
+    "response": ""
   },
   {
     "id": "weather-city",
-    "description": "Weather for a city",
-    "phrases": ["weather in <city>", "weather for <city>"],
-    "action": { "type": "url", "value": "https://wttr.in/{city}" },
-    "response": "Checking the weather in {city}."
+    "description": "Spoken weather for a city",
+    "phrases": ["weather in <city>", "weather for <city>", "how's the weather in <city>"],
+    "action": { "type": "weather", "city": "{city}" },
+    "response": ""
+  },
+  {
+    "id": "websearch",
+    "description": "Spoken instant answer from the web",
+    "phrases": ["who is <query>", "what is <query>", "tell me about <query>"],
+    "action": { "type": "websearch", "query": "{query}" },
+    "response": ""
+  },
+  {
+    "id": "calendar-add",
+    "description": "Add a calendar event by voice",
+    "phrases": ["add <details>", "schedule <details>", "put <details>"],
+    "action": { "type": "calendar", "op": "auto", "text": "{details}" },
+    "response": ""
+  },
+  {
+    "id": "calendar-list",
+    "description": "Hear what's scheduled",
+    "phrases": ["what's on my calendar", "my schedule", "my calendar", "what's coming up"],
+    "action": { "type": "calendar", "op": "list" },
+    "response": ""
+  },
+  {
+    "id": "lights-on",
+    "description": "Smart lights on",
+    "phrases": ["turn on the lights", "lights on", "light on", "switch on the lights"],
+    "action": { "type": "lights", "op": "on" },
+    "response": ""
+  },
+  {
+    "id": "lights-off",
+    "description": "Smart lights off",
+    "phrases": ["turn off the lights", "lights off", "light off", "switch off the lights"],
+    "action": { "type": "lights", "op": "off" },
+    "response": ""
+  },
+  {
+    "id": "lights-set",
+    "description": "Smart lights brightness",
+    "phrases": ["set lights to <n> percent", "set the lights to <n> percent", "dim lights to <n> percent"],
+    "action": { "type": "lights", "op": "set", "value": "{n}" },
+    "response": ""
+  },
+  {
+    "id": "lights-color",
+    "description": "Smart lights color",
+    "phrases": ["lights to <color>", "set lights to <color>", "make the lights <color>"],
+    "action": { "type": "lights", "op": "color", "color": "{color}" },
+    "response": ""
   },
   {
     "id": "calculate",

@@ -47,6 +47,16 @@ class Store {
     return arr;
   }
 
+  getCalendar() {
+    return this._read(path.join(this.dir, 'lala-calendar.json'), []);
+  }
+
+  saveCalendar(events) {
+    const arr = Array.isArray(events) ? events : [];
+    this._write(path.join(this.dir, 'lala-calendar.json'), arr);
+    return arr;
+  }
+
   getDefaultCommands() {
     return this._read(this.defaultsFile, []);
   }
