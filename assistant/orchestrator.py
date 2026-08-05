@@ -71,6 +71,7 @@ class Assistant:
     def process(self, text, follow_up=False, spoken=True):
         """Handle one user utterance (voice or typed). Returns the reply."""
         self.log("you", text)
+        interruption = None
 
         response, action = router.handle(text, self.memory)
         self._last_action = action["type"] if action else None

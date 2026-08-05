@@ -344,7 +344,7 @@ class BargeCancelTest(unittest.TestCase):
         stop.set()  # simulate barge-in before streaming starts
         reply = tts.speak_stream(gen(), cfg, stop_event=stop)
         self.assertTrue(closed.is_set(), "LLM generation must be cancelled")
-        self.assertEqual(reply, "One. ")
+        self.assertEqual(reply, "")  # nothing spoken after the interruption
 
 
 class VadTest(unittest.TestCase):
