@@ -83,27 +83,38 @@ class Assistant:
         else:
             self.status("thinking")
             provider = llm.resolve_provider(self.cfg)
+            interruption = None
+            can_speak = spoken and tts.resolve_provider(self.cfg) != "none"
             if provider in ("openai", "ollama"):
                 # Agentic + streaming: tool rounds run silently, final-answer
                 # tokens flow straight into sentence-level TTS while the model
-                # is still generating.
-                tokens = tools.chat_with_tools_stream(self.cfg, self.memory, text)
-                if spoken and tts.resolve_provider(self.cfg) != "none":
-                    reply = tts.speak_stream(tokens, self.cfg)
-                    spoken = False  # already spoken while streaming
+                # is still generating. Barge-in cancels generation + playback
+                # and captures the interruption as a new cycle.
+                if can_speak:
+                    interruption, reply = self.pipeline.speak_tokens(
+                        lambda stop: tools.chat_with_tools_stream(
+                            self.cfg, self.memory, text, stop_event=stop))
+                    spoken = False
                 else:
-                    reply = "".join(tokens)
-            elif spoken and tts.resolve_provider(self.cfg) != "none":
+                    reply = "".join(tools.chat_with_tools_stream(
+                        self.cfg, self.memory, text))
+            elif can_speak:
                 # Stream tokens into sentence-level TTS for minimal latency.
-                reply = tts.speak_stream(llm.ask_stream(self.cfg, self.memory, text),
-                                         self.cfg)
-                spoken = False  # already spoken while streaming
+                interruption, reply = self.pipeline.speak_tokens(
+                    lambda stop: llm.ask_stream(
+                        self.cfg, self.memory, text, stop_event=stop))
+                spoken = False
             else:
                 reply = llm.ask(self.cfg, self.memory, text)
 
         self.memory.add("user", text)
         self.memory.add("assistant", reply)
         self._say(reply, spoken)
+
+        if interruption:
+            # The user barged in: their interruption is the next utterance.
+            self.process(interruption, follow_up=False, spoken=True)
+            return reply
 
         if follow_up and mic.available():
             # Conversational follow-up window: no wake word needed.

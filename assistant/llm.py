@@ -61,19 +61,18 @@ def ask(cfg, memory, user_text, provider=None):
     return "".join(ask_stream(cfg, memory, user_text, provider))
 
 
-def ask_stream(cfg, memory, user_text, provider=None):
-    """Yield reply chunks as they arrive (Ollama/OpenAI streaming)."""
+def ask_stream(cfg, memory, user_text, provider=None, stop_event=None):
+    """Yield reply chunks as they arrive; `stop_event` cancels generation."""
     provider = provider or resolve_provider(cfg)
     messages = build_messages(cfg, memory, user_text)
-
     if provider == "ollama":
-        return _stream_ollama(cfg, messages)
+        return _stream_ollama(cfg, messages, stop_event)
     if provider == "openai":
-        return _stream_openai(cfg, messages)
+        return _stream_openai(cfg, messages, stop_event)
     return iter([_ask_mock(user_text)])
 
 
-def _stream_ollama(cfg, messages):
+def _stream_ollama(cfg, messages, stop_event=None):
     def gen():
         with requests.post(
             cfg["ollama_url"] + "/api/chat",
@@ -83,6 +82,8 @@ def _stream_ollama(cfg, messages):
         ) as r:
             r.raise_for_status()
             for line in r.iter_lines():
+                if stop_event is not None and stop_event.is_set():
+                    return  # barge-in: cancel generation
                 if not line:
                     continue
                 try:
@@ -95,7 +96,7 @@ def _stream_ollama(cfg, messages):
     return gen()
 
 
-def _stream_openai(cfg, messages):
+def _stream_openai(cfg, messages, stop_event=None):
     def gen():
         with requests.post(
             "https://api.openai.com/v1/chat/completions",
@@ -107,6 +108,8 @@ def _stream_openai(cfg, messages):
         ) as r:
             r.raise_for_status()
             for line in r.iter_lines():
+                if stop_event is not None and stop_event.is_set():
+                    return  # barge-in: cancel generation
                 if not line or not line.startswith(b"data: "):
                     continue
                 payload = line[6:].strip()

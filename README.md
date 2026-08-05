@@ -162,6 +162,12 @@ The orchestrator only supplies `think` and the end-of-conversation flag.
 
 ### Power features
 
+- **Barge-in (interruption)**, full spec in both stacks: while TTS plays, the mic
+  stays open (Silero/Energy VAD). The instant you start speaking:
+  1. playback stops immediately,
+  2. the in-flight **LLM generation is cancelled** (stop token in Python streams /
+     `AbortController` on the app's SSE fetch),
+  3. a **new listening cycle** starts and your interruption becomes the next turn.
 - **Silero VAD**: endpointing and barge-in use the **Silero neural VAD**
   (bundled ONNX, streamed 32 ms windows via onnxruntime — no torch) when
   `silero-vad` + `onnxruntime` are installed; otherwise the classic energy

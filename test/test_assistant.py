@@ -323,6 +323,30 @@ class MilestoneTest(unittest.TestCase):
         self.assertGreaterEqual(silence, 300)
 
 
+class BargeCancelTest(unittest.TestCase):
+    def test_speak_stream_cancels_generation_on_barge_in(self):
+        import threading
+
+        from assistant import tts
+
+        cfg = dict(config.DEFAULTS)  # no TTS provider → silent playback
+        closed = threading.Event()
+
+        def gen():
+            try:
+                yield "One. "
+                yield "Two. "
+                yield "Three."
+            finally:
+                closed.set()  # GeneratorExit lands here when closed
+
+        stop = threading.Event()
+        stop.set()  # simulate barge-in before streaming starts
+        reply = tts.speak_stream(gen(), cfg, stop_event=stop)
+        self.assertTrue(closed.is_set(), "LLM generation must be cancelled")
+        self.assertEqual(reply, "One. ")
+
+
 class VadTest(unittest.TestCase):
     def test_vad_plan(self):
         from assistant import vad

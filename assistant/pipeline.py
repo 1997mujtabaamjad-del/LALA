@@ -131,6 +131,28 @@ class Pipeline:
             return None
 
     # ------------------------------------------------------------- stage 5
+    def speak_tokens(self, make_tokens):
+        """Streaming TTS with FULL barge-in while the mic stays open:
+        1) user speech stops playback immediately,
+        2) the same stop event cancels LLM generation mid-stream,
+        3) the interruption is captured as a new listening cycle.
+        `make_tokens(stop_event)` returns the token generator.
+        Returns (interruption_text_or_None, reply_so_far)."""
+        stop = threading.Event()
+        monitor = mic.BargeMonitor(stop, vad=self.vad()) if mic.available() else None
+        if monitor:
+            monitor.start()
+        reply = tts.speak_stream(make_tokens(stop), self.cfg, stop_event=stop)
+        barged = bool(monitor and monitor.barged)
+        if monitor:
+            monitor.stop()
+        if not barged:
+            return None, reply
+        self.log("system", "(barge-in — playback stopped, generation cancelled, listening)")
+        self.status("listening")
+        _audio, interruption, _p = self.listen()
+        return (interruption or None), reply
+
     def speak(self, text, spoken=True):
         """TTS with barge-in. Returns the user's interruption text, if any."""
         self.log(self.cfg["name"], text)

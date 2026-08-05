@@ -211,6 +211,8 @@ async function handleTranscript(rawText) {
   if (!match) {
     // 3a) Agentic + streaming: tokens speak sentence-by-sentence while the
     //     model keeps generating; tool rounds run silently in between.
+    //     Barge-in aborts the fetch (cancels generation) + queued TTS.
+    state.abortCtl = new AbortController();
     let streamed = '';
     const toolReply = await llmToolLoopStream(text, (tok) => {
       streamed += tok;
@@ -220,7 +222,8 @@ async function handleTranscript(rawText) {
         parts.slice(0, -1).forEach((s) => speak(s, { cancel: false }));
         streamed = parts[parts.length - 1];
       }
-    });
+    }, state.abortCtl.signal);
+    state.abortCtl = null;
     if (toolReply) {
       if (streamed.trim()) speak(streamed, { cancel: false });
       respond(toolReply, { silent: true });
@@ -325,7 +328,7 @@ async function runTool(name, args) {
 }
 
 /** Streaming agentic loop: tokens flow out live; tool rounds run silently. */
-async function llmToolLoopStream(text, onToken) {
+async function llmToolLoopStream(text, onToken, signal) {
   const key = state.settings.openaiKey;
   if (!key) return null;
   let messages = [
@@ -341,7 +344,8 @@ async function llmToolLoopStream(text, onToken) {
         body: JSON.stringify({
           model: state.settings.chatModel || 'gpt-4o-mini',
           messages, tools: TOOLS_JS, stream: true
-        })
+        }),
+        signal
       });
       if (!res.ok || !res.body) return null;
       const reader = res.body.getReader();
@@ -766,6 +770,7 @@ async function startPTT() {
   if (state.pttActive) return;
   // Push-to-talk is a manual barge-in: stop any ongoing reply first.
   if ('speechSynthesis' in window) speechSynthesis.cancel();
+  state.abortCtl?.abort();
   const engine = await pickEngine();
   if (!engine) {
     toast('No speech engine ready — open Settings (download the offline model or add an OpenAI key).', 'warn');
@@ -906,9 +911,10 @@ async function startWake() {
       continuous: () => state.settings.continuousConversation !== false && !state.followHold,
       onPartial: (t) => showInterim(t),
       onBarge: () => {
-        // User talked over LALA: cut her voice, listen to them instead.
+        // User talked over LALA: cut her voice, cancel generation, listen.
         state.followHold = false;
         if ('speechSynthesis' in window) speechSynthesis.cancel();
+        state.abortCtl?.abort();
         setOrbMode('recording');
         setChipState('listening');
         setStatusLine('Yes? I’m listening…');

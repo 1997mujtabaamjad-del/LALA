@@ -123,15 +123,15 @@ def chat_with_tools(cfg, memory, user_text, provider=None):
     return "".join(chat_with_tools_stream(cfg, memory, user_text, provider))
 
 
-def chat_with_tools_stream(cfg, memory, user_text, provider=None):
+def chat_with_tools_stream(cfg, memory, user_text, provider=None, stop_event=None):
     """Agentic loop that yields final-answer tokens as they are generated,
     so TTS can start speaking mid-generation. Tool rounds run silently."""
     provider = provider or llm.resolve_provider(cfg)
     messages = llm.build_messages(cfg, memory, user_text)
     if provider == "openai" and cfg.get("openai_api_key"):
-        return _openai_loop_stream(cfg, messages)
+        return _openai_loop_stream(cfg, messages, stop_event)
     if provider == "ollama":
-        return _ollama_loop_stream(cfg, messages)
+        return _ollama_loop_stream(cfg, messages, stop_event)
     return llm.ask_stream(cfg, memory, user_text, provider)
 
 
@@ -161,7 +161,7 @@ def _run_tool_round(messages, slots, cfg):
                          "content": execute_tool(call["function"]["name"], args, cfg)})
 
 
-def _openai_loop_stream(cfg, messages):
+def _openai_loop_stream(cfg, messages, stop_event=None):
     import requests
 
     def gen():
@@ -177,6 +177,8 @@ def _openai_loop_stream(cfg, messages):
                     r.raise_for_status()
                     slots = {}
                     for line in r.iter_lines():
+                        if stop_event is not None and stop_event.is_set():
+                            return  # barge-in: cancel generation
                         if not line or not line.startswith(b"data: "):
                             continue
                         payload = line[6:].strip()
@@ -199,7 +201,7 @@ def _openai_loop_stream(cfg, messages):
     return gen()
 
 
-def _ollama_loop_stream(cfg, messages):
+def _ollama_loop_stream(cfg, messages, stop_event=None):
     import requests
 
     def gen():
@@ -214,6 +216,8 @@ def _ollama_loop_stream(cfg, messages):
                     r.raise_for_status()
                     slots = {}
                     for line in r.iter_lines():
+                        if stop_event is not None and stop_event.is_set():
+                            return  # barge-in: cancel generation
                         if not line:
                             continue
                         try:

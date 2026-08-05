@@ -116,6 +116,12 @@ def speak_stream(chunks, cfg, stop_event=None):
     buf = ""
     full = []
     for chunk in chunks:
+        if stop_event is not None and stop_event.is_set():
+            # Barge-in: cancel the LLM generation itself, not just playback.
+            close = getattr(chunks, "close", None)
+            if close:
+                close()
+            break
         buf += chunk
         full.append(chunk)
         sentences, buf = split_sentences(buf)
