@@ -49,6 +49,15 @@ def system_prompt(cfg, memory):
     role_prompt = roles.prompt_for(cfg.get("role"))
     if role_prompt:
         persona += " ACTIVE ROLE — " + role_prompt
+    from . import profiles
+
+    prof = profiles.active()
+    if prof and prof.get("name"):
+        persona += f" The active user profile is {prof['name']}."
+        if prof.get("facts"):
+            persona += f" About them: {prof['facts']}."
+        if prof.get("language"):
+            persona += f" Prefer replying in {prof['language']}."
     return persona
 
 

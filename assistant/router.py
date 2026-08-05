@@ -164,6 +164,25 @@ def handle(text, memory=None):
              "thats all for now", "goodbye for now", "you can sleep now", "go idle"):
         return "Okay — I'll wait for the wake word.", {"type": "end-conversation"}
 
+    # ---- profiles (v1.2) ----------------------------------------------------
+    m = re.match(r"^(?:create|new) profile (.+)$", t)
+    if m:
+        return f"Profile created.", {"type": "profile", "op": "create", "name": m.group(1)}
+    m = re.match(r"^switch (?:my )?profile to (.+)$|^switch to profile (.+)$"
+                 r"|^use profile (.+)$", t)
+    if m:
+        name = next(g for g in m.groups() if g)
+        return "", {"type": "profile", "op": "switch", "name": name}
+    m = re.match(r"^delete profile (.+)$", t)
+    if m:
+        return "", {"type": "profile", "op": "delete", "name": m.group(1)}
+    if t in ("list profiles", "show profiles", "profiles"):
+        return "", {"type": "profile", "op": "list"}
+    if t in ("who am i", "which profile"):
+        return "", {"type": "profile", "op": "who"}
+    if t in ("remember my voice", "learn my voice"):
+        return "", {"type": "voice-enroll"}
+
     # ---- autonomy ----------------------------------------------------------
     if t.startswith("remind me"):
         when, msg = autonomy.parse_reminder(t)
@@ -303,6 +322,25 @@ def perform(action):
             return f"Saved {action['name']} @ {action['company']}."
         elif kind == "contacts":
             return roles.contact_list()
+        elif kind == "profile":
+            from . import profiles as _p
+
+            op = action["op"]
+            if op == "create":
+                _p.create(action["name"])
+                return f"Profile ‘{action['name']}’ ready — I'll personalize for them."
+            if op == "switch":
+                if _p.switch(action["name"]):
+                    return f"Switched to {action['name']}."
+                return f"No profile ‘{action['name']}’ yet — say “create profile {action['name']}”."
+            if op == "delete":
+                _p.delete(action["name"])
+                return f"Deleted profile {action['name']}."
+            if op == "list":
+                names = _p.list_names()
+                return ("Profiles: " + ", ".join(names) + ".") if names else "No profiles yet."
+            return "You're " + _p.active()["name"] + "." if _p.active() \
+                else "Guest mode — no active profile."
         elif kind == "swot":
             from . import config, llm
 

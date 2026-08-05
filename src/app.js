@@ -482,6 +482,38 @@ async function runMatch(match) {
     return;
   }
 
+  // ---- profiles (v1.2) ----
+  if (act.type === 'profile') {
+    const data = JSON.parse(localStorage.getItem('lala.profiles') || '{"profiles":{},"active":""}');
+    if (act.op === 'create') {
+      data.profiles[act.name] = data.profiles[act.name] || { facts: '' };
+      localStorage.setItem('lala.profiles', JSON.stringify(data));
+      respond(`Profile ‘${act.name}’ ready.`); return;
+    }
+    if (act.op === 'switch') {
+      if (data.profiles[act.name]) {
+        data.active = act.name;
+        localStorage.setItem('lala.profiles', JSON.stringify(data));
+        respond(`Switched to ${act.name}.`);
+      } else respond(`No profile ‘${act.name}’ yet — say “create profile ${act.name}”.`);
+      return;
+    }
+    if (act.op === 'list') {
+      const n = Object.keys(data.profiles);
+      respond(n.length ? 'Profiles: ' + n.join(', ') + '.' : 'No profiles yet.'); return;
+    }
+    respond(data.active ? `You're ${data.active}.` : 'Guest mode — no active profile.');
+    return;
+  }
+  if (act.type === 'voice-enroll') {
+    if (desktop) {
+      const brain = await askBrain(state.lastTranscript);
+      if (brain) { respond(brain); return; }
+    }
+    respond('Voice enrollment runs in the desktop app (needs the mic there).');
+    return;
+  }
+
   // ---- autonomy (proactive LALA) ----
   if (['remind', 'watch', 'routine', 'unwatch', 'goal'].includes(act.type)) {
     if (desktop) {
@@ -1644,6 +1676,13 @@ const TASKS = [
     ['Watch weather', 'watch the weather'],
     ['Autonomous goal', 'take care of researching our top competitor'],
     ['Clear watchers', 'stop watching'],
+  ]],
+  ['👥 Profiles (v1.2)', [
+    ['Create profile', 'create profile asha'],
+    ['Switch profile', 'switch profile to asha'],
+    ['List profiles', 'list profiles'],
+    ['Who am I', 'who am i'],
+    ['Learn my voice', 'remember my voice'],
   ]]
 ];
 

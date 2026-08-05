@@ -46,6 +46,18 @@ class Assistant:
             self._autonomy.start()
             self.log("system", "Autonomy on — reminders, briefings & watchers active.")
 
+        if self.cfg.get("voice_id_enabled", True):
+            from . import profiles
+
+            def _voice_check(audio):
+                name = profiles.match_voice(audio)
+                act = profiles.active()
+                if name and (not act or act["name"] != name):
+                    profiles.switch(name)
+                    self.log("system", f"Recognized {name} — personalizing.")
+
+            self.pipeline.on_audio = _voice_check
+
     def stop(self):
         self.pipeline.stop()
         if getattr(self, "_autonomy", None):
@@ -90,8 +102,11 @@ class Assistant:
             if action.get("confirm") and not self.confirm_fn(text):
                 self._say("Okay, cancelled.", spoken)
                 return "Okay, cancelled."
-            side_note = router.perform(action)
-            reply = (response + (" " + side_note if side_note else "")).strip()
+            if action["type"] == "voice-enroll":
+                reply = self._enroll_voice()
+            else:
+                side_note = router.perform(action)
+                reply = (response + (" " + side_note if side_note else "")).strip()
         else:
             self.status("thinking")
             provider = llm.resolve_provider(self.cfg)
@@ -126,7 +141,18 @@ class Assistant:
         if interruption:
             # The user barged in: their interruption is the next utterance.
             self.process(interruption, follow_up=False, spoken=True)
-            return reply
+        return reply
+
+    def _enroll_voice(self):
+        from . import mic, profiles
+
+        if not mic.available():
+            return "Voice enrollment needs a microphone."
+        self._say("Say a sentence so I can learn your voice.", True)
+        audio = mic.record_until_silence(max_seconds=4)
+        prof = profiles.active() or profiles.create("main")
+        profiles.set_voice(prof["name"], profiles.voiceprint(audio))
+        return f"Got it, {prof['name']} — I'll recognize your voice now."
 
         if follow_up and mic.available():
             # Conversational follow-up window: no wake word needed.

@@ -73,6 +73,8 @@ DEFAULTS = {
     "prefer_silero": True,
     # Proactive behaviors: reminders, daily briefings, watchers, goals
     "autonomy_enabled": True,
+    # v1.2: recognize enrolled voices and personalize per profile
+    "voice_id_enabled": True,
     # Smart lights: auto | hue | homeassistant | wled | none
     "lights_provider": "auto",
     "hue_ip": "",

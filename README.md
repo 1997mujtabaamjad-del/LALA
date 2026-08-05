@@ -147,6 +147,17 @@ calls tools that map onto the existing action executor, and each call shows as a
 polite miss. The deterministic router stays as the zero-latency fast path for
 exact commands.
 
+### 👥 v1.2 — multi-user voice profiles
+
+- `create profile asha` · `switch profile to asha` · `list profiles` · `who am i`
+- Per-profile facts + preferred language + default role feed the LLM persona
+  (“The active user is Asha. About them: loves biryani.”)
+- **Voice recognition**: `remember my voice` records a sample and stores a
+  20-dim log-spectral voiceprint; afterwards LALA recognizes who is talking on
+  each wake turn and switches + personalizes automatically (`voice_id_enabled`)
+- Memory stays household-shared by design; profiles personalize tone/knowledge
+- Tasks tab → 👥 Profiles for one-click demos
+
 ### 🤖 Autonomous LALA
 
 LALA doesn't just react — she acts on her own:

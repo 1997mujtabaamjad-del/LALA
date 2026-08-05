@@ -576,6 +576,41 @@
     "response": ""
   },
   {
+    "id": "profile-create",
+    "description": "Create a user profile",
+    "phrases": ["create profile <name>", "new profile <name>"],
+    "action": { "type": "profile", "op": "create", "name": "{name}" },
+    "response": ""
+  },
+  {
+    "id": "profile-switch",
+    "description": "Switch active profile",
+    "phrases": ["switch profile to <name>", "switch my profile to <name>", "use profile <name>"],
+    "action": { "type": "profile", "op": "switch", "name": "{name}" },
+    "response": ""
+  },
+  {
+    "id": "profile-list",
+    "description": "List profiles",
+    "phrases": ["list profiles", "show profiles"],
+    "action": { "type": "profile", "op": "list" },
+    "response": ""
+  },
+  {
+    "id": "profile-who",
+    "description": "Who is active",
+    "phrases": ["who am i", "which profile"],
+    "action": { "type": "profile", "op": "who" },
+    "response": ""
+  },
+  {
+    "id": "voice-enroll",
+    "description": "Teach LALA your voice",
+    "phrases": ["remember my voice", "learn my voice"],
+    "action": { "type": "voice-enroll" },
+    "response": ""
+  },
+  {
     "id": "stop-listening",
     "description": "End continuous conversation; wait for the wake word again",
     "phrases": ["stop listening", "stop listening lala", "that's all for now", "goodbye for now", "go idle"],

@@ -267,6 +267,44 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class ProfilesTest(unittest.TestCase):
+    def test_crud_and_switch(self):
+        from assistant import profiles
+
+        profiles.save({"profiles": {}, "active": ""})
+        profiles.create("asha", facts="loves biryani")
+        self.assertTrue(profiles.switch("asha"))
+        self.assertEqual(profiles.active()["name"], "asha")
+        self.assertIn("biryani", profiles.active()["facts"])
+        self.assertIn("asha", profiles.list_names())
+        self.assertFalse(profiles.switch("ghost"))
+        profiles.delete("asha")
+        self.assertEqual(profiles.active(), None)
+
+    def test_voiceprint_matches_same_audio(self):
+        import numpy as np
+
+        from assistant import profiles
+
+        rng = np.random.default_rng(7)
+        t = np.arange(16000 * 2) / 16000
+        audio = (0.3 * np.sin(2 * np.pi * 180 * t) * np.sin(2 * np.pi * 3 * t)
+                 + 0.1 * rng.normal(0, 1, len(t)))
+        audio = (audio * 32767).astype(np.int16)
+        v = profiles.voiceprint(audio)
+        self.assertAlmostEqual(float(np.linalg.norm(v)), 1.0, places=3)
+        profiles.save({"profiles": {"asha": {"voice": v.tolist()}}, "active": ""})
+        self.assertEqual(profiles.match_voice(audio), "asha")
+
+    def test_router_profile_commands(self):
+        _r, action = router.handle("create profile asha")
+        self.assertEqual((action["type"], action["op"]), ("profile", "create"))
+        _r, action = router.handle("switch profile to asha")
+        self.assertEqual(action["op"], "switch")
+        _r, action = router.handle("remember my voice")
+        self.assertEqual(action["type"], "voice-enroll")
+
+
 class AutonomyTest(unittest.TestCase):
     def test_parse_reminder(self):
         from assistant import autonomy

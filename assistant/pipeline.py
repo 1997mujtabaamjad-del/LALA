@@ -28,6 +28,7 @@ class Pipeline:
         self._vad = None
         self._busy = threading.Event()
         self.wake_listener = None
+        self.on_audio = None  # optional hook: called with each captured utterance
 
     def vad(self):
         if self._vad is None:
@@ -75,6 +76,11 @@ class Pipeline:
                 audio, text, _partials = self.listen(next_max)
                 if audio is None or not text:
                     break
+                if self.on_audio:
+                    try:
+                        self.on_audio(audio)
+                    except Exception:  # noqa: BLE001
+                        pass
                 path = self.save_recording(audio, text)
                 if path:
                     self.log("system", f"🎙 recording saved: {os.path.basename(path)}")
