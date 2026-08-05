@@ -158,7 +158,7 @@ def handle(text, memory=None):
     if t in ("user guide", "how do i use you", "how do i speak to you",
              "teach me to use you", "tutorial", "help me speak", "guide me",
              "how do i talk to you"):
-        return "Here's how to talk to me.", {"type": "guide"}
+        return "", {"type": "guide"}
 
     if t in ("lock computer", "lock the computer", "lock screen"):
         return "Locking the computer.", {"type": "power", "op": "lock"}

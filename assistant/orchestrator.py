@@ -149,7 +149,7 @@ class Assistant:
                 self._say("Okay, cancelled.", spoken)
                 return "Okay, cancelled."
             side_note = router.perform(action)
-            reply = response + (" " + side_note if side_note else "")
+            reply = (response + (" " + side_note if side_note else "")).strip()
         else:
             self.status("thinking")
             if spoken and tts.resolve_provider(self.cfg) != "none":
