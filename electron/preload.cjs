@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('lala', {
     ipcRenderer.on('asr:progress', (_e, data) => cb(data));
   },
 
+  // Streaming STT + recordings
+  sttStart: () => ipcRenderer.invoke('stt:start'),
+  sttFeed: (pcm) => ipcRenderer.invoke('stt:feed', pcm),
+  sttFinish: () => ipcRenderer.invoke('stt:finish'),
+  saveRecording: (pcm, text) => ipcRenderer.invoke('rec:save', { pcm, text }),
+
   // Wake word stream
   wakeStart: () => ipcRenderer.invoke('wake:start'),
   wakeFeed: (pcm) => ipcRenderer.invoke('wake:feed', pcm),

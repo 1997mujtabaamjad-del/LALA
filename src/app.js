@@ -13,7 +13,7 @@
 import { matchCommand, normalize, fillTemplate, detectWakeWord } from './command-engine.js';
 import { createWebSpeech } from './web-speech.js';
 import { createWakeListener } from './wakeword.js';
-import { startCapture, stopCapture, cancelCapture, isCapturing } from './recorder.js';
+import { startStreamCapture } from './streamrecorder.js';
 
 const desktop = typeof window.lala !== 'undefined';
 const $ = (sel) => document.querySelector(sel);
@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS = {
   continuousConversation: true,
   useBrain: true,
   brainUrl: 'http://127.0.0.1:8420',
+  saveRecordings: true,
   hwAccel: true,
   lightsProvider: 'auto',
   hueIp: '',
@@ -585,7 +586,15 @@ async function startPTT() {
     return;
   }
   try {
-    await startCapture();
+    await window.lala.sttStart();
+    state.ptt = await startStreamCapture({
+      onChunk: (pcm) => {
+        // Streaming STT: live partial transcript while holding Space.
+        window.lala.sttFeed(pcm).then((r) => {
+          if (r && r.partial) showInterim(r.partial);
+        });
+      }
+    });
   } catch {
     toast('Microphone unavailable — check OS permissions.', 'error');
     return;
@@ -600,41 +609,55 @@ async function startPTT() {
 async function endPTT() {
   if (!state.pttActive) return;
   state.pttActive = false;
+  const capture = state.ptt;
+  state.ptt = null;
   setOrbMode('idle');
   setChipState('thinking…');
   setStatusLine('Transcribing…');
 
-  const rec = await stopCapture();
-  if (!rec || rec.blob.size < 200) {
-    setStatusLine('');
-    setChipState('idle');
-    return;
+  const { pcm } = await capture.stop();
+  showInterim('');
+
+  let text = '';
+  if (state._engine === 'offline') {
+    const r = await window.lala.sttFinish();
+    text = (r && r.text) || '';
+  } else {
+    const result = await window.lala.transcribe({ engine: 'cloud', pcm });
+    await window.lala.sttFinish();
+    if (!result.ok) {
+      toast(result.error || 'Transcription failed.', 'error');
+      addLog('sys', `ASR error: ${result.error}`);
+      setStatusLine('');
+      setChipState('idle');
+      return;
+    }
+    text = result.text || '';
   }
 
-  const payload = {
-    engine: state._engine,
-    recBytes: await rec.blob.arrayBuffer(),
-    recMime: rec.mime,
-    pcm: rec.pcm
-  };
-
-  const result = await window.lala.transcribe(payload);
   setStatusLine('');
   setChipState('idle');
 
-  if (!result.ok) {
-    toast(result.error || 'Transcription failed.', 'error');
-    addLog('sys', `ASR error: ${result.error}`);
-    return;
+  if (text) {
+    if (state.settings.saveRecordings !== false) {
+      window.lala.saveRecording(pcm, text).then((r) => {
+        if (r && r.ok) addLog('sys', `🎙 recording saved: ${r.path.split(/[\\/]/).pop()}`);
+      }).catch(() => {});
+    }
+    await handleTranscript(text);
+  } else {
+    toast('I didn’t catch anything — try again.', 'warn');
   }
-  if (result.text) await handleTranscript(result.text);
-  else toast('I didn’t catch anything — try again.', 'warn');
 }
 
 function cancelPTT() {
   if (!state.pttActive) return;
   state.pttActive = false;
-  cancelCapture();
+  if (state.ptt) {
+    state.ptt.stop().catch(() => {});
+    state.ptt = null;
+  }
+  window.lala.sttFinish().catch(() => {});
   setOrbMode('idle');
   setChipState('idle');
   setStatusLine('');
@@ -1100,6 +1123,7 @@ function renderSettingsForm() {
   $('#use-brain').checked = s.useBrain !== false;
   $('#brain-url').value = s.brainUrl || 'http://127.0.0.1:8420';
   $('#hw-accel').checked = s.hwAccel !== false;
+  $('#save-recordings').checked = s.saveRecordings !== false;
   $('#continuous-conversation').checked = s.continuousConversation !== false;
   $('#lights-provider').value = s.lightsProvider || 'auto';
   $('#hue-ip').value = s.hueIp || '';
@@ -1234,6 +1258,7 @@ function bindUI() {
     state.settings.useBrain = $('#use-brain').checked;
     state.settings.brainUrl = $('#brain-url').value.trim() || 'http://127.0.0.1:8420';
     state.settings.hwAccel = $('#hw-accel').checked;
+    state.settings.saveRecordings = $('#save-recordings').checked;
     state.settings.lightsProvider = $('#lights-provider').value;
     state.settings.hueIp = $('#hue-ip').value.trim();
     state.settings.hueKey = $('#hue-key').value.trim();

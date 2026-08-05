@@ -143,6 +143,29 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class RecordingSttTest(unittest.TestCase):
+    def test_save_wav_header(self):
+        import numpy as np
+
+        from assistant import mic
+
+        path = os.path.join(tempfile.mkdtemp(), "t.wav")
+        mic.save_wav(path, np.zeros(1600, dtype=np.int16))
+        head = open(path, "rb").read(12)
+        self.assertEqual(head[:4], b"RIFF")
+        self.assertEqual(head[8:], b"WAVE")
+
+    def test_streaming_transcriber_graceful_without_vosk(self):
+        import numpy as np
+
+        from assistant import stt
+
+        cfg = dict(config.DEFAULTS)
+        t = stt.StreamingTranscriber(cfg)
+        t.feed(np.zeros(1600, dtype=np.int16))
+        self.assertIn(t.finish(), ("",))  # no vosk/whisper in CI → empty, no crash
+
+
 class DeepSkillsTest(unittest.TestCase):
     def test_forecast_sentence(self):
         from assistant import weather

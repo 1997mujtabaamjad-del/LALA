@@ -52,6 +52,59 @@ function status() {
 }
 
 // ---------------------------------------------------------------------------
+// Streaming STT for push-to-talk: live Vosk partials while the user speaks.
+// ---------------------------------------------------------------------------
+
+let sttRec = null;
+
+function sttStart() {
+  refreshModelReady();
+  try {
+    sttRec = state.voskInstalled && state.modelReady
+      ? new vosk.Recognizer({ model: getModel(), sampleRate: 16000 })
+      : null;
+  } catch {
+    sttRec = null;
+  }
+  return { ok: true, live: !!sttRec };
+}
+
+function sttFeed(pcmBuffer) {
+  if (!sttRec) return { partial: '' };
+  const isFinal = sttRec.acceptWaveForm(Buffer.from(pcmBuffer));
+  const partial = isFinal
+    ? JSON.parse(sttRec.finalResult()).text
+    : (JSON.parse(sttRec.partialResult()).partial || '');
+  return { partial };
+}
+
+function sttFinish() {
+  const text = sttRec ? (JSON.parse(sttRec.finalResult()).text || '') : '';
+  sttRec = null;
+  return { text };
+}
+
+/** Raw 16 kHz mono Int16 PCM → WAV container bytes. */
+function pcmToWav(pcmBuffer) {
+  const data = Buffer.from(pcmBuffer);
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);      // PCM
+  header.writeUInt16LE(1, 22);      // mono
+  header.writeUInt32LE(16000, 24);  // rate
+  header.writeUInt32LE(32000, 28);  // byte rate
+  header.writeUInt16LE(2, 32);      // block align
+  header.writeUInt16LE(16, 34);     // bits
+  header.write('data', 36);
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}
+
+// ---------------------------------------------------------------------------
 // Continuous wake-word stream ("Hey LALA")
 //
 // The renderer feeds 16 kHz PCM chunks while the mic is open. A long-lived
@@ -308,6 +361,10 @@ module.exports = {
   transcribeOffline,
   transcribeCloud,
   downloadModel,
+  sttStart,
+  sttFeed,
+  sttFinish,
+  pcmToWav,
   wakeStart,
   wakeFeed,
   wakeFinish,

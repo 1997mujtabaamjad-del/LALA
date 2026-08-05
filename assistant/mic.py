@@ -48,9 +48,10 @@ def open_stream(callback):
 
 
 def record_until_silence(max_seconds=8.0, speech_rms=0.012, silence_seconds=1.0,
-                         min_speech_seconds=0.25, require_speech=False):
+                         min_speech_seconds=0.25, require_speech=False, on_chunk=None):
     """Record from the mic until the user stops talking. Returns int16 array,
-    or None when `require_speech` is set and no real speech was detected."""
+    or None when `require_speech` is set and no real speech was detected.
+    `on_chunk(chunk_int16)` is called live for streaming consumers."""
     import sounddevice as sd
 
     frames = []
@@ -63,6 +64,11 @@ def record_until_silence(max_seconds=8.0, speech_rms=0.012, silence_seconds=1.0,
             data, _ = stream.read(CHUNK)
             chunk = data[:, 0]
             frames.append(chunk)
+            if on_chunk is not None:
+                try:
+                    on_chunk(chunk)
+                except Exception:  # noqa: BLE001 — never break capture
+                    pass
             elapsed += (CHUNK / RATE) * 1000
             rms = np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2))
             cb_ms = (CHUNK / RATE) * 1000
@@ -76,6 +82,20 @@ def record_until_silence(max_seconds=8.0, speech_rms=0.012, silence_seconds=1.0,
     if require_speech and speech_ms < min_speech_seconds * 1000:
         return None
     return np.concatenate(frames) if frames else np.zeros(1, dtype=np.int16)
+
+
+def save_wav(path, audio_int16, rate=RATE):
+    """Persist int16 mono audio as a .wav file. Returns the path."""
+    import os
+    import wave
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with wave.open(path, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(rate)
+        wf.writeframes(audio_int16.tobytes())
+    return path
 
 
 def beep(freq=880, seconds=0.15):

@@ -78,6 +78,14 @@ offline demo mode. The Electron app in this repo remains the richer *command cen
 
 ### Power features
 
+- **Streaming STT**: partial transcript appears *while you speak* — Python streams
+  mic chunks through a live Vosk recognizer (GUI status shows the words forming,
+  final answer still comes from Whisper when installed); Electron push-to-talk feeds
+  the same streaming recognizer so the interim bubble types along, with Whisper API
+  as the cloud final.
+- **Recording**: every command's audio is saved as a timestamped `.wav` + `.txt`
+  transcript — Python: `assistant/data/recordings/`, Electron: the OS *Recordings*
+  folder. Toggle in Settings (`save_recordings`).
 - **Barge-in**: start talking while LALA speaks and she shuts up and listens.
   Python: a mic monitor watches RMS during playback (grace period + sustained
   threshold beat speaker bleed) and cancels the audio, then transcribes your

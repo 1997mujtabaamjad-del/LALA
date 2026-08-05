@@ -7,8 +7,9 @@ Conversation state machine shared by the GUI and the terminal CLI:
 """
 
 import threading
+import time
 
-from . import llm, mic, router, stt, tts, wake
+from . import config, llm, mic, router, stt, tts, wake
 from .memory import Memory
 
 
@@ -79,17 +80,38 @@ class Assistant:
             next_max = 8.0
             while True:
                 self.status("listening")
+                transcriber = stt.StreamingTranscriber(self.cfg)
+
+                def _on_chunk(chunk, t=transcriber):
+                    partial = t.feed(chunk)
+                    if partial:
+                        self.status(f"“{partial}”")
+
                 audio = mic.record_until_silence(max_seconds=next_max,
-                                                 require_speech=True)
+                                                 require_speech=True,
+                                                 on_chunk=_on_chunk)
                 if audio is None:
                     break
-                try:
-                    text = stt.transcribe(audio, self.cfg)
-                except Exception as exc:  # noqa: BLE001
-                    self.log("system", f"STT error: {exc}")
-                    break
+                text = transcriber.finish()
+                if not text:
+                    try:
+                        text = stt.transcribe(audio, self.cfg)
+                    except Exception as exc:  # noqa: BLE001
+                        self.log("system", f"STT error: {exc}")
+                        break
                 if not text:
                     break
+                if self.cfg.get("save_recordings", True):
+                    import os
+
+                    path = os.path.join(
+                        config.DATA_DIR, "recordings",
+                        f"lala-{int(time.time())}.wav")
+                    try:
+                        mic.save_wav(path, audio)
+                        self.log("system", f"🎙 recording saved: {os.path.basename(path)}")
+                    except Exception:  # noqa: BLE001
+                        pass
                 self.process(text, follow_up=False, spoken=True)
                 if self._last_action == "end-conversation" or not continuous:
                     break

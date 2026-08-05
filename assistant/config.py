@@ -16,6 +16,8 @@ DEFAULTS = {
     # say "stop listening".
     "continuous_conversation": True,
     "conversation_window_s": 8,
+    # Save each utterance as assistant/data/recordings/lala-<ts>.wav
+    "save_recordings": True,
     # auto = try ollama, then openai, then offline mock
     "llm_provider": "auto",
     "openai_api_key": os.environ.get("OPENAI_API_KEY", ""),

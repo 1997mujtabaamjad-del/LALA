@@ -148,13 +148,37 @@ function registerIpc() {
       const settings = store.getSettings();
       let text = '';
       if (payload.engine === 'cloud') {
-        text = await asr.transcribeCloud(Buffer.from(payload.recBytes), payload.recMime, settings);
+        const bytes = payload.recBytes
+          ? Buffer.from(payload.recBytes)
+          : asr.pcmToWav(Buffer.from(payload.pcm));
+        text = await asr.transcribeCloud(bytes, payload.recMime || 'audio/wav', settings);
       } else if (payload.engine === 'offline') {
         text = await asr.transcribeOffline(Buffer.from(payload.pcm));
       } else {
         return { ok: false, error: 'No speech engine selected. Open Settings and pick one.' };
       }
       return { ok: true, text: String(text || '').trim(), engine: payload.engine };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
+  // ---- Streaming STT (push-to-talk live partials) ---------------------------
+  ipcMain.handle('stt:start', () => asr.sttStart());
+  ipcMain.handle('stt:feed', (_e, pcm) => asr.sttFeed(Buffer.from(pcm)));
+  ipcMain.handle('stt:finish', () => asr.sttFinish());
+
+  // ---- Recording storage ------------------------------------------------------
+  ipcMain.handle('rec:save', (_e, { pcm, text }) => {
+    try {
+      const fs = require('fs');
+      const dir = require('path').join(app.getPath('userData'), 'Recordings');
+      fs.mkdirSync(dir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const wav = require('path').join(dir, `lala-${stamp}.wav`);
+      fs.writeFileSync(wav, asr.pcmToWav(Buffer.from(pcm)));
+      fs.writeFileSync(wav.replace(/\.wav$/, '.txt'), text || '');
+      return { ok: true, path: wav };
     } catch (err) {
       return { ok: false, error: String(err.message || err) };
     }

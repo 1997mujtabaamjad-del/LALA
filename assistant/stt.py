@@ -67,6 +67,54 @@ def _local(audio_int16, cfg):
     return " ".join(seg.text for seg in segments).strip()
 
 
+class StreamingTranscriber:
+    """Live partial results while the user speaks (Vosk), best-accuracy final
+    (faster-whisper when installed, else the Vosk final). No model downloads —
+    live mode is only active when the offline model is already present."""
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.frames = []
+        self.rec = None
+        try:
+            from vosk import KaldiRecognizer, Model as VoskModel
+
+            from . import wake
+
+            if wake.vosk_model_ready():
+                self.rec = KaldiRecognizer(VoskModel(wake.vosk_model_dir()), 16000)
+        except Exception:  # noqa: BLE001
+            self.rec = None
+
+    @property
+    def live(self):
+        return self.rec is not None
+
+    def feed(self, pcm):
+        """Returns the current partial transcript (may be '')."""
+        self.frames.append(pcm)
+        if self.rec is None:
+            return ""
+        finished = self.rec.AcceptWaveForm(pcm.tobytes())
+        if finished:
+            return self.rec.Result().get("text", "")
+        return self.rec.PartialResult().get("partial", "")
+
+    def finish(self):
+        """Final transcript for the whole utterance."""
+        import numpy as np
+
+        audio = np.concatenate(self.frames) if self.frames else np.zeros(1, dtype=np.int16)
+        if local_available():
+            try:
+                return _local(audio, self.cfg)
+            except Exception:  # noqa: BLE001
+                pass
+        if self.rec is not None:
+            return self.rec.FinalResult().get("text", "")
+        return ""
+
+
 def _openai(audio_int16, cfg, rate):
     if not cfg.get("openai_api_key"):
         raise RuntimeError("No local Whisper and no OpenAI key — STT unavailable.")
