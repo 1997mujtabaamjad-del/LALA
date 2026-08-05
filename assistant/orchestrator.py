@@ -21,42 +21,26 @@ class Assistant:
         self.status = status or (lambda *a, **k: None)
         self.confirm_fn = confirm or self._stdin_confirm
         self.memory = Memory()
-        self.wake = None
-        self._busy = threading.Event()
         self._last_action = None
-        self._vad = None
-        self.pipeline = Pipeline(cfg, log=self.log, status=self.status)
-
-    def get_vad(self):
-        """Silero when available, energy VAD otherwise (created once)."""
-        if self._vad is None:
-            self._vad = vad.make_vad(self.cfg)
-        return self._vad
+        # The whole loop lives inside the pipeline now; we only plug in
+        # thinking (router + LLM + memory) and the end-of-conversation flag.
+        self.pipeline = Pipeline(
+            cfg, log=self.log, status=self.status,
+            think=self.process,
+            end_check=lambda: self._last_action == "end-conversation",
+        )
 
     # ------------------------------------------------------------ lifecycle
     def start(self):
-        if self.cfg.get("wake_enabled") and mic.available():
-            self.wake = wake.WakeListener(
-                self.cfg,
-                on_wake=self.on_wake,
-                on_status=lambda s: self.status(f"wake: {s}"),
-            )
-            if self.wake.start():
-                self.log("system", f"Wake word armed — say “{self.cfg['wake_word'].replace('_', ' ')}”.")
-            else:
-                self.wake = None
-                self.log("system", "Wake word unavailable (needs `pip install openwakeword` + mic). Use push-to-talk.")
-        else:
-            self.log("system", "Push-to-talk mode (no wake word).")
+        if not self.pipeline.start():
+            self.log("system",
+                     "Wake word unavailable (needs mic + vosk/openwakeword). "
+                     "Use push-to-talk / the GUI / --chat.")
 
     def stop(self):
-        if self.wake:
-            self.wake.stop()
+        self.pipeline.stop()
 
     # ------------------------------------------------------------ the loop
-    def on_wake(self):
-        threading.Thread(target=self._turn, args=(True,), daemon=True).start()
-
     def push_to_talk(self):
         """Blocking-style entry for the PTT button / CLI: record then process."""
         threading.Thread(target=self._ptt, daemon=True).start()
@@ -69,44 +53,6 @@ class Assistant:
         self.status("listening")
         audio = mic.record_until_silence()
         self._transcribe_and_process(audio)
-
-    def _turn(self, woke):
-        if self._busy.is_set():
-            return
-        self._busy.set()
-        if self.wake:
-            self.wake.pause()
-        try:
-            if woke:
-                mic.beep()
-                self.log("system", "Yes? I'm listening…")
-
-            # Continuous conversation: after each reply, keep listening for
-            # follow-ups until the user goes quiet for the window or says
-            # "stop listening".
-            continuous = bool(self.cfg.get("continuous_conversation", True))
-            window = float(self.cfg.get("conversation_window_s", 8))
-            next_max = 8.0
-            while True:
-                self.status("listening")
-                audio, text, _partials = self.pipeline.listen(next_max)
-                if audio is None or not text:
-                    break
-                path = self.pipeline.save_recording(audio, text)
-                if path:
-                    self.log("system",
-                             f"🎙 recording saved: {os.path.basename(path)}")
-                self.process(text, follow_up=False, spoken=True)
-                if self._last_action == "end-conversation" or not continuous:
-                    break
-                self.log("system",
-                         "(still listening — say “stop listening” to hand me back to the wake word)")
-                next_max = window
-        finally:
-            self.status("idle")
-            if self.wake:
-                self.wake.resume()
-            self._busy.clear()
 
     def _transcribe_and_process(self, audio, follow_up=False):
         if audio is None or len(audio) < 1600:

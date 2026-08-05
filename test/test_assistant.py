@@ -158,6 +158,40 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class LoopTest(unittest.TestCase):
+    def _pipeline(self, cfg, think, end_check):
+        from assistant import pipeline as pl
+
+        p = pl.Pipeline(cfg, think=think, end_check=end_check)
+        p.save_recording = lambda a, t: None
+        return p
+
+    def test_turn_thinks_then_stops_on_silence(self):
+        import numpy as np
+
+        cfg = dict(config.DEFAULTS)
+        calls = []
+        p = self._pipeline(cfg, lambda t: calls.append(t), lambda: False)
+        audio = np.zeros(8, dtype=np.int16)
+        seq = iter([(audio, "hello laala", []), (None, "", [])])
+        p.listen = lambda max_seconds=8.0, require_speech=True: next(seq)
+        p.turn()
+        self.assertEqual(calls, ["hello laala"])
+
+    def test_end_check_breaks_followup_loop(self):
+        import numpy as np
+
+        cfg = dict(config.DEFAULTS)
+        cfg["continuous_conversation"] = True
+        calls = []
+        p = self._pipeline(cfg, lambda t: calls.append(t), lambda: len(calls) >= 1)
+        audio = np.zeros(8, dtype=np.int16)
+        seq = iter([(audio, "one", []), (audio, "two", []), (None, "", [])])
+        p.listen = lambda max_seconds=8.0, require_speech=True: next(seq)
+        p.turn()
+        self.assertEqual(calls, ["one"])
+
+
 class MilestoneTest(unittest.TestCase):
     def test_full_pipeline_milestone(self):
         from assistant import pipeline

@@ -95,10 +95,12 @@ python -m assistant --milestone          # add --speak to hear the TTS stage
 ```
 
 Every stage runs on real backends when installed and is honestly labeled
-*simulated* otherwise. At runtime the same chain lives in `assistant/pipeline.py`
-and the orchestrator delegates to it: wake fires → VAD-endpointed recording with
-live partials → best available STT final → router/LLM thinking with memory →
-streaming TTS you can barge into → utterance saved to disk.
+*simulated* otherwise. The **whole loop lives inside the pipeline**
+(`assistant/pipeline.py`): `Pipeline.start()` arms the wake word, each wake
+runs `turn()` — VAD-endpointed recording with live partials → best STT final →
+plugged-in thinking (router/LLM/memory) → streaming TTS you can barge into →
+utterance saved → follow-up listening until silence or “stop listening”.
+The orchestrator only supplies `think` and the end-of-conversation flag.
 
 ### Power features
 
