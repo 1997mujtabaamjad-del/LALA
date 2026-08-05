@@ -189,6 +189,8 @@ The orchestrator only supplies `think` and the end-of-conversation flag.
   2. the in-flight **LLM generation is cancelled** (stop token in Python streams /
      `AbortController` on the app's SSE fetch),
   3. a **new listening cycle** starts and your interruption becomes the next turn.
+  In the app this works both when the wake stream is armed *and* via a dedicated
+  barge monitor during any spoken reply (auto-endpointed capture → transcript).
 - **Silero VAD**: endpointing and barge-in use the **Silero neural VAD**
   (bundled ONNX, streamed 32 ms windows via onnxruntime — no torch) when
   `silero-vad` + `onnxruntime` are installed; otherwise the classic energy

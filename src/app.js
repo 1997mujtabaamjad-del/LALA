@@ -13,7 +13,7 @@
 import { matchCommand, normalize, fillTemplate, detectWakeWord } from './command-engine.js';
 import { createWebSpeech } from './web-speech.js';
 import { createWakeListener } from './wakeword.js';
-import { startStreamCapture } from './streamrecorder.js';
+import { startStreamCapture, startBargeMonitor } from './streamrecorder.js';
 import { applyDelta, finalizeToolCalls } from './stream.js';
 
 const desktop = typeof window.lala !== 'undefined';
@@ -78,6 +78,7 @@ const state = {
   webSpeech: null,
   pttActive: false,
   wakeListener: null,
+  bargeMon: null,
   followHold: false, // set after “stop listening” until the next wake
   recentChat: []     // last turns, fed to the in-app tool-calling loop
 };
@@ -157,6 +158,7 @@ function speak(text, { cancel = true } = {}) {
   if (preferredVoice) utter.voice = preferredVoice;
   utter.rate = 1.03;
   speechSynthesis.speak(utter);
+  armBargeMonitor(); // mic stays open while she talks
 }
 
 function respond(text, { silent = false } = {}) {
@@ -805,11 +807,14 @@ async function endPTT() {
   state.pttActive = false;
   const capture = state.ptt;
   state.ptt = null;
+  const { pcm } = await capture.stop();
+  await finishPTT(pcm);
+}
+
+async function finishPTT(pcm) {
   setOrbMode('idle');
   setChipState('thinking…');
   setStatusLine('Transcribing…');
-
-  const { pcm } = await capture.stop();
   showInterim('');
 
   let text = '';
@@ -842,6 +847,61 @@ async function endPTT() {
   } else {
     toast('I didn’t catch anything — try again.', 'warn');
   }
+}
+
+/* ------------------------------------------------- barge-in (interruption)
+ * While TTS plays the mic stays open. If the user starts speaking:
+ *   1) playback stops immediately  2) the in-flight generation is aborted
+ *   3) a new listening cycle starts (auto-endpointed capture → transcript).
+ * The wake stream handles this when armed; this monitor covers the rest. */
+
+async function beginBargeCycle() {
+  if (state.pttActive) return;
+  const engine = await pickEngine();
+  if (!engine) return;
+  state._engine = engine;
+  setOrbMode('recording');
+  setChipState('listening');
+  setStatusLine('Yes? I’m listening…');
+  await window.lala.sttStart();
+  state.pttActive = true;
+  state.ptt = await startStreamCapture({
+    autoStop: true,
+    onChunk: (pcm) => {
+      window.lala.sttFeed(pcm).then((r) => {
+        if (r && r.partial) showInterim(r.partial);
+      });
+    },
+    onAutoStop: (pcm) => {
+      state.pttActive = false;
+      state.ptt = null;
+      finishPTT(pcm);
+    }
+  });
+}
+
+async function armBargeMonitor() {
+  if (!desktop || state.bargeMon || state.wakeListener || state.pttActive) return;
+  if (!('speechSynthesis' in window)) return;
+  try {
+    state.bargeMon = await startBargeMonitor({
+      onSpeech: () => {
+        // 1) stop playback  2) cancel generation  3) new cycle
+        speechSynthesis.cancel();
+        state.abortCtl?.abort();
+        state.bargeMon = null;
+        beginBargeCycle();
+      }
+    });
+    // retire the monitor once the reply finishes speaking
+    const poll = setInterval(() => {
+      if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+        clearInterval(poll);
+        state.bargeMon?.stop();
+        state.bargeMon = null;
+      }
+    }, 500);
+  } catch { /* mic busy/unavailable — wake-stream barge-in still applies */ }
 }
 
 function cancelPTT() {
