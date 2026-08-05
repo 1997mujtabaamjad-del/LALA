@@ -259,6 +259,25 @@ const LAALA_PERSONA =
   'sentences unless asked for detail. Use the provided tools whenever a request ' +
   'needs live data or an action, then answer naturally from the tool results.';
 
+const ROLE_PROMPTS = {
+  researcher: 'Researcher mode: structured findings (question → evidence → conclusion), cite sources, suggest next reads.',
+  chief_of_staff: 'Chief-of-Staff mode: run the day, prioritize ruthlessly, surface calendar conflicts, crisp updates.',
+  sales: 'Sales mode: pipeline thinking, outreach angles, objection handling, follow-up cadence, concrete language.',
+  developer: 'Developer mode: precise technical answers, small code sketches, flag edge cases, prefer boring reliable tech.',
+  strategist: 'Strategist mode: objectives, options, trade-offs, second-order effects; end with a recommendation + key assumption.',
+  finance: 'Finance mode: number-literate and conservative; state assumptions and currency; sanity-check economics.',
+  design: 'Design mode: hierarchy, contrast, spacing, motion; concrete palette/type/layout directions; kind actionable critique.',
+  crm: 'CRM mode: keep relationships warm; record contacts; suggest who to touch next; draft short personal follow-ups.'
+};
+const ROLE_ALIASES = { research: 'researcher', 'chief of staff': 'chief_of_staff', dev: 'developer', strategy: 'strategist', designer: 'design', finances: 'finance' };
+function normRole(r) {
+  r = (r || '').trim().toLowerCase();
+  return ROLE_ALIASES[r] || (ROLE_PROMPTS[r] ? r : null);
+}
+function updateRoleChip() {
+  $('#chip-role').textContent = state.settings.role ? state.settings.role.replace(/_/g, ' ') : 'default';
+}
+
 const TOOLS_JS = [
   { type: 'function', function: { name: 'get_weather', description: 'Current weather + 3-day outlook for a city, or the user\'s location if omitted.', parameters: { type: 'object', properties: { city: { type: 'string' } }, required: [] } } },
   { type: 'function', function: { name: 'web_search', description: 'Look up a fact online; returns a short answer.', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } },
@@ -336,8 +355,10 @@ async function runTool(name, args) {
 async function llmToolLoopStream(text, onToken, signal) {
   const key = state.settings.openaiKey;
   if (!key) return null;
+  const persona = LAALA_PERSONA +
+    (state.settings.role ? ' ACTIVE ROLE — ' + (ROLE_PROMPTS[state.settings.role] || '') : '');
   let messages = [
-    { role: 'system', content: LAALA_PERSONA },
+    { role: 'system', content: persona },
     ...state.recentChat.slice(-10),
     { role: 'user', content: text }
   ];
@@ -459,6 +480,76 @@ async function runMatch(match) {
   if (act.type === 'joke') {
     respond(JOKES[Math.floor(Math.random() * JOKES.length)]);
     return;
+  }
+
+  if (act.type === 'role') {
+    if (act.role === '?') { respond(`Currently in ${state.settings.role || 'default'} mode.`); return; }
+    if (act.role === 'default') {
+      state.settings.role = '';
+      await persistSettings(); updateRoleChip();
+      respond('Back to default assistant.'); return;
+    }
+    const role = normRole(act.role);
+    if (!role) {
+      respond(`No “${act.role}” mode. I have: researcher, chief of staff, sales, developer, strategist, finance, design, crm.`);
+      return;
+    }
+    state.settings.role = role;
+    await persistSettings(); updateRoleChip();
+    respond(`${role.replace(/_/g, ' ')} mode active — I'm your ${role.replace(/_/g, ' ')} now.`);
+    return;
+  }
+
+  // Role tools: prefer the Python brain on desktop (real calendar/finance/crm),
+  // fall back to in-app storage.
+  if (['research', 'briefing', 'expense', 'finance-summary', 'contact', 'contacts', 'swot'].includes(act.type)) {
+    if (desktop) {
+      const brain = await askBrain(state.lastTranscript);
+      if (brain) { respond(brain); return; }
+    }
+    if (act.type === 'research') {
+      const a = await fetchWiki(act.topic);
+      window.open('https://scholar.google.com/scholar?q=' + encodeURIComponent(act.topic), '_blank', 'noopener');
+      respond((a ? a + ' ' : '') + 'Opened Google Scholar for deeper sources.');
+      return;
+    }
+    if (act.type === 'briefing') {
+      const evs = (desktop ? await window.lala.getCalendar() : JSON.parse(localStorage.getItem('lala.calendar') || '[]'))
+        .map((e) => ({ ...e, ts: Date.parse(e.when) })).filter((e) => e.ts > Date.now() - 36e5);
+      const wx = await fetchWeather('');
+      respond(`Here's your briefing. Calendar: ${evs.length ? evs.slice(0, 4).map((e) => e.title).join('; ') : 'clear'}. ${wx || ''}`);
+      return;
+    }
+    if (act.type === 'expense') {
+      const rows = JSON.parse(localStorage.getItem('lala.finance') || '[]');
+      rows.push({ amount: parseFloat(act.amount) || 0, desc: act.desc });
+      localStorage.setItem('lala.finance', JSON.stringify(rows));
+      respond(`Recorded ${parseFloat(act.amount).toLocaleString()} for ${act.desc}.`);
+      return;
+    }
+    if (act.type === 'finance-summary') {
+      const rows = JSON.parse(localStorage.getItem('lala.finance') || '[]');
+      respond(rows.length
+        ? `Total recorded spend: ${rows.reduce((s, r) => s + r.amount, 0).toLocaleString()}. Recent: ${rows.slice(-4).map((r) => `${r.desc} (${r.amount})`).join('; ')}.`
+        : 'No expenses recorded yet.');
+      return;
+    }
+    if (act.type === 'contact') {
+      const rows = JSON.parse(localStorage.getItem('lala.crm') || '[]');
+      rows.push({ name: act.name, company: act.company });
+      localStorage.setItem('lala.crm', JSON.stringify(rows));
+      respond(`Saved ${act.name} @ ${act.company}.`);
+      return;
+    }
+    if (act.type === 'contacts') {
+      const rows = JSON.parse(localStorage.getItem('lala.crm') || '[]');
+      respond(rows.length ? 'Contacts: ' + rows.slice(-6).map((r) => `${r.name} @ ${r.company}`).join('; ') + '.' : 'No contacts stored yet.');
+      return;
+    }
+    if (act.type === 'swot') {
+      respond(`SWOT for ${act.topic} — Strengths: speed + focus. Weaknesses: small team. Opportunities: niche dominance. Threats: fast followers. Recommendation: pick one beachhead and validate weekly. (Add an OpenAI key or the brain for a tailored analysis.)`);
+      return;
+    }
   }
 
   if (act.type === 'memory') {
@@ -589,6 +680,15 @@ function forecastLine(daily) {
     parts.push(`${label}: ${words[daily.weather_code[i]] || 'cloudy'}, ${Math.round(daily.temperature_2m_min[i])}–${Math.round(daily.temperature_2m_max[i])}°`);
   }
   return parts.length ? parts.join('; ') + '.' : '';
+}
+
+async function fetchWiki(q) {
+  try {
+    const r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(q));
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.extract || null;
+  } catch { return null; }
 }
 
 async function fetchWikiResults(query) {
@@ -1462,6 +1562,19 @@ const TASKS = [
     ['User guide', 'user guide'],
     ['All commands', 'help'],
     ['End conversation', 'stop listening'],
+  ]],
+  ['💼 Specialist roles', [
+    ['Researcher', 'switch to researcher'],
+    ['Chief of Staff', 'switch to chief of staff'],
+    ['Sales', 'switch to sales'],
+    ['Developer', 'switch to developer'],
+    ['Strategist', 'switch to strategist'],
+    ['Finance', 'switch to finance'],
+    ['Design', 'switch to design'],
+    ['CRM', 'switch to crm'],
+    ['Daily briefing', 'brief me'],
+    ['SWOT analysis', 'swot for a voice assistant startup'],
+    ['Back to default', 'back to normal'],
   ]]
 ];
 
@@ -1785,6 +1898,7 @@ async function init() {
   bindSkills();
   renderTasks();
   renderCommands();
+  updateRoleChip();
   renderHelp();
   renderSettingsForm();
   await refreshEngineChip();

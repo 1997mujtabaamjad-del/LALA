@@ -15,7 +15,7 @@ import webbrowser
 from datetime import datetime
 from urllib.parse import quote
 
-from . import calendar_store, lights, websearch, weather
+from . import calendar_store, lights, roles, websearch, weather
 
 JOKES = [
     "Why do programmers prefer dark mode? Because light attracts bugs.",
@@ -164,6 +164,41 @@ def handle(text, memory=None):
              "thats all for now", "goodbye for now", "you can sleep now", "go idle"):
         return "Okay — I'll wait for the wake word.", {"type": "end-conversation"}
 
+    # ---- role modes ------------------------------------------------------
+    if t in ("back to normal", "default mode", "switch to assistant", "normal mode"):
+        return "Back to default assistant.", {"type": "role", "role": ""}
+    m = re.match(r"^(?:switch to|enter|activate|use|be my|act as)(?: a| my)?\s*"
+                 r"(.+?)(?:\s+mode)?$", t)
+    if m:
+        role = roles.normalize_role(m.group(1))
+        if role:
+            return f"Switching to {m.group(1)} mode.", {"type": "role", "role": role}
+        if m.group(1) in ("assistant", "default", "normal"):
+            return "Back to default assistant.", {"type": "role", "role": ""}
+    if t in ("which mode", "current mode", "what mode"):
+        return "", {"type": "role", "role": "?"}
+
+    m = re.match(r"^research (.+)$", t)
+    if m:
+        return "On it — researching.", {"type": "research", "topic": m.group(1)}
+    if t in ("brief me", "morning briefing", "daily briefing", "prepare my day"):
+        return "", {"type": "briefing"}
+    m = re.match(r"^add expense (\d+(?:\.\d+)?) for (.+)$", t)
+    if m:
+        return f"Recorded {float(m.group(1)):,.0f} for {m.group(2)}.", \
+            {"type": "expense", "amount": float(m.group(1)), "desc": m.group(2)}
+    if t in ("finance summary", "spend summary", "expenses summary"):
+        return "", {"type": "finance-summary"}
+    m = re.match(r"^add contact (.+?) at (.+)$", t)
+    if m:
+        return f"Saved {m.group(1)} @ {m.group(2)}.", \
+            {"type": "contact", "name": m.group(1), "company": m.group(2)}
+    if t in ("show contacts", "my contacts", "list contacts"):
+        return "", {"type": "contacts"}
+    m = re.match(r"^swot for (.+)$", t)
+    if m:
+        return "", {"type": "swot", "topic": m.group(1)}
+
     if t in ("user guide", "how do i use you", "how do i speak to you",
              "teach me to use you", "tutorial", "help me speak", "guide me",
              "how do i talk to you"):
@@ -213,6 +248,42 @@ def perform(action):
             _ok, msg = lights.control(config.load(), action["op"],
                                       action.get("value"), action.get("color"))
             return msg
+        elif kind == "role":
+            from . import config
+
+            cur = action["role"]
+            if cur == "?":
+                return f"Currently in {config.load().get('role') or 'default'} mode."
+            config.save({"role": cur})
+            if not cur:
+                return "Back to default assistant."
+            nice = cur.replace("_", " ").title()
+            return f"{nice} mode active — I'm your {cur.replace('_', ' ')} now."
+        elif kind == "research":
+            q = action["topic"]
+            ans = websearch.answer(q) or ""
+            webbrowser.open(f"https://scholar.google.com/scholar?q={quote(q)}")
+            return (ans + " " if ans else "") + "Opened Google Scholar for deeper sources."
+        elif kind == "briefing":
+            from . import config
+
+            return roles.briefing(config.load())
+        elif kind == "expense":
+            roles.add_expense(action["amount"], action["desc"])
+            return f"Recorded {action['amount']:,.0f} for {action['desc']}."
+        elif kind == "finance-summary":
+            return roles.finance_summary()
+        elif kind == "contact":
+            roles.add_contact(action["name"], action["company"])
+            return f"Saved {action['name']} @ {action['company']}."
+        elif kind == "contacts":
+            return roles.contact_list()
+        elif kind == "swot":
+            from . import config, llm
+
+            return llm.ask(config.load(), None,
+                           f"Provide a concise SWOT analysis for: {action['topic']}. "
+                           "Four short bullets (S/W/O/T) and one recommendation.")
         elif kind == "guide":
             from . import config, guide
 

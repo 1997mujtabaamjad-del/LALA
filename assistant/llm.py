@@ -44,6 +44,11 @@ def system_prompt(cfg, memory):
     notes = memory.notes_text() if memory else ""
     if notes:
         persona += f" Things you remember about the user: {notes}."
+    from . import roles
+
+    role_prompt = roles.prompt_for(cfg.get("role"))
+    if role_prompt:
+        persona += " ACTIVE ROLE — " + role_prompt
     return persona
 
 

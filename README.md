@@ -147,6 +147,18 @@ calls tools that map onto the existing action executor, and each call shows as a
 polite miss. The deterministic router stays as the zero-latency fast path for
 exact commands.
 
+### 💼 Specialist role modes
+
+Say **“switch to …”** (or use Tasks → Specialist roles) and LALA's LLM persona +
+tools change to the role: **researcher · chief of staff · sales · developer ·
+strategist · finance · design · crm**.
+
+Role tools included: `research <topic>` (answer + Google Scholar), `brief me`
+(calendar + weather + CRM roll-up), `add expense 250 for coffee` / `finance summary`,
+`add contact asha at acme` / `show contacts`, `swot for <topic>`.
+`back to normal` returns to the default Laala personality. Role persists in config
+and shows in the top-bar chip.
+
 ### 🔄 Config sync (one brain, two bodies)
 
 The brain server exposes `GET/PUT /config`; the app's Settings → *Python brain*

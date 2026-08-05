@@ -267,6 +267,47 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class RolesTest(unittest.TestCase):
+    def test_normalize(self):
+        from assistant import roles
+
+        self.assertEqual(roles.normalize_role("chief of staff"), "chief_of_staff")
+        self.assertEqual(roles.normalize_role("dev"), "developer")
+        self.assertEqual(roles.normalize_role("designer"), "design")
+        self.assertIsNone(roles.normalize_role("pirate"))
+
+    def test_finance_roundtrip(self):
+        from assistant import roles
+
+        roles.add_expense(500, "ads")
+        self.assertIn("500", roles.finance_summary())
+
+    def test_crm_roundtrip(self):
+        from assistant import roles
+
+        roles.add_contact("Asha", "Acme")
+        self.assertIn("Asha @ Acme", roles.contact_list())
+
+    def test_router_role_switch_and_tools(self):
+        resp, action = router.handle("switch to sales mode")
+        self.assertEqual((action["type"], action["role"]), ("role", "sales"))
+        resp, action = router.handle("back to normal")
+        self.assertEqual(action["role"], "")
+        resp, action = router.handle("add expense 250 for coffee")
+        self.assertEqual((action["type"], action["amount"]), ("expense", 250.0))
+        resp, action = router.handle("add contact asha at acme")
+        self.assertEqual(action["type"], "contact")
+        resp, action = router.handle("swot for lala")
+        self.assertEqual(action["type"], "swot")
+
+    def test_persona_includes_active_role(self):
+        from assistant import llm
+
+        cfg = dict(config.DEFAULTS)
+        cfg["role"] = "finance"
+        self.assertIn("Finance mode", llm.system_prompt(cfg, None))
+
+
 class SyncTest(unittest.TestCase):
     def test_config_mapping_roundtrip(self):
         from assistant import sync

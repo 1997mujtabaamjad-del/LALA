@@ -464,6 +464,76 @@
     "response": ""
   },
   {
+    "id": "role-switch",
+    "description": "Switch specialist role mode",
+    "phrases": ["switch to <role>", "switch to <role> mode", "act as <role>", "act as my <role>", "be my <role>", "enter <role> mode"],
+    "action": { "type": "role", "role": "{role}" },
+    "response": ""
+  },
+  {
+    "id": "role-default",
+    "description": "Back to default assistant",
+    "phrases": ["back to normal", "default mode", "switch to assistant"],
+    "action": { "type": "role", "role": "default" },
+    "response": ""
+  },
+  {
+    "id": "role-current",
+    "description": "Which role is active",
+    "phrases": ["which mode", "current mode"],
+    "action": { "type": "role", "role": "?" },
+    "response": ""
+  },
+  {
+    "id": "research",
+    "description": "Research a topic (answer + scholar)",
+    "phrases": ["research <topic>"],
+    "action": { "type": "research", "topic": "{topic}" },
+    "response": ""
+  },
+  {
+    "id": "briefing",
+    "description": "Chief-of-Staff daily briefing",
+    "phrases": ["brief me", "morning briefing", "daily briefing", "prepare my day"],
+    "action": { "type": "briefing" },
+    "response": ""
+  },
+  {
+    "id": "expense-add",
+    "description": "Record an expense",
+    "phrases": ["add expense <amount> for <desc>"],
+    "action": { "type": "expense", "amount": "{amount}", "desc": "{desc}" },
+    "response": ""
+  },
+  {
+    "id": "finance-summary",
+    "description": "Spend summary",
+    "phrases": ["finance summary", "spend summary"],
+    "action": { "type": "finance-summary" },
+    "response": ""
+  },
+  {
+    "id": "contact-add",
+    "description": "Save a CRM contact",
+    "phrases": ["add contact <name> at <company>"],
+    "action": { "type": "contact", "name": "{name}", "company": "{company}" },
+    "response": ""
+  },
+  {
+    "id": "contact-list",
+    "description": "List CRM contacts",
+    "phrases": ["show contacts", "my contacts"],
+    "action": { "type": "contacts" },
+    "response": ""
+  },
+  {
+    "id": "swot",
+    "description": "SWOT analysis",
+    "phrases": ["swot for <topic>"],
+    "action": { "type": "swot", "topic": "{topic}" },
+    "response": ""
+  },
+  {
     "id": "stop-listening",
     "description": "End continuous conversation; wait for the wake word again",
     "phrases": ["stop listening", "stop listening lala", "that's all for now", "goodbye for now", "go idle"],
