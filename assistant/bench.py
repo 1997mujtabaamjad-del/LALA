@@ -12,7 +12,7 @@ import time
 
 import numpy as np
 
-from . import llm, mic, pipeline, stt, tts, vad, wake
+from . import llm, pipeline, stt, tts, vad, wake
 
 
 def _ms(fn, *a, **kw):
@@ -49,7 +49,7 @@ def run_bench(cfg):
     if provider in ("ollama", "openai"):
         gen = llm.ask_stream(cfg, None, "Say hello")
         t0 = time.perf_counter()
-        first = next(gen, None)
+        next(gen, None)
         ttft = (time.perf_counter() - t0) * 1000
         gen.close()
         rows.append(("llm first token", ttft, provider))

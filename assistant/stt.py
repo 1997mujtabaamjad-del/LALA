@@ -16,11 +16,9 @@ _whisper_model = None
 
 
 def local_available():
-    try:
-        import faster_whisper  # noqa: F401
-        return True
-    except ImportError:
-        return False
+    import importlib.util
+
+    return importlib.util.find_spec("faster_whisper") is not None
 
 
 def resolve_provider(cfg):

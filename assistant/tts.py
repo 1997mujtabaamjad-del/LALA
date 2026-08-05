@@ -31,11 +31,9 @@ def piper_ready():
 
 
 def piper_available():
-    try:
-        import piper  # noqa: F401
-        return True
-    except ImportError:
-        return False
+    import importlib.util
+
+    return importlib.util.find_spec("piper") is not None
 
 
 def download_piper_voice(progress=None):

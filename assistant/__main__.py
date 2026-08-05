@@ -47,32 +47,31 @@ def setup():
 
     cfg = config.load()
     print("Checking assistant components…")
-    print(f"  sounddevice (mic): ", end="")
+    print("  sounddevice (mic): ", end="")
     try:
         from . import mic
         print("ok" if mic.available() else "missing (pip install sounddevice)")
     except Exception as exc:  # noqa: BLE001
         print(f"error: {exc}")
-    print(f"  openwakeword:      ", end="")
-    try:
-        import openwakeword  # noqa: F401
-        print("ok")
-    except ImportError:
-        print("missing (pip install openwakeword)")
-    print(f"  faster-whisper:    ", "ok" if stt.local_available() else "missing (pip install faster-whisper)")
+    import importlib.util
+
+    print("  openwakeword:      ",
+          "ok" if importlib.util.find_spec("openwakeword") is not None
+          else "missing (pip install openwakeword)")
+    print("  faster-whisper:    ", "ok" if stt.local_available() else "missing (pip install faster-whisper)")
     from . import gpu
     g = gpu.summarize()
     device, compute = gpu.stt_plan(cfg.get("prefer_gpu", True), g["cuda_devices"])
-    print(f"  GPU (CUDA):        ",
+    print("  GPU (CUDA):        ",
           f"{g['cuda_devices']} device(s) → Whisper on {device}/{compute}"
           if g["cuda_devices"] else
           "none — CPU mode (int8). Ollama will also use CPU.")
-    print(f"  Piper CUDA EP:     ", "yes" if g["onnx_cuda"] else "no (CPU onnxruntime)")
+    print("  Piper CUDA EP:     ", "yes" if g["onnx_cuda"] else "no (CPU onnxruntime)")
     from . import vad as vadmod
-    print(f"  VAD:               ",
+    print("  VAD:               ",
           "Silero (neural)" if (cfg.get("prefer_silero", True) and vadmod.available())
           else "energy threshold (pip install silero-vad onnxruntime for neural)")
-    print(f"  piper TTS model:   ", "ok" if tts.piper_ready() else "not downloaded")
+    print("  piper TTS model:   ", "ok" if tts.piper_ready() else "not downloaded")
     ans = input("Download the Piper voice now? [y/N] ").strip().lower()
     if ans in ("y", "yes"):
         tts.download_piper_voice(progress=lambda p: print(f"\r  downloading… {p}%", end=""))

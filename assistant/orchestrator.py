@@ -7,9 +7,8 @@ Conversation state machine shared by the GUI and the terminal CLI:
 """
 
 import threading
-import time
 
-from . import config, llm, mic, router, stt, tools, tts, vad, wake
+from . import llm, mic, router, stt, tools, tts
 from .memory import Memory
 from .pipeline import Pipeline
 

@@ -6,8 +6,6 @@ ha_url, ha_token.
 
 import requests
 
-from . import config
-
 # hue degrees (0-65535 scale) and kelvin for whites
 COLOR_HUE = {"red": 0, "orange": 7000, "yellow": 12000, "green": 25000,
              "cyan": 32000, "blue": 46000, "purple": 50000, "pink": 56000}

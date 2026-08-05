@@ -8,7 +8,7 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 
-from . import config, llm, stt, tts, wake
+from . import config, tts
 from .orchestrator import Assistant
 
 COLORS = {
