@@ -443,6 +443,13 @@
     "response": ""
   },
   {
+    "id": "guide",
+    "description": "Spoken, LLM-generated tutorial on talking to LALA",
+    "phrases": ["user guide", "how do i use you", "how do i speak to you", "how do i talk to you", "teach me to use you", "tutorial", "help me speak"],
+    "action": { "type": "guide" },
+    "response": ""
+  },
+  {
     "id": "stop-listening",
     "description": "End continuous conversation; wait for the wake word again",
     "phrases": ["stop listening", "stop listening lala", "that's all for now", "goodbye for now", "go idle"],

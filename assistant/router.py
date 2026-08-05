@@ -155,6 +155,11 @@ def handle(text, memory=None):
              "thats all for now", "goodbye for now", "you can sleep now", "go idle"):
         return "Okay — I'll wait for the wake word.", {"type": "end-conversation"}
 
+    if t in ("user guide", "how do i use you", "how do i speak to you",
+             "teach me to use you", "tutorial", "help me speak", "guide me",
+             "how do i talk to you"):
+        return "Here's how to talk to me.", {"type": "guide"}
+
     if t in ("lock computer", "lock the computer", "lock screen"):
         return "Locking the computer.", {"type": "power", "op": "lock"}
     if t in ("sleep computer", "sleep mode", "go to sleep"):
@@ -192,6 +197,10 @@ def perform(action):
             _ok, msg = lights.control(config.load(), action["op"],
                                       action.get("value"), action.get("color"))
             return msg
+        elif kind == "guide":
+            from . import config, guide
+
+            return guide.generate(config.load())
         elif kind == "speak":
             pass
         elif kind == "app":

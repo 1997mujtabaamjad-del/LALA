@@ -143,6 +143,21 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class GuideTest(unittest.TestCase):
+    def test_guide_fallback_static(self):
+        from assistant import guide
+
+        cfg = dict(config.DEFAULTS)
+        cfg["llm_provider"] = "mock"  # mock reply must be rejected → static tips
+        text = guide.generate(cfg)
+        self.assertIn("Hey Laala", text)
+        self.assertIn("stop listening", text)
+
+    def test_router_guide_phrase(self):
+        resp, action = router.handle("how do i use you")
+        self.assertEqual(action["type"], "guide")
+
+
 class RecordingSttTest(unittest.TestCase):
     def test_save_wav_header(self):
         import numpy as np

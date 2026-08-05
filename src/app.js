@@ -48,6 +48,15 @@ const JOKES = [
   'I would tell you a UDP joke, but you might not get it.'
 ];
 
+const GUIDE_TIPS = [
+  'Say “Hey Laala” and wait for the beep, then speak your request.',
+  'Or hold Space — or tap the mic — and release when you’re done.',
+  'You can interrupt me any time; just start talking and I’ll stop.',
+  'After I answer, keep talking — I listen on until you pause, or say “stop listening”.',
+  'Try things like “open youtube”, “weather in hyderabad”, “add meeting tomorrow at 3 pm”, or “lights to warm”.',
+  'Say “help” for my full command list, and “user guide” to hear this again.'
+];
+
 const CONFIRM_WORDS = ['confirm', 'yes', 'do it', 'proceed', 'go ahead'];
 const CANCEL_WORDS = ['cancel', 'no', 'stop', 'nevermind', 'never mind', 'abort'];
 
@@ -271,6 +280,13 @@ async function runMatch(match) {
 
   if (act.type === 'joke') {
     respond(JOKES[Math.floor(Math.random() * JOKES.length)]);
+    return;
+  }
+
+  if (act.type === 'guide') {
+    // LLM-generated when the Python brain is reachable; static tips otherwise.
+    const brain = await askBrain('user guide');
+    respond(brain || 'Here’s how to talk to me. ' + GUIDE_TIPS.join(' '));
     return;
   }
 

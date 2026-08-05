@@ -212,6 +212,9 @@ Say things like:
 - *"lock computer"*, *"sleep computer"*
 - *"shut down computer"*, *"restart computer"* — **LALA always asks you to confirm first**
 - *"help"* — shows everything it understands
+- *"user guide"* — LALA **generates a speaking tutorial with the LLM** (wake word,
+  push-to-talk, follow-ups, barge-in, example commands) and **reads it aloud**;
+  offline, a built-in guide is spoken instead. Interrupt anytime by talking.
 
 ## Custom commands
 
