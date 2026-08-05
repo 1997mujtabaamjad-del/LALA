@@ -77,6 +77,11 @@ offline demo mode. The Electron app in this repo remains the richer *command cen
 
 ### Power features
 
+- **Barge-in**: start talking while LALA speaks and she shuts up and listens.
+  Python: a mic monitor watches RMS during playback (grace period + sustained
+  threshold beat speaker bleed) and cancels the audio, then transcribes your
+  interruption. Electron/web: the wake stream flips into command capture the
+  moment you talk over her voice; Space/orb also cancel TTS instantly.
 - **GPU acceleration**: Whisper STT auto-uses CUDA with **float16** when ctranslate2
   sees a GPU (else CPU/int8); Piper uses onnxruntime's **CUDAExecutionProvider** when
   present; Ollama manages its own GPU. `--setup` prints what it found, and the GUI +

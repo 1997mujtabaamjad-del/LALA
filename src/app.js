@@ -406,6 +406,8 @@ async function pickEngine() {
 
 async function startPTT() {
   if (state.pttActive) return;
+  // Push-to-talk is a manual barge-in: stop any ongoing reply first.
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
   const engine = await pickEngine();
   if (!engine) {
     toast('No speech engine ready — open Settings (download the offline model or add an OpenAI key).', 'warn');
@@ -516,6 +518,14 @@ async function startWake() {
         setStatusLine('Yes? Speak your command…');
       },
       onPartial: (t) => showInterim(t),
+      onBarge: () => {
+        // User talked over LALA: cut her voice, listen to them instead.
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
+        setOrbMode('recording');
+        setChipState('listening');
+        setStatusLine('Yes? I’m listening…');
+      },
+      canBarge: () => ('speechSynthesis' in window && speechSynthesis.speaking),
       onCommand: (text) => {
         setOrbMode('idle');
         setChipState('idle');

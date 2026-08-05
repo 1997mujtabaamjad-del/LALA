@@ -13,7 +13,7 @@ const MIN_SPEECH_MS = 250;     // speech needed before we may endpoint
 const SILENCE_MS = 1000;       // silence after speech that ends the command
 const MAX_COMMAND_MS = 10000;  // hard cap on command capture
 
-export function createWakeListener({ onWake, onPartial, onCommand }) {
+export function createWakeListener({ onWake, onPartial, onCommand, onBarge, canBarge }) {
   let ctx = null;
   let source = null;
   let processor = null;
@@ -26,6 +26,10 @@ export function createWakeListener({ onWake, onPartial, onCommand }) {
   let speechMs = 0;
   let silenceMs = 0;
   let startedAt = 0;
+  let bargeMs = 0;
+
+  const BARGE_RMS = 0.05;   // louder than idle noise; must beat TTS bleed
+  const BARGE_MS = 200;
 
   async function start(desktopBridge) {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -93,6 +97,26 @@ export function createWakeListener({ onWake, onPartial, onCommand }) {
           }
         })
         .catch(() => { feeding = false; });
+    }
+
+    // Barge-in: user talks over LALA's voice → stop TTS, capture the command.
+    if (mode === 'wake-wait' && canBarge && canBarge()) {
+      if (rms > BARGE_RMS) {
+        bargeMs += cbMs;
+      } else {
+        bargeMs = 0;
+      }
+      if (bargeMs >= BARGE_MS) {
+        bargeMs = 0;
+        mode = 'command';
+        startedAt = performance.now();
+        speechMs = cbMs;
+        silenceMs = 0;
+        bridge.wakeBarge().catch(() => {});
+        onBarge && onBarge();
+      }
+    } else if (mode !== 'command') {
+      bargeMs = 0;
     }
 
     if (mode === 'command') {

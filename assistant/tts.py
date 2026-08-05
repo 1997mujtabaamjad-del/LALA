@@ -6,6 +6,7 @@ Text-to-speech: Piper (local, free) or ElevenLabs (cloud).
 import os
 import subprocess
 import tempfile
+import time
 import wave
 
 import requests
@@ -67,15 +68,15 @@ def resolve_provider(cfg):
     return "none"
 
 
-def speak(text, cfg):
+def speak(text, cfg, stop_event=None):
     if not text:
         return
     provider = resolve_provider(cfg)
     try:
         if provider == "piper":
-            _speak_piper(text)
+            _speak_piper(text, stop_event)
         elif provider == "elevenlabs":
-            _speak_elevenlabs(text, cfg)
+            _speak_elevenlabs(text, cfg, stop_event)
         # "none": silent mode (e.g. headless / CLI)
     except Exception:  # noqa: BLE001 — never crash the assistant over audio
         pass
@@ -91,9 +92,10 @@ def split_sentences(buffer):
     return [], buffer
 
 
-def speak_stream(chunks, cfg):
+def speak_stream(chunks, cfg, stop_event=None):
     """Speak a streaming reply with minimal latency: the first sentence is
-    synthesized while the LLM is still generating the rest. Returns full text."""
+    synthesized while the LLM is still generating the rest. Returns full text.
+    A set `stop_event` (barge-in) aborts any remaining sentences."""
     import queue
     import threading
 
@@ -104,7 +106,9 @@ def speak_stream(chunks, cfg):
             item = q.get()
             if item is None:
                 return
-            speak(item, cfg)
+            if stop_event is not None and stop_event.is_set():
+                continue  # drain silently
+            speak(item, cfg, stop_event)
 
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
@@ -125,7 +129,7 @@ def speak_stream(chunks, cfg):
     return "".join(full)
 
 
-def _play_wav(path):
+def _play_wav(path, stop_event=None):
     try:
         import sounddevice as sd
 
@@ -135,20 +139,33 @@ def _play_wav(path):
         import numpy as np
 
         audio = np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32768.0
-        sd.play(audio, rate)
-        sd.wait()
+        stream = sd.play(audio, rate)
+        while stream.active:
+            if stop_event is not None and stop_event.is_set():
+                stream.stop()
+                return
+            time.sleep(0.03)
         return
     except Exception:  # noqa: BLE001
         pass
+    proc = None
     for player in ("aplay", "paplay", "afplay"):
         try:
-            subprocess.run([player, path], check=True, capture_output=True, timeout=60)
-            return
-        except (OSError, subprocess.SubprocessError):
+            proc = subprocess.Popen([player, path], stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL)
+            break
+        except OSError:
             continue
+    if proc is None:
+        return
+    while proc.poll() is None:
+        if stop_event is not None and stop_event.is_set():
+            proc.kill()
+            return
+        time.sleep(0.05)
 
 
-def _speak_piper(text):
+def _speak_piper(text, stop_event=None):
     from piper import PiperVoice
 
     from . import gpu
@@ -163,16 +180,18 @@ def _speak_piper(text):
         path = tmp.name
     with wave.open(path, "wb") as wf:
         voice.synthesize(text, wf)
-    _play_wav(path)
+    _play_wav(path, stop_event)
     try:
         os.unlink(path)
     except OSError:
         pass
 
 
-def _speak_elevenlabs(text, cfg):
+def _speak_elevenlabs(text, cfg, stop_event=None):
     from . import elevenlabs
 
+    if stop_event is not None and stop_event.is_set():
+        return
     mp3_bytes = elevenlabs.synthesize(
         cfg["elevenlabs_api_key"],
         cfg["elevenlabs_voice_id"],
@@ -187,7 +206,7 @@ def _speak_elevenlabs(text, cfg):
         wav = mp3 + ".wav"
         subprocess.run(["ffmpeg", "-y", "-i", mp3, wav], check=True,
                        capture_output=True, timeout=60)
-        _play_wav(wav)
+        _play_wav(wav, stop_event)
         played = True
         try:
             os.unlink(wav)

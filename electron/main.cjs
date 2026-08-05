@@ -183,6 +183,13 @@ function registerIpc() {
       return { ok: false, error: String(err.message || err) };
     }
   });
+  ipcMain.handle('wake:barge', () => {
+    try {
+      return { ok: true, switched: asr.wakeBarge() };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
   ipcMain.handle('wake:stop', () => {
     asr.wakeStop();
     return { ok: true };

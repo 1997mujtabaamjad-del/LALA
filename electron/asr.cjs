@@ -116,6 +116,19 @@ function splitWake(text) {
   return { wake: true, rest };
 }
 
+/**
+ * Barge-in: the user started talking while LALA speaks. Flip the wake stream
+ * into command-capture mode so their sentence becomes the next command.
+ */
+function wakeBarge() {
+  if (wakeRec && wakeMode === 'wake-wait') {
+    wakeMode = 'command';
+    commandText = '';
+    return true;
+  }
+  return false;
+}
+
 /** End-of-speech detected by the renderer: return the full command text. */
 function wakeFinish() {
   if (!wakeRec || wakeMode !== 'command') {
@@ -287,5 +300,6 @@ module.exports = {
   wakeStart,
   wakeFeed,
   wakeFinish,
+  wakeBarge,
   wakeStop
 };

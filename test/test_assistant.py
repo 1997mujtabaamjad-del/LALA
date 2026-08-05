@@ -143,6 +143,31 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class BargeInTest(unittest.TestCase):
+    def test_silence_never_barges(self):
+        from assistant import mic
+
+        self.assertFalse(mic.barge_triggered([0.001] * 60, 80))
+
+    def test_loud_sustained_speech_barges(self):
+        from assistant import mic
+
+        seq = [0.001] * 10 + [0.09] * 6  # quiet, then ~480 ms of loud speech
+        self.assertTrue(mic.barge_triggered(seq, 80))
+
+    def test_short_blip_ignored(self):
+        from assistant import mic
+
+        seq = [0.001] * 10 + [0.09] * 2 + [0.001] * 10
+        self.assertFalse(mic.barge_triggered(seq, 80))
+
+    def test_grace_period_protects_utterance_start(self):
+        from assistant import mic
+
+        seq = [0.09] * 4 + [0.001] * 20  # energy only inside the grace window
+        self.assertFalse(mic.barge_triggered(seq, 80))
+
+
 class GpuPlanTest(unittest.TestCase):
     def test_stt_plan_cpu_when_no_gpu(self):
         from assistant import gpu

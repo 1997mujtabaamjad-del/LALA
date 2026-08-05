@@ -138,5 +138,26 @@ class Assistant:
 
     def _say(self, text, spoken=True):
         self.log(self.cfg["name"], text)
-        if spoken:
-            tts.speak(text, self.cfg)
+        if not spoken:
+            return
+
+        # Barge-in: if the user starts talking over us, stop playback and
+        # listen to what they say instead.
+        stop = threading.Event()
+        monitor = mic.BargeMonitor(stop) if mic.available() else None
+        if monitor:
+            monitor.start()
+        tts.speak(text, self.cfg, stop_event=stop)
+        barged = bool(monitor and monitor.barged)
+        if monitor:
+            monitor.stop()
+        if barged:
+            self.log("system", "(barge-in — listening)")
+            self.status("listening")
+            audio = mic.record_until_silence()
+            try:
+                next_text = stt.transcribe(audio, self.cfg)
+            except Exception:  # noqa: BLE001
+                next_text = ""
+            if next_text:
+                self.process(next_text, follow_up=False, spoken=True)

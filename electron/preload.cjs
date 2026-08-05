@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('lala', {
   wakeStart: () => ipcRenderer.invoke('wake:start'),
   wakeFeed: (pcm) => ipcRenderer.invoke('wake:feed', pcm),
   wakeFinish: () => ipcRenderer.invoke('wake:finish'),
+  wakeBarge: () => ipcRenderer.invoke('wake:barge'),
   wakeStop: () => ipcRenderer.invoke('wake:stop'),
   onWakeSettingChanged: (cb) => {
     ipcRenderer.on('settings:wake-changed', (_e, value) => cb(value));

@@ -85,3 +85,63 @@ def beep(freq=880, seconds=0.15):
         sd.wait()
     except Exception:  # noqa: BLE001
         pass
+
+
+# ---------------------------------------------------------------------------
+# Barge-in: detect that the *user* started talking while LALA is speaking.
+# ---------------------------------------------------------------------------
+
+BARGE_RMS = 0.05      # louder than normal VAD — must beat speaker bleed
+BARGE_SUSTAIN_MS = 250
+BARGE_GRACE_MS = 400  # ignore the first moments of each utterance
+
+
+def barge_triggered(rms_values, cb_ms, threshold=BARGE_RMS,
+                    sustain_ms=BARGE_SUSTAIN_MS, grace_ms=BARGE_GRACE_MS):
+    """Pure decider (unit-tested): would this RMS sequence fire a barge-in?"""
+    elapsed = 0
+    sustained = 0
+    for rms in rms_values:
+        elapsed += cb_ms
+        if elapsed < grace_ms:
+            continue
+        if rms > threshold:
+            sustained += cb_ms
+            if sustained >= sustain_ms:
+                return True
+        else:
+            sustained = 0
+    return False
+
+
+class BargeMonitor:
+    """Watches the mic during TTS playback; sets `stop_event` on user speech."""
+
+    def __init__(self, stop_event, cb_ms=80):
+        self.stop_event = stop_event
+        self.cb_ms = cb_ms
+        self.barged = False
+        self._stream = None
+        self._history = []
+
+    def start(self):
+        def _feed(chunk):
+            rms = float(np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2)))
+            self._history.append(rms)
+            if not self.barged and barge_triggered(self._history, self.cb_ms):
+                self.barged = True
+                self.stop_event.set()
+
+        try:
+            self._stream = open_stream(_feed)
+        except Exception:  # noqa: BLE001
+            self._stream = None
+
+    def stop(self):
+        if self._stream is not None:
+            try:
+                self._stream.stop()
+                self._stream.close()
+            except Exception:  # noqa: BLE001
+                pass
+            self._stream = None
