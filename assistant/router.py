@@ -7,6 +7,7 @@ search, weather, time/date, volume, power, notes.
 """
 
 import platform
+import random
 import re
 import shutil
 import subprocess
@@ -15,6 +16,14 @@ from datetime import datetime
 from urllib.parse import quote
 
 from . import calendar_store, lights, websearch, weather
+
+JOKES = [
+    "Why do programmers prefer dark mode? Because light attracts bugs.",
+    "I told my computer I needed a break, and it said: no problem, I'll go to sleep.",
+    "Why did the developer go broke? Because he used up all his cache.",
+    "There are only 10 kinds of people: those who understand binary and those who don't.",
+    "I would tell you a UDP joke, but you might not get it.",
+]
 
 SYSTEM = platform.system()  # Windows | Darwin | Linux
 
@@ -159,6 +168,13 @@ def handle(text, memory=None):
              "teach me to use you", "tutorial", "help me speak", "guide me",
              "how do i talk to you"):
         return "", {"type": "guide"}
+
+    if t in ("flip a coin", "coin flip", "heads or tails"):
+        return random.choice(["Heads!", "Tails!"]), {"type": "speak"}
+    if t in ("roll a dice", "roll the dice", "roll dice"):
+        return f"You rolled a {random.randint(1, 6)}.", {"type": "speak"}
+    if t in ("tell me a joke", "joke", "make me laugh", "say something funny"):
+        return random.choice(JOKES), {"type": "speak"}
 
     if t in ("lock computer", "lock the computer", "lock screen"):
         return "Locking the computer.", {"type": "power", "op": "lock"}
