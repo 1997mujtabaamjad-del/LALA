@@ -34,12 +34,13 @@ DEFAULTS = {
     # GPU: use CUDA for faster-whisper (fp16) and Piper when available
     "prefer_gpu": True,
     "stt_device": "auto",  # auto | cpu | cuda
-    # Smart lights: auto | hue | homeassistant | none
+    # Smart lights: auto | hue | homeassistant | wled | none
     "lights_provider": "auto",
     "hue_ip": "",
     "hue_key": "",
     "ha_url": "",
     "ha_token": "",
+    "wled_ip": "",
 }
 
 

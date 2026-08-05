@@ -85,6 +85,9 @@ def handle(text, memory=None):
     if m:
         return "Checking the weather.", {"type": "weather", "city": m.group(1)}
 
+    if t in ("forecast", "the forecast", "week's weather", "weekend weather"):
+        return "Here's the forecast.", {"type": "weather", "city": ""}
+
     if t in ("what time is it", "time", "tell me the time"):
         return f"It's {datetime.now().strftime('%I:%M %p')}.", {"type": "speak"}
 
@@ -108,6 +111,9 @@ def handle(text, memory=None):
     if t in ("what s on my calendar", "my schedule", "my calendar",
              "what s on my calendar today", "what's on my calendar"):
         return "Here's your schedule.", {"type": "calendar", "op": "list"}
+
+    if t in ("export my calendar", "export calendar", "share my calendar"):
+        return "Exporting your calendar.", {"type": "calendar", "op": "export"}
 
     if t in ("turn on the lights", "lights on", "light on", "switch on the lights"):
         return "Lights on.", {"type": "lights", "op": "on"}
@@ -170,7 +176,7 @@ def perform(action):
         if kind == "url":
             webbrowser.open(action["value"])
         elif kind == "weather":
-            note = weather.current_for_city(action.get("city", ""))
+            note = weather.summary(action.get("city", ""))
             return note or "I couldn't reach a weather service right now."
         elif kind == "websearch":
             answer = websearch.answer(action["query"])
@@ -208,6 +214,9 @@ def _calendar(action):
                        "title": action["title"]})
         calendar_store.save(events)
         return "Saved to your calendar."
+    if action["op"] == "export":
+        path = calendar_store.export_ics()
+        return f"Exported to {path} — import it into Google or Outlook."
     pairs = calendar_store.upcoming()
     if not pairs:
         return "Your calendar is clear — nothing scheduled."

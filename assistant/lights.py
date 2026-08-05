@@ -12,6 +12,26 @@ from . import config
 COLOR_HUE = {"red": 0, "orange": 7000, "yellow": 12000, "green": 25000,
              "cyan": 32000, "blue": 46000, "purple": 50000, "pink": 56000}
 COLOR_CT = {"warm": 500, "white": 370, "cool": 200}  # mireds
+COLOR_RGB = {"red": (255, 0, 0), "orange": (255, 120, 0), "yellow": (255, 210, 0),
+             "green": (0, 200, 60), "cyan": (0, 200, 210), "blue": (30, 90, 255),
+             "purple": (160, 40, 220), "pink": (255, 80, 170),
+             "warm": (255, 180, 100), "white": (255, 255, 255), "cool": (190, 220, 255)}
+
+
+def build_wled_url(ip, op, value=None, color=None):
+    """Pure WLED /win URL builder (unit-tested)."""
+    base = f"http://{ip}/win&"
+    if op == "on":
+        return base + "T=1"
+    if op == "off":
+        return base + "T=0"
+    if op == "set":
+        bri = max(1, min(100, int(value)))
+        return base + f"A={int(bri * 254 / 100)}"
+    if op == "color" and color in COLOR_RGB:
+        r, g, b = COLOR_RGB[color]
+        return base + f"R={r}&G={g}&B={b}"
+    return base + "T=1"
 
 
 def build_hue_payload(op, value=None, color=None):
@@ -33,12 +53,14 @@ def build_hue_payload(op, value=None, color=None):
 
 def provider(cfg):
     pref = cfg.get("lights_provider", "auto")
-    if pref in ("hue", "homeassistant", "none"):
+    if pref in ("hue", "homeassistant", "wled", "none"):
         return pref
     if cfg.get("hue_ip") and cfg.get("hue_key"):
         return "hue"
     if cfg.get("ha_url") and cfg.get("ha_token"):
         return "homeassistant"
+    if cfg.get("wled_ip"):
+        return "wled"
     return "none"
 
 
@@ -64,6 +86,9 @@ def control(cfg, op, value=None, color=None):
                          "Content-Type": "application/json"},
                 json=body, timeout=5,
             )
+            r.raise_for_status()
+        elif prov == "wled":
+            r = requests.get(build_wled_url(cfg["wled_ip"], op, value, color), timeout=5)
             r.raise_for_status()
         else:
             return False, ("No smart-light provider configured — set hue_ip/hue_key or "

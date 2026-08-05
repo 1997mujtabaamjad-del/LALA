@@ -304,10 +304,12 @@ async function weatherSummary(city) {
       const gj = await g.json();
       const place = (gj.results || [])[0];
       if (!place) return null;
-      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m`);
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=3&timezone=auto`);
       const j = await r.json();
       const c = j.current;
-      return `It's ${Math.round(c.temperature_2m)}°C in ${place.name}, ${WMO[c.weather_code] || 'cloudy'}, feels like ${Math.round(c.apparent_temperature)}°, wind ${Math.round(c.wind_speed_10m)} km/h, humidity ${c.relative_humidity_2m}%.`;
+      const outlook = forecastSentence(j.daily || {});
+      return `It's ${Math.round(c.temperature_2m)}°C in ${place.name}, ${WMO[c.weather_code] || 'cloudy'}, feels like ${Math.round(c.apparent_temperature)}°, wind ${Math.round(c.wind_speed_10m)} km/h, humidity ${c.relative_humidity_2m}%.` +
+        (outlook ? ` Ahead: ${outlook}` : '');
     }
     const r = await fetch('https://wttr.in/?format=j1');
     const j = await r.json();
@@ -317,6 +319,17 @@ async function weatherSummary(city) {
   } catch {
     return null;
   }
+}
+
+function forecastSentence(daily) {
+  const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const parts = [];
+  const n = Math.min(3, (daily.time || []).length);
+  for (let i = 0; i < n; i++) {
+    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : names[new Date(daily.time[i]).getDay()];
+    parts.push(`${label}: ${WMO[daily.weather_code[i]] || 'cloudy'}, ${Math.round(daily.temperature_2m_min[i])}–${Math.round(daily.temperature_2m_max[i])}°`);
+  }
+  return parts.length ? parts.join('; ') + '.' : '';
 }
 
 async function ddgAnswer(query) {
@@ -378,6 +391,19 @@ function calendar(action, store) {
 
 const LIGHT_HUE = { red: 0, orange: 7000, yellow: 12000, green: 25000, cyan: 32000, blue: 46000, purple: 50000, pink: 56000 };
 const LIGHT_CT = { warm: 500, white: 370, cool: 200 };
+const LIGHT_RGB = { red: [255, 0, 0], orange: [255, 120, 0], yellow: [255, 210, 0], green: [0, 200, 60], cyan: [0, 200, 210], blue: [30, 90, 255], purple: [160, 40, 220], pink: [255, 80, 170], warm: [255, 180, 100], white: [255, 255, 255], cool: [190, 220, 255] };
+
+function wledUrl(ip, action) {
+  const base = `http://${ip}/win&`;
+  if (action.op === 'on') return `${base}T=1`;
+  if (action.op === 'off') return `${base}T=0`;
+  if (action.op === 'set') return `${base}A=${Math.round(Math.max(1, Math.min(100, action.value)) * 254 / 100)}`;
+  if (action.op === 'color' && LIGHT_RGB[action.color]) {
+    const [r, g, b] = LIGHT_RGB[action.color];
+    return `${base}R=${r}&G=${g}&B=${b}`;
+  }
+  return `${base}T=1`;
+}
 
 function huePayload(action) {
   if (action.op === 'on') return { on: true };
@@ -392,10 +418,14 @@ function huePayload(action) {
 
 async function controlLights(settings, action) {
   const payload = huePayload(action);
+  const pref = settings.lightsProvider || 'auto';
   const provider =
-    settings.lightsProvider === 'hue' || (settings.lightsProvider !== 'homeassistant' && settings.hueIp && settings.hueKey)
-      ? 'hue'
-      : settings.haUrl && settings.haToken ? 'homeassistant' : null;
+    pref === 'hue' ? (settings.hueIp ? 'hue' : null)
+      : pref === 'homeassistant' ? (settings.haUrl ? 'homeassistant' : null)
+        : pref === 'wled' ? (settings.wledIp ? 'wled' : null)
+          : settings.hueIp && settings.hueKey ? 'hue'
+            : settings.haUrl && settings.haToken ? 'homeassistant'
+              : settings.wledIp ? 'wled' : null;
   try {
     if (provider === 'hue') {
       const r = await fetch(`http://${settings.hueIp}/api/${settings.hueKey}/groups/0/action`, {
@@ -412,8 +442,11 @@ async function controlLights(settings, action) {
         body: JSON.stringify(body)
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    } else if (provider === 'wled') {
+      const r = await fetch(wledUrl(settings.wledIp, action));
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
     } else {
-      return 'No smart-light provider configured — add Hue or Home Assistant details in Settings.';
+      return 'No smart-light provider configured — add Hue, Home Assistant or WLED details in Settings.';
     }
   } catch (err) {
     return `Lights unreachable: ${err.message}`;

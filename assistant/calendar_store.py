@@ -83,6 +83,54 @@ def add(title, when_text):
     return event
 
 
+def export_ics(path=None):
+    """Write the calendar as a standard .ics (opens in Google/Outlook/Apple)."""
+    path = path or os.path.join(config.DATA_DIR, "lala-calendar.ics")
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LALA//voice calendar//EN"]
+    for e in load():
+        try:
+            when = datetime.fromisoformat(e["when"])
+        except (ValueError, KeyError):
+            continue
+        lines += ["BEGIN:VEVENT",
+                  f"UID:{e.get('id', 'ev')}@lala",
+                  f"DTSTART:{when:%Y%m%dT%H%M%S}",
+                  f"SUMMARY:{e.get('title', 'event')}",
+                  "END:VEVENT"]
+    lines.append("END:VCALENDAR")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf8") as fh:
+        fh.write("\r\n".join(lines) + "\r\n")
+    return path
+
+
+def import_ics(text):
+    """Merge VEVENTs from .ics content. Returns the number added."""
+    added = 0
+    cur = {}
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line == "BEGIN:VEVENT":
+            cur = {}
+        elif line.startswith("DTSTART"):
+            value = line.split(":", 1)[1].split(";")[-1]
+            try:
+                cur["when"] = datetime.strptime(value[:15], "%Y%m%dT%H%M%S")
+            except ValueError:
+                pass
+        elif line.startswith("SUMMARY:"):
+            cur["title"] = line[len("SUMMARY:"):].strip()
+        elif line == "END:VEVENT" and cur.get("when"):
+            events = load()
+            events.append({"id": f"ics{len(events)}{int(cur['when'].timestamp())}",
+                           "when": cur["when"].isoformat(),
+                           "title": cur.get("title", "event")})
+            save(events)
+            added += 1
+            cur = {}
+    return added
+
+
 def upcoming(limit=5, on_day=None):
     now = datetime.now()
     events = []

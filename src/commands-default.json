@@ -354,7 +354,7 @@
   {
     "id": "weather",
     "description": "Spoken local weather",
-    "phrases": ["weather", "what's the weather", "what is the weather", "how's the weather"],
+    "phrases": ["weather", "what's the weather", "what is the weather", "how's the weather", "forecast", "the forecast", "weekend weather"],
     "action": { "type": "weather" },
     "response": ""
   },

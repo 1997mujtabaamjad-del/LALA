@@ -35,7 +35,8 @@ const DEFAULT_SETTINGS = {
   hueIp: '',
   hueKey: '',
   haUrl: '',
-  haToken: ''
+  haToken: '',
+  wledIp: ''
 };
 
 const JOKES = [
@@ -350,10 +351,13 @@ async function fetchWeather(city) {
       const gj = await g.json();
       const place = (gj.results || [])[0];
       if (!place) return null;
-      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m`);
-      const c = (await r.json()).current;
-      const words = { 0: 'clear skies', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast', 61: 'light rain', 63: 'rain', 95: 'thunderstorms' };
-      return `It's ${Math.round(c.temperature_2m)}°C in ${place.name}, ${words[c.weather_code] || 'cloudy'}, feels like ${Math.round(c.apparent_temperature)}°, humidity ${c.relative_humidity_2m}%.`;
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=3&timezone=auto`);
+      const j = await r.json();
+      const c = j.current;
+      const words = { 0: 'clear skies', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast', 45: 'foggy', 51: 'light drizzle', 61: 'light rain', 63: 'rain', 65: 'heavy rain', 71: 'light snow', 73: 'snow', 80: 'rain showers', 95: 'thunderstorms' };
+      const outlook = forecastLine(j.daily || {});
+      return `It's ${Math.round(c.temperature_2m)}°C in ${place.name}, ${words[c.weather_code] || 'cloudy'}, feels like ${Math.round(c.apparent_temperature)}°, humidity ${c.relative_humidity_2m}%.` +
+        (outlook ? ` Ahead: ${outlook}` : '');
     }
     const r = await fetch('https://wttr.in/?format=j1');
     const j = await r.json();
@@ -361,6 +365,63 @@ async function fetchWeather(city) {
   } catch {
     return null;
   }
+}
+
+function forecastLine(daily) {
+  const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const words = { 0: 'clear', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast', 61: 'light rain', 63: 'rain', 95: 'thunderstorms' };
+  const parts = [];
+  const n = Math.min(3, (daily.time || []).length);
+  for (let i = 0; i < n; i++) {
+    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : names[new Date(daily.time[i]).getDay()];
+    parts.push(`${label}: ${words[daily.weather_code[i]] || 'cloudy'}, ${Math.round(daily.temperature_2m_min[i])}–${Math.round(daily.temperature_2m_max[i])}°`);
+  }
+  return parts.length ? parts.join('; ') + '.' : '';
+}
+
+async function fetchWikiResults(query) {
+  try {
+    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=3&format=json&origin=*`);
+    const [, titles, , urls] = await r.json();
+    return titles.map((t, i) => ({ title: t, url: urls[i] }));
+  } catch {
+    return [];
+  }
+}
+
+function buildIcs(events) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//LALA//voice calendar//EN'];
+  for (const e of events) {
+    const d = new Date(e.when);
+    if (Number.isNaN(d.getTime())) continue;
+    lines.push('BEGIN:VEVENT',
+      `UID:${e.id || 'ev'}@lala`,
+      `DTSTART:${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`,
+      `SUMMARY:${e.title || 'event'}`,
+      'END:VEVENT');
+  }
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n') + '\r\n';
+}
+
+function parseIcs(text) {
+  const out = [];
+  let cur = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line === 'BEGIN:VEVENT') cur = {};
+    else if (line.startsWith('DTSTART') && cur) {
+      const v = line.split(':')[1].split(';').pop();
+      const m = v.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
+      if (m) cur.when = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).toISOString();
+    } else if (line.startsWith('SUMMARY:') && cur) cur.title = line.slice(8).trim();
+    else if (line === 'END:VEVENT' && cur && cur.when) {
+      out.push({ id: `ics${Date.now()}${out.length}`, when: cur.when, title: cur.title || 'event' });
+      cur = null;
+    }
+  }
+  return out;
 }
 
 async function fetchDdg(query) {
@@ -860,8 +921,17 @@ function bindSkills() {
     const q = $('#skill-query').value.trim();
     if (!q) return;
     $('#search-card').textContent = 'Searching…';
+    $('#search-links').innerHTML = '';
     const a = await fetchDdg(q);
     $('#search-card').textContent = a || 'No instant answer found.';
+    const links = await fetchWikiResults(q);
+    for (const l of links) {
+      const btn = document.createElement('button');
+      btn.className = 'phrase-chip';
+      btn.textContent = l.title;
+      btn.onclick = () => window.open(l.url, '_blank', 'noopener');
+      $('#search-links').appendChild(btn);
+    }
   });
   $('#skill-query').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#skill-search').click();
@@ -905,6 +975,35 @@ function bindSkills() {
     b.onclick = () => skillLights({ op: 'color', color });
     wrap.appendChild(b);
   }
+
+  // Calendar .ics interop (Google / Outlook / Apple)
+  $('#cal-export').addEventListener('click', async () => {
+    const events = desktop
+      ? await window.lala.getCalendar()
+      : JSON.parse(localStorage.getItem('lala.calendar') || '[]');
+    const blob = new Blob([buildIcs(events)], { type: 'text/calendar' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'lala-calendar.ics';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Calendar exported as .ics');
+  });
+  $('#cal-import').addEventListener('click', () => $('#cal-file').click());
+  $('#cal-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const imported = parseIcs(await file.text());
+    if (desktop) {
+      for (const ev of imported) await window.lala.addCalendar(ev);
+    } else {
+      const arr = JSON.parse(localStorage.getItem('lala.calendar') || '[]');
+      localStorage.setItem('lala.calendar', JSON.stringify([...arr, ...imported]));
+    }
+    renderCalendar();
+    toast(`Imported ${imported.length} event(s).`);
+    e.target.value = '';
+  });
 
   renderCalendar();
 }
@@ -1007,6 +1106,7 @@ function renderSettingsForm() {
   $('#hue-key').value = s.hueKey || '';
   $('#ha-url').value = s.haUrl || '';
   $('#ha-token').value = s.haToken || '';
+  $('#wled-ip').value = s.wledIp || '';
   $('#wake-wrap').classList.toggle('hidden', !desktop);
   $('#hwaccel-wrap').classList.toggle('hidden', !desktop);
   $('#contconv-wrap').classList.toggle('hidden', !desktop);
@@ -1139,6 +1239,7 @@ function bindUI() {
     state.settings.hueKey = $('#hue-key').value.trim();
     state.settings.haUrl = $('#ha-url').value.trim();
     state.settings.haToken = $('#ha-token').value.trim();
+    state.settings.wledIp = $('#wled-ip').value.trim();
     await persistSettings();
     await refreshEngineChip();
     if (desktop) {

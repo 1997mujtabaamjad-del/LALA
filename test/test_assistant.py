@@ -143,6 +143,52 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class DeepSkillsTest(unittest.TestCase):
+    def test_forecast_sentence(self):
+        from assistant import weather
+
+        daily = {"time": ["2026-08-05", "2026-08-06", "2026-08-07"],
+                 "weather_code": [0, 61, 3],
+                 "temperature_2m_min": [21.4, 20.1, 19.0],
+                 "temperature_2m_max": [31.6, 28.2, 27.0]}
+        s = weather.forecast_sentence(daily)
+        self.assertIn("Today: clear skies, 21–32°", s)
+        self.assertIn("Tomorrow: light rain, 20–28°", s)
+        self.assertIn("Friday", s)
+
+    def test_ics_roundtrip(self):
+        from assistant import calendar_store
+
+        calendar_store.save([])
+        calendar_store.add("demo call", "demo call tomorrow at 5pm")
+        import tempfile
+
+        path = calendar_store.export_ics(tempfile.mktemp(suffix=".ics"))
+        text = open(path, encoding="utf8").read()
+        self.assertIn("BEGIN:VEVENT", text)
+        self.assertIn("SUMMARY:demo call", text)
+        calendar_store.save([])
+        added = calendar_store.import_ics(text)
+        self.assertEqual(added, 1)
+        self.assertEqual(calendar_store.upcoming()[0][1]["title"], "demo call")
+
+    def test_wled_urls(self):
+        from assistant import lights
+
+        self.assertEqual(lights.build_wled_url("1.2.3.4", "on"), "http://1.2.3.4/win&T=1")
+        self.assertEqual(lights.build_wled_url("1.2.3.4", "off"), "http://1.2.3.4/win&T=0")
+        self.assertEqual(lights.build_wled_url("1.2.3.4", "set", 50), "http://1.2.3.4/win&A=127")
+        self.assertEqual(lights.build_wled_url("1.2.3.4", "color", None, "blue"),
+                         "http://1.2.3.4/win&R=30&G=90&B=255")
+
+    def test_wiki_parse(self):
+        from assistant import websearch
+
+        self.assertEqual(websearch.parse_wiki({"extract": "A person."}), "A person.")
+        self.assertIsNone(websearch.parse_wiki({"type": "disambiguation", "extract": "x"}))
+        self.assertIsNone(websearch.parse_wiki({}))
+
+
 class SkillsTest(unittest.TestCase):
     def test_weather_describe(self):
         from assistant import weather

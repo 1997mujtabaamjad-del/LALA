@@ -188,13 +188,19 @@ Say things like:
 - *"copy that"* — copies your last transcript
 - *"what time is it"*, *"what's the date"*
 - *"flip a coin"*, *"roll a dice"*, *"tell me a joke"*
-- **Weather (spoken)**: *"weather"*, *"weather in hyderabad"* — Open-Meteo (no key), wttr.in fallback
-- **Web answers (spoken)**: *"who is ada lovelace"*, *"what is rayleigh scattering"* —
-  DuckDuckGo instant answers; opens a browser search when there's none
-- **Calendar**: *"add dentist appointment tomorrow at 3pm"*, *"what's on my calendar"* —
-  persisted locally, spoken summaries
+- **Weather (spoken + forecast)**: *"weather"*, *"weather in hyderabad"*, *"forecast"* —
+  Open-Meteo (no key): current conditions **plus a 3-day outlook**; wttr.in IP fallback.
+  The Skills tab shows a clickable weather card.
+- **Web answers (spoken + links)**: *"who is ada lovelace"*, *"what is rayleigh scattering"* —
+  DuckDuckGo instant answers with a **Wikipedia fallback**; the Skills panel also lists
+  clickable result links; falls back to a browser search when nothing's found
+- **Calendar (+ ICS interop)**: *"add dentist appointment tomorrow at 3pm"*,
+  *"what's on my calendar"*, *"export my calendar"* — persisted locally, spoken summaries,
+  **export/import standard .ics** so Google/Outlook/Apple calendars round-trip
+  (Skills tab has Export/Import buttons)
 - **Smart lights**: *"lights on/off"*, *"set lights to 40 percent"*, *"lights to warm/blue"* —
-  Philips Hue bridge or Home Assistant (Settings → Smart lights)
+  **Philips Hue, Home Assistant, or WLED** (Settings → Smart lights), plus on/off,
+  brightness and color-swatch controls in the Skills tab
 - *"lock computer"*, *"sleep computer"*
 - *"shut down computer"*, *"restart computer"* — **LALA always asks you to confirm first**
 - *"help"* — shows everything it understands
