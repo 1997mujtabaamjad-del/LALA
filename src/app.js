@@ -28,7 +28,8 @@ const DEFAULT_SETTINGS = {
   continuous: true,
   wakeWord: true,
   useBrain: true,
-  brainUrl: 'http://127.0.0.1:8420'
+  brainUrl: 'http://127.0.0.1:8420',
+  hwAccel: true
 };
 
 const JOKES = [
@@ -743,7 +744,9 @@ function renderSettingsForm() {
   $('#wake-word').checked = wakeWanted();
   $('#use-brain').checked = s.useBrain !== false;
   $('#brain-url').value = s.brainUrl || 'http://127.0.0.1:8420';
+  $('#hw-accel').checked = s.hwAccel !== false;
   $('#wake-wrap').classList.toggle('hidden', !desktop);
+  $('#hwaccel-wrap').classList.toggle('hidden', !desktop);
   $('#continuous-wrap').classList.toggle('hidden', desktop);
   if (!desktop) {
     $('#offline-section').classList.add('hidden');
@@ -866,6 +869,7 @@ function bindUI() {
     state.settings.wakeWord = $('#wake-word').checked;
     state.settings.useBrain = $('#use-brain').checked;
     state.settings.brainUrl = $('#brain-url').value.trim() || 'http://127.0.0.1:8420';
+    state.settings.hwAccel = $('#hw-accel').checked;
     await persistSettings();
     await refreshEngineChip();
     if (desktop) {

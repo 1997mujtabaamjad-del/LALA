@@ -77,6 +77,11 @@ offline demo mode. The Electron app in this repo remains the richer *command cen
 
 ### Power features
 
+- **GPU acceleration**: Whisper STT auto-uses CUDA with **float16** when ctranslate2
+  sees a GPU (else CPU/int8); Piper uses onnxruntime's **CUDAExecutionProvider** when
+  present; Ollama manages its own GPU. `--setup` prints what it found, and the GUI +
+  Electron settings have GPU/hardware-acceleration toggles. No GPU? Everything just
+  works on CPU.
 - **Global hotkey** in the GUI: `Ctrl+Shift+L` = push-to-talk (`pip install pynput`).
 - **Start at login**: `python -m assistant --autostart on|off` (Linux / macOS / Windows).
 - **Native executable**: `pip install pyinstaller && pyinstaller packaging/lala-assistant.spec`.

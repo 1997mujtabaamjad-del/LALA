@@ -176,9 +176,16 @@ class Gui:
         row(win, "STT provider (auto | local | openai)", "stt_provider")
         row(win, "TTS provider (auto | piper | elevenlabs | none)", "tts_provider")
 
+        gpu_var = tk.BooleanVar(value=bool(self.cfg.get("prefer_gpu", True)))
+        tk.Checkbutton(win, text="Use GPU (CUDA) for Whisper/Piper when available",
+                       variable=gpu_var, bg="#0b1020", fg="#e8ecf7",
+                       selectcolor="#111833", activebackground="#0b1020",
+                       activeforeground="#e8ecf7").pack(anchor="w", padx=14, pady=8)
+
         def save():
             for key, entry in fields.items():
                 self.cfg[key] = entry.get().strip()
+            self.cfg["prefer_gpu"] = bool(gpu_var.get())
             config.save(self.cfg)
             self.assistant.cfg = self.cfg
             self.wake_label.config(text=f"wake: {self.cfg['wake_word'].replace('_', ' ')}")

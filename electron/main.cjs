@@ -12,6 +12,13 @@ let mainWindow = null;
 let tray = null;
 let isQuitting = false;
 
+// GPU hardware acceleration for the UI (Chromium). Applies before any window
+// is created; toggle lives in Settings → General. Default: on.
+try {
+  const early = new Store(app.getPath('userData')).getSettings();
+  if (early.hwAccel === false) app.disableHardwareAcceleration();
+} catch { /* keep acceleration on */ }
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1240,

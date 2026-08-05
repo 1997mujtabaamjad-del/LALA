@@ -143,6 +143,36 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class GpuPlanTest(unittest.TestCase):
+    def test_stt_plan_cpu_when_no_gpu(self):
+        from assistant import gpu
+
+        self.assertEqual(gpu.stt_plan(True, 0), ("cpu", "int8"))
+
+    def test_stt_plan_gpu_fp16(self):
+        from assistant import gpu
+
+        self.assertEqual(gpu.stt_plan(True, 1), ("cuda", "float16"))
+
+    def test_stt_plan_prefer_off(self):
+        from assistant import gpu
+
+        self.assertEqual(gpu.stt_plan(False, 2), ("cpu", "int8"))
+
+    def test_stt_plan_forced_device(self):
+        from assistant import gpu
+
+        self.assertEqual(gpu.stt_plan(True, 0, forced="cuda"), ("cuda", "float16"))
+        self.assertEqual(gpu.stt_plan(True, 4, forced="cpu"), ("cpu", "int8"))
+
+    def test_tts_plan(self):
+        from assistant import gpu
+
+        self.assertTrue(gpu.tts_plan(True, True))
+        self.assertFalse(gpu.tts_plan(True, False))
+        self.assertFalse(gpu.tts_plan(False, True))
+
+
 class TtsProviderTest(unittest.TestCase):
     def test_elevenlabs_selected_when_keyed_and_no_piper(self):
         from assistant import tts

@@ -47,11 +47,19 @@ def _local(audio_int16, cfg):
     global _whisper_model
     from faster_whisper import WhisperModel
 
-    if _whisper_model is None:
-        _whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
+    from . import gpu
+
+    device, compute = gpu.stt_plan(
+        cfg.get("prefer_gpu", True),
+        gpu.cuda_device_count(),
+        forced=None if cfg.get("stt_device", "auto") == "auto" else cfg.get("stt_device"),
+    )
+    if _whisper_model is None or (_whisper_model[0] != (device, compute)):
+        _whisper_model = ((device, compute),
+                          WhisperModel("base", device=device, compute_type=compute))
     import numpy as np
 
-    segments, _ = _whisper_model.transcribe(
+    segments, _ = _whisper_model[1].transcribe(
         (audio_int16.astype(np.float32) / 32768.0),
         language=cfg.get("stt_language", "en") or None,
         vad_filter=True,

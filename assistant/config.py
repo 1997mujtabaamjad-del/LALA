@@ -27,6 +27,9 @@ DEFAULTS = {
     "elevenlabs_model": "eleven_turbo_v2_5",
     "stt_language": "en",
     "memory_window": 12,  # messages kept in LLM context
+    # GPU: use CUDA for faster-whisper (fp16) and Piper when available
+    "prefer_gpu": True,
+    "stt_device": "auto",  # auto | cpu | cuda
 }
 
 

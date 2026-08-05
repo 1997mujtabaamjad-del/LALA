@@ -59,6 +59,14 @@ def setup():
     except ImportError:
         print("missing (pip install openwakeword)")
     print(f"  faster-whisper:    ", "ok" if stt.local_available() else "missing (pip install faster-whisper)")
+    from . import gpu
+    g = gpu.summarize()
+    device, compute = gpu.stt_plan(cfg.get("prefer_gpu", True), g["cuda_devices"])
+    print(f"  GPU (CUDA):        ",
+          f"{g['cuda_devices']} device(s) → Whisper on {device}/{compute}"
+          if g["cuda_devices"] else
+          "none — CPU mode (int8). Ollama will also use CPU.")
+    print(f"  Piper CUDA EP:     ", "yes" if g["onnx_cuda"] else "no (CPU onnxruntime)")
     print(f"  piper TTS model:   ", "ok" if tts.piper_ready() else "not downloaded")
     ans = input("Download the Piper voice now? [y/N] ").strip().lower()
     if ans in ("y", "yes"):

@@ -151,8 +151,14 @@ def _play_wav(path):
 def _speak_piper(text):
     from piper import PiperVoice
 
+    from . import gpu
+
     onnx, js = piper_model_paths()
-    voice = PiperVoice.load(onnx, js)
+    use_cuda = gpu.tts_plan(True, gpu.onnx_has_cuda())
+    try:
+        voice = PiperVoice.load(onnx, js, use_cuda=use_cuda)
+    except TypeError:  # older piper builds without the use_cuda kwarg
+        voice = PiperVoice.load(onnx, js)
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         path = tmp.name
     with wave.open(path, "wb") as wf:
