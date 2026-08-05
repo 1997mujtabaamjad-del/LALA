@@ -67,6 +67,10 @@ def setup():
           if g["cuda_devices"] else
           "none — CPU mode (int8). Ollama will also use CPU.")
     print(f"  Piper CUDA EP:     ", "yes" if g["onnx_cuda"] else "no (CPU onnxruntime)")
+    from . import vad as vadmod
+    print(f"  VAD:               ",
+          "Silero (neural)" if (cfg.get("prefer_silero", True) and vadmod.available())
+          else "energy threshold (pip install silero-vad onnxruntime for neural)")
     print(f"  piper TTS model:   ", "ok" if tts.piper_ready() else "not downloaded")
     ans = input("Download the Piper voice now? [y/N] ").strip().lower()
     if ans in ("y", "yes"):

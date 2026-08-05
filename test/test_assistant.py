@@ -158,6 +158,44 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class VadTest(unittest.TestCase):
+    def test_vad_plan(self):
+        from assistant import vad
+
+        self.assertEqual(vad.vad_plan(True, True, True), "silero")
+        self.assertEqual(vad.vad_plan(True, False, True), "energy")
+        self.assertEqual(vad.vad_plan(False, True, True), "energy")
+
+    def test_energy_vad(self):
+        import numpy as np
+
+        from assistant import vad
+
+        v = vad.EnergyVAD()
+        self.assertFalse(v.speech(np.zeros(1280, dtype=np.int16)))
+        loud = (0.3 * np.sin(np.arange(1280) * 0.2) * 32767).astype(np.int16)
+        self.assertTrue(v.speech(loud))
+
+    def test_barge_flags(self):
+        from assistant import mic
+
+        flags = [False] * 10 + [True] * 6  # 400 ms grace + 480 ms speech @80 ms
+        self.assertTrue(mic._barge_flags(flags, 80))
+        self.assertFalse(mic._barge_flags([True] * 4 + [False] * 10, 80))
+        self.assertFalse(mic._barge_flags([False] * 40, 80))
+
+    def test_silero_real_inference(self):
+        import numpy as np
+
+        from assistant import vad
+
+        if not vad.available():
+            self.skipTest("onnxruntime/silero-vad not installed")
+        v = vad.SileroVAD()
+        silence = np.zeros(16000, dtype=np.int16)  # 1 s of silence
+        self.assertLess(v.prob(silence), 0.2)
+
+
 class KeysTest(unittest.TestCase):
     def test_write_env_upsert_and_remove(self):
         from assistant import keys

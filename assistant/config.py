@@ -67,6 +67,8 @@ DEFAULTS = {
     # GPU: use CUDA for faster-whisper (fp16) and Piper when available
     "prefer_gpu": True,
     "stt_device": "auto",  # auto | cpu | cuda
+    # Neural VAD (Silero) for endpointing + barge-in; energy VAD fallback
+    "prefer_silero": True,
     # Smart lights: auto | hue | homeassistant | wled | none
     "lights_provider": "auto",
     "hue_ip": "",

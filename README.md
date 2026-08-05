@@ -78,6 +78,10 @@ offline demo mode. The Electron app in this repo remains the richer *command cen
 
 ### Power features
 
+- **Silero VAD**: endpointing and barge-in use the **Silero neural VAD**
+  (bundled ONNX, streamed 32 ms windows via onnxruntime — no torch) when
+  `silero-vad` + `onnxruntime` are installed; otherwise the classic energy
+  threshold. `--setup` shows which is active; disable with `prefer_silero: false`.
 - **Streaming STT**: partial transcript appears *while you speak* — Python streams
   mic chunks through a live Vosk recognizer (GUI status shows the words forming,
   final answer still comes from Whisper when installed); Electron push-to-talk feeds

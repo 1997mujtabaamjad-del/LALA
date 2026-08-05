@@ -3,6 +3,8 @@ numpy
 requests
 sounddevice        # microphone + playback (needs system portaudio)
 websocket-client   # Deepgram streaming STT
+onnxruntime        # Silero VAD (+ Piper/Wake ONNX inference)
+silero-vad         # neural voice activity detection (bundled ONNX model)
 openwakeword       # "Hey Jarvis" wake word
 faster-whisper     # local Whisper STT
 piper-tts          # local TTS

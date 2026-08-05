@@ -9,7 +9,7 @@ Conversation state machine shared by the GUI and the terminal CLI:
 import threading
 import time
 
-from . import config, llm, mic, router, stt, tts, wake
+from . import config, llm, mic, router, stt, tts, vad, wake
 from .memory import Memory
 
 
@@ -23,6 +23,13 @@ class Assistant:
         self.wake = None
         self._busy = threading.Event()
         self._last_action = None
+        self._vad = None
+
+    def get_vad(self):
+        """Silero when available, energy VAD otherwise (created once)."""
+        if self._vad is None:
+            self._vad = vad.make_vad(self.cfg)
+        return self._vad
 
     # ------------------------------------------------------------ lifecycle
     def start(self):
@@ -89,7 +96,8 @@ class Assistant:
 
                 audio = mic.record_until_silence(max_seconds=next_max,
                                                  require_speech=True,
-                                                 on_chunk=_on_chunk)
+                                                 on_chunk=_on_chunk,
+                                                 vad=self.get_vad())
                 if audio is None:
                     break
                 text = transcriber.finish()
@@ -191,7 +199,7 @@ class Assistant:
         # Barge-in: if the user starts talking over us, stop playback and
         # listen to what they say instead.
         stop = threading.Event()
-        monitor = mic.BargeMonitor(stop) if mic.available() else None
+        monitor = mic.BargeMonitor(stop, vad=self.get_vad()) if mic.available() else None
         if monitor:
             monitor.start()
         tts.speak(text, self.cfg, stop_event=stop)

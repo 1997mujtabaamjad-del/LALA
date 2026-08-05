@@ -48,10 +48,12 @@ def open_stream(callback):
 
 
 def record_until_silence(max_seconds=8.0, speech_rms=0.012, silence_seconds=1.0,
-                         min_speech_seconds=0.25, require_speech=False, on_chunk=None):
+                         min_speech_seconds=0.25, require_speech=False,
+                         on_chunk=None, vad=None):
     """Record from the mic until the user stops talking. Returns int16 array,
     or None when `require_speech` is set and no real speech was detected.
-    `on_chunk(chunk_int16)` is called live for streaming consumers."""
+    `on_chunk(chunk_int16)` is called live for streaming consumers.
+    `vad` (SileroVAD/EnergyVAD) upgrades speech detection from RMS to neural."""
     import sounddevice as sd
 
     frames = []
@@ -70,9 +72,10 @@ def record_until_silence(max_seconds=8.0, speech_rms=0.012, silence_seconds=1.0,
                 except Exception:  # noqa: BLE001 — never break capture
                     pass
             elapsed += (CHUNK / RATE) * 1000
-            rms = np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2))
+            is_speech = vad.speech(chunk) if vad is not None else (
+                np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2)) > speech_rms)
             cb_ms = (CHUNK / RATE) * 1000
-            if rms > speech_rms:
+            if is_speech:
                 speech_ms += cb_ms
                 silence_ms = 0
             else:
@@ -119,6 +122,23 @@ BARGE_SUSTAIN_MS = 250
 BARGE_GRACE_MS = 400  # ignore the first moments of each utterance
 
 
+def _barge_flags(flags, cb_ms, sustain_ms=BARGE_SUSTAIN_MS, grace_ms=BARGE_GRACE_MS):
+    """Pure decider over boolean speech flags (unit-tested)."""
+    elapsed = 0
+    sustained = 0
+    for flag in flags:
+        elapsed += cb_ms
+        if elapsed < grace_ms:
+            continue
+        if flag:
+            sustained += cb_ms
+            if sustained >= sustain_ms:
+                return True
+        else:
+            sustained = 0
+    return False
+
+
 def barge_triggered(rms_values, cb_ms, threshold=BARGE_RMS,
                     sustain_ms=BARGE_SUSTAIN_MS, grace_ms=BARGE_GRACE_MS):
     """Pure decider (unit-tested): would this RMS sequence fire a barge-in?"""
@@ -138,20 +158,28 @@ def barge_triggered(rms_values, cb_ms, threshold=BARGE_RMS,
 
 
 class BargeMonitor:
-    """Watches the mic during TTS playback; sets `stop_event` on user speech."""
+    """Watches the mic during TTS playback; sets `stop_event` on user speech.
+    Uses Silero when provided, else an RMS threshold louder than speaker bleed."""
 
-    def __init__(self, stop_event, cb_ms=80):
+    def __init__(self, stop_event, cb_ms=80, vad=None):
         self.stop_event = stop_event
         self.cb_ms = cb_ms
+        self.vad = vad
         self.barged = False
         self._stream = None
         self._history = []
 
     def start(self):
         def _feed(chunk):
-            rms = float(np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2)))
-            self._history.append(rms)
-            if not self.barged and barge_triggered(self._history, self.cb_ms):
+            if self.vad is not None:
+                flag = self.vad.speech(chunk)
+                self._history.append(1.0 if flag else 0.0)
+                triggered = _barge_flags(self._history, self.cb_ms)
+            else:
+                rms = float(np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0) ** 2)))
+                self._history.append(rms)
+                triggered = barge_triggered(self._history, self.cb_ms)
+            if not self.barged and triggered:
                 self.barged = True
                 self.stop_event.set()
 
