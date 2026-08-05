@@ -158,6 +158,34 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class KeysTest(unittest.TestCase):
+    def test_write_env_upsert_and_remove(self):
+        from assistant import keys
+
+        path = os.path.join(tempfile.mkdtemp(), ".env")
+        with open(path, "w", encoding="utf8") as fh:
+            fh.write("# my secrets\nDEEPGRAM_API_KEY=old\nOTHER=keep\n")
+        keys.write_env({"DEEPGRAM_API_KEY": "new123", "OPENAI_API_KEY": "sk-1"},
+                       path=path)
+        text = open(path, encoding="utf8").read()
+        self.assertIn("# my secrets", text)
+        self.assertIn("DEEPGRAM_API_KEY=new123", text)
+        self.assertIn("OPENAI_API_KEY=sk-1", text)
+        self.assertIn("OTHER=keep", text)
+        self.assertNotIn("old", text)
+        keys.write_env(remove=["openai"], path=path)
+        text = open(path, encoding="utf8").read()
+        self.assertNotIn("OPENAI_API_KEY", text)
+        self.assertIn("DEEPGRAM_API_KEY=new123", text)
+
+    def test_mask(self):
+        from assistant import keys
+
+        self.assertEqual(keys.mask(""), "—")
+        self.assertEqual(keys.mask("short"), "****")
+        self.assertTrue(keys.mask("7f795a3500bbb4a67db1").startswith("7f79"))
+
+
 class EnvTest(unittest.TestCase):
     def test_parse_env(self):
         from assistant import config

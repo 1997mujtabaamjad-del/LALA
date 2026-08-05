@@ -181,6 +181,17 @@ Keys are read from the environment or a gitignored `assistant/.env`
 python -m assistant --validate
 ```
 
+### Key manager (separate from --deploy)
+
+```bash
+python -m assistant --keys            # interactive: hidden paste, validate, remove
+python -m assistant --set-deepgram KEY --set-openai KEY   # scriptable
+python -m assistant --remove-key elevenlabs
+```
+
+Keys are written **only** to `assistant/.env` (never `config.json`, never git),
+comments in the file are preserved, and each key is live-validated on save.
+
 ### 2. Cloud — OpenAI Whisper (any language, best accuracy)
 
 In the app: **Settings → paste your OpenAI API key**, pick a model

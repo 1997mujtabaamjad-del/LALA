@@ -87,6 +87,15 @@ def main():
                         help="install/remove start-at-login")
     parser.add_argument("--validate", action="store_true",
                         help="test configured API keys (Ollama/Deepgram/OpenAI/ElevenLabs)")
+    parser.add_argument("--keys", action="store_true",
+                        help="interactive API-key manager (separate from --deploy)")
+    parser.add_argument("--set-deepgram", metavar="KEY",
+                        help="save Deepgram key to assistant/.env (visible in shell "
+                             "history — prefer --keys)")
+    parser.add_argument("--set-openai", metavar="KEY", help="save OpenAI key")
+    parser.add_argument("--set-elevenlabs", metavar="KEY", help="save ElevenLabs key")
+    parser.add_argument("--remove-key", choices=["deepgram", "openai", "elevenlabs"],
+                        help="remove a key from assistant/.env")
     args = parser.parse_args()
 
     if args.setup:
@@ -95,6 +104,28 @@ def main():
     if args.validate:
         from .validate import main as validate_main
         validate_main()
+        return
+    if args.keys or args.remove_key or args.set_deepgram or args.set_openai \
+            or args.set_elevenlabs:
+        from . import keys
+
+        updates = {}
+        if args.set_deepgram:
+            updates["deepgram"] = args.set_deepgram
+        if args.set_openai:
+            updates["openai"] = args.set_openai
+        if args.set_elevenlabs:
+            updates["elevenlabs"] = args.set_elevenlabs
+        if updates or args.remove_key:
+            if args.remove_key:
+                keys.write_env(remove=[args.remove_key])
+                print(f"  {args.remove_key}: removed from assistant/.env")
+            for short, value in updates.items():
+                ok = keys.set_and_check(short, value)
+                print(f"  {short}: {'✔ valid' if ok else '✖ rejected'} "
+                      "(saved to assistant/.env)")
+        else:
+            keys.interactive()
         return
     if args.deploy:
         from .deploy import main as deploy_main
