@@ -36,6 +36,17 @@ python -m assistant --chat          # terminal REPL (no mic needed — great fir
 python -m assistant --serve         # local brain server for the Electron/web app
 ```
 
+### ☁️ ElevenLabs deployment
+
+```bash
+export ELEVENLABS_API_KEY=…        # or paste it in the wizard
+python -m assistant --deploy
+```
+
+The guided wizard validates your key, lists **your ElevenLabs voices**, lets you pick
+one (lowest-latency `eleven_turbo_v2_5` by default), then optionally installs
+**start-at-login** and (on Linux) a **systemd user service** for the brain server.
+
 ### Streaming speech
 
 The brain streams tokens (Ollama/OpenAI) and Piper/ElevenLabs starts speaking the
@@ -63,6 +74,14 @@ Shut-down/restart always asks for confirmation.
 
 Everything degrades gracefully: no mic → text chat; no Ollama → OpenAI; no keys →
 offline demo mode. The Electron app in this repo remains the richer *command center* UI.
+
+### Power features
+
+- **Global hotkey** in the GUI: `Ctrl+Shift+L` = push-to-talk (`pip install pynput`).
+- **Start at login**: `python -m assistant --autostart on|off` (Linux / macOS / Windows).
+- **Native executable**: `pip install pyinstaller && pyinstaller packaging/lala-assistant.spec`.
+- **Custom “Hey LALA” wake model**: `python -m assistant.train_wakeword --record 50`
+  records your positives, `--train` prints the exact upstream OpenWakeWord steps.
 
 ---
 

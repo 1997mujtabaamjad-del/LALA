@@ -37,6 +37,23 @@ class Gui:
         self.root.after(100, self._pump_ui)
         self.root.protocol("WM_DELETE_WINDOW", self._quit)
         threading.Thread(target=self.assistant.start, daemon=True).start()
+        self._install_hotkey()
+
+    def _install_hotkey(self):
+        """Optional global hotkey Ctrl+Shift+L = push-to-talk (needs pynput)."""
+        try:
+            from pynput import keyboard
+        except ImportError:
+            return
+
+        def _fire():
+            self.root.after(0, self.assistant.push_to_talk)
+
+        listener = keyboard.GlobalHotKeys({"<ctrl>+<shift>+l": _fire})
+        listener.daemon = True
+        listener.start()
+        self._hotkey = listener
+        self._log_cb("system", "Global hotkey armed: Ctrl+Shift+L to talk.")
 
     # ------------------------------------------------------------------ UI
     def _build_ui(self):

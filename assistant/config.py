@@ -24,6 +24,7 @@ DEFAULTS = {
     "tts_provider": "auto",
     "elevenlabs_api_key": os.environ.get("ELEVENLABS_API_KEY", ""),
     "elevenlabs_voice_id": "21m00Tcm4TlvDq8ikWAM",  # Rachel
+    "elevenlabs_model": "eleven_turbo_v2_5",
     "stt_language": "en",
     "memory_window": 12,  # messages kept in LLM context
 }

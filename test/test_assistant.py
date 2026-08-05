@@ -143,5 +143,48 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class TtsProviderTest(unittest.TestCase):
+    def test_elevenlabs_selected_when_keyed_and_no_piper(self):
+        from assistant import tts
+
+        cfg = dict(config.DEFAULTS)
+        cfg["tts_provider"] = "auto"
+        cfg["elevenlabs_api_key"] = "test-key"
+        if not tts.piper_available():
+            self.assertEqual(tts.resolve_provider(cfg), "elevenlabs")
+
+    def test_none_without_any_tts(self):
+        from assistant import tts
+
+        cfg = dict(config.DEFAULTS)
+        cfg["tts_provider"] = "auto"
+        cfg["elevenlabs_api_key"] = ""
+        if not tts.piper_available():
+            self.assertEqual(tts.resolve_provider(cfg), "none")
+
+
+class AutostartTest(unittest.TestCase):
+    @unittest.skipUnless(__import__("platform").system() == "Linux", "linux-only test")
+    def test_linux_desktop_entry(self):
+        import platform  # noqa: F401
+
+        from assistant import autostart
+
+        old_home = os.environ.get("HOME")
+        tmp = tempfile.mkdtemp(prefix="lala-home-")
+        os.environ["HOME"] = tmp
+        try:
+            path = autostart.install()
+            self.assertTrue(os.path.exists(path))
+            content = open(path, encoding="utf8").read()
+            self.assertIn("[Desktop Entry]", content)
+            self.assertIn("-m", content)
+            self.assertTrue(autostart.uninstall())
+            self.assertFalse(os.path.exists(path))
+        finally:
+            if old_home is not None:
+                os.environ["HOME"] = old_home
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -165,27 +165,37 @@ def _speak_piper(text):
 
 
 def _speak_elevenlabs(text, cfg):
-    r = requests.post(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{cfg['elevenlabs_voice_id']}",
-        headers={"xi-api-key": cfg["elevenlabs_api_key"]},
-        json={"text": text, "model_id": "eleven_turbo_v2_5"},
-        timeout=60,
+    from . import elevenlabs
+
+    mp3_bytes = elevenlabs.synthesize(
+        cfg["elevenlabs_api_key"],
+        cfg["elevenlabs_voice_id"],
+        text,
+        model=cfg.get("elevenlabs_model", elevenlabs.DEFAULT_MODEL),
     )
-    r.raise_for_status()
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp.write(r.content)
+        tmp.write(mp3_bytes)
         mp3 = tmp.name
-    # decode mp3 with ffmpeg if present, else leave the file for the user
-    try:
+    played = False
+    try:  # decode with ffmpeg when available
         wav = mp3 + ".wav"
         subprocess.run(["ffmpeg", "-y", "-i", mp3, wav], check=True,
                        capture_output=True, timeout=60)
         _play_wav(wav)
-        os.unlink(wav)
-    except (OSError, subprocess.SubprocessError):
-        pass
-    finally:
+        played = True
         try:
-            os.unlink(mp3)
+            os.unlink(wav)
         except OSError:
             pass
+    except (OSError, subprocess.SubprocessError):
+        pass
+    if not played:
+        # keep the audio around so it isn't wasted (e.g. headless machines)
+        keep = os.path.join(config.DATA_DIR, "last_speech.mp3")
+        os.makedirs(config.DATA_DIR, exist_ok=True)
+        os.replace(mp3, keep)
+        return
+    try:
+        os.unlink(mp3)
+    except OSError:
+        pass

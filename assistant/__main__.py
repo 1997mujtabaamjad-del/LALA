@@ -5,6 +5,8 @@ Entry point.
   python -m assistant --chat     # terminal voice-less REPL (text in, text out)
   python -m assistant --setup    # download the Piper voice + warm checks
   python -m assistant --serve    # local brain server for the Electron/web app
+  python -m assistant --deploy   # guided ElevenLabs/Piper + service deployment
+  python -m assistant --autostart on|off
 """
 
 import argparse
@@ -71,10 +73,26 @@ def main():
     parser.add_argument("--setup", action="store_true", help="component check + Piper download")
     parser.add_argument("--serve", action="store_true",
                         help="run the local brain server (port 8420) for the Electron/web app")
+    parser.add_argument("--deploy", action="store_true",
+                        help="guided deployment (ElevenLabs voices, auto-start, service)")
+    parser.add_argument("--autostart", choices=["on", "off"],
+                        help="install/remove start-at-login")
     args = parser.parse_args()
 
     if args.setup:
         setup()
+        return
+    if args.deploy:
+        from .deploy import main as deploy_main
+        deploy_main()
+        return
+    if args.autostart:
+        from . import autostart
+        if args.autostart == "on":
+            print("auto-start installed:", autostart.install())
+        else:
+            autostart.uninstall()
+            print("auto-start removed.")
         return
     if args.serve:
         from .server import main as server_main
