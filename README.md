@@ -28,8 +28,17 @@ In the web preview, **▶ Run demo** plays a full scripted conversation (wake �
 time → live weather → calendar add → lights → coin → joke → sign-off) with
 spoken replies — no mic needed.
 
-Developers: `npm run dist` builds installers locally; `git tag v1.0 && git push --tags`
-triggers the release pipeline.
+Developers — **one-click desktop build** on your machine:
+
+```bash
+bash scripts/build-desktop.sh          # Linux/macOS: installer + Python binary
+scripts\build-desktop.bat              # Windows: NSIS setup + .exe
+bash scripts/build-desktop.sh all      # every target (per-OS toolchains)
+```
+
+Outputs: `release/` (NSIS .exe / .dmg / AppImage / .deb) and `dist/lala-assistant`
+(PyInstaller one-file). Or push a `v*` tag and the release pipeline builds in CI
+(activate `packaging/release.yml` once — see header of that file).
 
 ---
 
