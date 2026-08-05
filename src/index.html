@@ -32,17 +32,29 @@
       </div>
 
       <div class="orbit-wrap">
-        <div class="orbit" aria-hidden="false">
-          <button class="node" style="--a:0deg"   data-say="weather in hyderabad"        title="Weather"><span class="node-inner">🌦</span></button>
-          <button class="node" style="--a:36deg"  data-say="add meeting tomorrow at 10am" title="Calendar"><span class="node-inner">📅</span></button>
-          <button class="node" style="--a:72deg"  data-say="lights to blue"              title="Smart lights"><span class="node-inner">💡</span></button>
-          <button class="node" style="--a:108deg" data-say="play lofi beats"             title="Music"><span class="node-inner">🎵</span></button>
-          <button class="node" style="--a:144deg" data-say="search for telugu food"      title="Web search"><span class="node-inner">🔎</span></button>
-          <button class="node" style="--a:180deg" data-say="open youtube"                title="Apps"><span class="node-inner">🖥</span></button>
-          <button class="node" style="--a:216deg" data-say="set volume to 40 percent"    title="System"><span class="node-inner">🎚</span></button>
-          <button class="node" style="--a:252deg" data-say="flip a coin"                 title="Fun"><span class="node-inner">🪙</span></button>
-          <button class="node" style="--a:288deg" data-say="tell me a joke"              title="Jokes"><span class="node-inner">😄</span></button>
-          <button class="node" style="--a:324deg" data-say="user guide"                  title="Guide"><span class="node-inner">📖</span></button>
+        <!-- inner ring: the core pipeline -->
+        <div class="orbit inner">
+          <button class="node" style="--a:0deg"   data-say="hey laala"                      title="Wake word — Hey Laala"><span class="node-inner">🗣</span></button>
+          <button class="node" style="--a:45deg"  data-say="what time is it"                title="Streaming STT"><span class="node-inner">🎙</span></button>
+          <button class="node" style="--a:90deg"  data-say="tell me a joke"                 title="LLM brain"><span class="node-inner">🧠</span></button>
+          <button class="node" style="--a:135deg" data-say="hello lala"                     title="TTS — spoken replies"><span class="node-inner">🔊</span></button>
+          <button class="node" style="--a:180deg" data-say="user guide"                     title="Barge-in — interrupt me"><span class="node-inner">✋</span></button>
+          <button class="node" style="--a:225deg" data-say="remember that I love biryani"   title="Memory — remembers you"><span class="node-inner">🧿</span></button>
+          <button class="node" style="--a:270deg" data-say="lights to warm"                 title="Tool calling"><span class="node-inner">🧰</span></button>
+          <button class="node" style="--a:315deg" data-say="weather in hyderabad"           title="Streaming everything"><span class="node-inner">⚡</span></button>
+        </div>
+        <!-- outer ring: the skills -->
+        <div class="orbit outer">
+          <button class="node" style="--a:0deg"   data-say="weather in hyderabad"         title="Weather + forecast"><span class="node-inner">🌦</span></button>
+          <button class="node" style="--a:36deg"  data-say="add meeting tomorrow at 10am" title="Calendar + ICS"><span class="node-inner">📅</span></button>
+          <button class="node" style="--a:72deg"  data-say="lights to blue"               title="Smart lights"><span class="node-inner">💡</span></button>
+          <button class="node" style="--a:108deg" data-say="play lofi beats"              title="Music"><span class="node-inner">🎵</span></button>
+          <button class="node" style="--a:144deg" data-say="search for telugu food"       title="Web search"><span class="node-inner">🔎</span></button>
+          <button class="node" style="--a:180deg" data-say="open youtube"                 title="Open apps & sites"><span class="node-inner">🖥</span></button>
+          <button class="node" style="--a:216deg" data-say="take a screenshot"            title="Screenshot"><span class="node-inner">📸</span></button>
+          <button class="node" style="--a:252deg" data-say="start dictation"              title="Dictation → clipboard"><span class="node-inner">✂️</span></button>
+          <button class="node" style="--a:288deg" data-say="set volume to 40 percent"     title="System control"><span class="node-inner">🎚</span></button>
+          <button class="node" style="--a:324deg" data-say="help"                         title="All 60 commands"><span class="node-inner">📖</span></button>
         </div>
 
         <div id="orb" class="orb" role="button" tabindex="0" aria-label="Talk to LALA">

@@ -139,12 +139,12 @@ button.chip { cursor: pointer; font-family: inherit; }
   overflow: hidden;
 }
 
-/* Feature ring: the whole feature-set orbiting the brain */
+/* Feature rings: ALL capabilities orbiting the mic/brain button */
 
 .orbit-wrap {
   position: relative;
-  width: 330px;
-  height: 330px;
+  width: 440px;
+  height: 440px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -152,19 +152,22 @@ button.chip { cursor: pointer; font-family: inherit; }
 
 .orbit {
   position: absolute;
-  inset: 0;
-  animation: spin 28s linear infinite;
   border-radius: 50%;
 }
+
+.orbit.inner { inset: 70px; animation: spin 26s linear infinite; }
+.orbit.outer { inset: 0;    animation: spin 44s linear infinite reverse; }
 
 .orbit::before {
   content: "";
   position: absolute;
-  inset: 12px;
   border-radius: 50%;
   border: 1px dashed rgba(34, 211, 238, 0.22);
   box-shadow: 0 0 18px rgba(34, 211, 238, 0.12), inset 0 0 24px rgba(34, 211, 238, 0.06);
 }
+
+.orbit.inner::before { inset: 27px; }
+.orbit.outer::before { inset: 15px; border-color: rgba(167, 139, 250, 0.20); }
 
 .orbit-wrap:hover .orbit { animation-play-state: paused; }
 
@@ -183,10 +186,12 @@ button.chip { cursor: pointer; font-family: inherit; }
   border-radius: 50%;
   background: rgba(5, 5, 8, 0.85);
   cursor: pointer;
-  transform: rotate(var(--a)) translate(152px) rotate(calc(var(--a) * -1));
+  transform: rotate(var(--a)) translate(var(--r, 118px)) rotate(calc(var(--a) * -1));
   box-shadow: var(--glow-soft), inset 0 0 10px rgba(34, 211, 238, 0.08);
   transition: box-shadow 0.15s, border-color 0.15s;
 }
+
+.orbit.outer .node { --r: 200px; }
 
 .node:hover {
   border-color: var(--accent);
@@ -200,13 +205,16 @@ button.chip { cursor: pointer; font-family: inherit; }
   width: 100%;
   height: 100%;
   font-size: 20px;
-  animation: counterspin 28s linear infinite;
+  animation: counterspin 26s linear infinite;
   filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.7));
 }
 
-@media (max-width: 1100px) {
-  .orbit-wrap { width: 280px; height: 280px; }
-  .node { transform: rotate(var(--a)) translate(126px) rotate(calc(var(--a) * -1)); }
+.orbit.outer .node-inner { animation: counterspin 44s linear infinite reverse; }
+
+@media (max-width: 1150px) {
+  .orbit-wrap { width: 360px; height: 360px; }
+  .node { transform: rotate(var(--a)) translate(calc(var(--r, 118px) * 0.8)) rotate(calc(var(--a) * -1)); }
+  .orbit.inner { inset: 58px; }
 }
 
 .orb {
