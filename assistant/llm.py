@@ -30,15 +30,30 @@ def resolve_provider(cfg):
 
 
 def system_prompt(cfg, memory):
-    notes = memory.notes_text() if memory else ""
-    prompt = (
-        f"You are {cfg['name']}, a friendly voice assistant running on the user's desktop. "
-        "Answers are spoken aloud, so keep them concise (1-3 sentences) unless the user asks for detail. "
-        "You can open apps and websites when asked. Be warm and a little playful."
+    """The personality: Laala by default, configurable via cfg['persona']."""
+    name = cfg.get("name", "LALA")
+    persona = cfg.get("persona", "").replace("{name}", name) or (
+        f"You are {name} — “Laala”, the user's warm, upbeat voice companion: "
+        "friendly, a little playful, genuinely helpful, never robotic. You live on "
+        "their desktop: you open apps and websites, check the weather, manage their "
+        "calendar and smart lights, tell jokes, and answer anything. When someone "
+        "says “Hey Laala”, that's you — answer promptly. Your replies are spoken "
+        "aloud, so keep them to 1–3 sentences unless the user asks for detail. "
+        "Never mention that you are an LLM unless asked."
     )
+    notes = memory.notes_text() if memory else ""
     if notes:
-        prompt += f" Things you remember about the user: {notes}."
-    return prompt
+        persona += f" Things you remember about the user: {notes}."
+    return persona
+
+
+def build_messages(cfg, memory, user_text):
+    """Pure (unit-tested): system + last `memory_window` turns + new user turn."""
+    messages = [{"role": "system", "content": system_prompt(cfg, memory)}]
+    if memory is not None:
+        messages += memory.recent(cfg.get("memory_window", 12))
+    messages.append({"role": "user", "content": user_text})
+    return messages
 
 
 def ask(cfg, memory, user_text, provider=None):
@@ -49,9 +64,7 @@ def ask(cfg, memory, user_text, provider=None):
 def ask_stream(cfg, memory, user_text, provider=None):
     """Yield reply chunks as they arrive (Ollama/OpenAI streaming)."""
     provider = provider or resolve_provider(cfg)
-    messages = [{"role": "system", "content": system_prompt(cfg, memory)}]
-    messages += memory.recent(cfg.get("memory_window", 12)) if memory else []
-    messages.append({"role": "user", "content": user_text})
+    messages = build_messages(cfg, memory, user_text)
 
     if provider == "ollama":
         return _stream_ollama(cfg, messages)

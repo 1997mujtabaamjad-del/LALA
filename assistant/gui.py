@@ -167,6 +167,7 @@ class Gui:
             fields[key] = e
 
         row(win, "Assistant name", "name")
+        row(win, "Persona (blank = built-in Laala personality)", "persona")
         row(win, "Wake word (alexa | hey_jarvis | hey_mycroft | okay_nabu | tim)", "wake_word")
         row(win, "LLM provider (auto | ollama | openai | mock)", "llm_provider")
         row(win, "Ollama model", "ollama_model")

@@ -38,6 +38,8 @@ _load_dotenv()
 
 DEFAULTS = {
     "name": "LALA",
+    # Laala personality by default; override with {name} placeholder support.
+    "persona": "",
     # Wake word: any phrase — fuzzy-spotted offline by Vosk by default.
     # Zoo words (hey_jarvis, alexa, …) use OpenWakeWord when installed.
     "wake_word": "hey_laala",

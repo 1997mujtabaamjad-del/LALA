@@ -143,6 +143,58 @@ class ServerTest(unittest.TestCase):
             server.server_close()
 
 
+class MemorySpecTest(unittest.TestCase):
+    """The 5-point spec: message list, user/assistant appends, 8–12 window,
+    Jarvis system prompt."""
+
+    def test_message_shapes_and_window(self):
+        from assistant.memory import Memory
+
+        mem = Memory()
+        mem.clear()
+        for i in range(15):
+            mem.add("user", f"u{i}")
+            mem.add("assistant", f"a{i}")
+        recent = mem.recent(12)
+        self.assertEqual(len(recent), 12)
+        self.assertEqual(set(recent[0].keys()), {"role", "content"})
+        self.assertEqual(recent[0]["role"], "user")
+        self.assertEqual(recent[-1], {"role": "assistant", "content": "a14"})
+
+    def test_build_messages_system_first_then_history_then_user(self):
+        from assistant import llm
+        from assistant.memory import Memory
+
+        cfg = dict(config.DEFAULTS)
+        mem = Memory()
+        mem.clear()
+        mem.add("user", "hi")
+        mem.add("assistant", "hello")
+        msgs = llm.build_messages(cfg, mem, "how are you")
+        self.assertEqual(msgs[0]["role"], "system")
+        self.assertIn("Laala", msgs[0]["content"])  # Laala personality
+        self.assertEqual(msgs[1], {"role": "user", "content": "hi"})
+        self.assertEqual(msgs[2], {"role": "assistant", "content": "hello"})
+        self.assertEqual(msgs[3], {"role": "user", "content": "how are you"})
+
+    def test_persona_configurable(self):
+        from assistant import llm
+
+        cfg = dict(config.DEFAULTS)
+        cfg["persona"] = "You are {name}, a space pirate."
+        self.assertIn("space pirate", llm.system_prompt(cfg, None))
+
+    def test_notes_reach_the_prompt(self):
+        from assistant import llm
+        from assistant.memory import Memory
+
+        cfg = dict(config.DEFAULTS)
+        mem = Memory()
+        mem.clear()
+        mem.add_note("takes chai at 4pm")
+        self.assertIn("chai", llm.system_prompt(cfg, mem))
+
+
 class GuideTest(unittest.TestCase):
     def test_guide_fallback_static(self):
         from assistant import guide
