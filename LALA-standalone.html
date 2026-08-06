@@ -301,8 +301,11 @@ async function runDemo(){if(demoing)return;demoing=true;$("#demo").disabled=true
  for(const t of DEMO){$("#orb").classList.add("listening");$("#interim").textContent="“"+t+"”";$("#interim").style.display="block";await delay(900);$("#orb").classList.remove("listening");await handle(t);await waitSilence();await delay(350);}
  respond("That's LALA v1.2 — roles, autonomy & profiles in one file. Click the brain and speak!");demoing=false;$("#demo").disabled=false;}
 
-function setupMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast("Voice needs Chrome or Edge — clicks still work!");$("#hint").textContent="No Web Speech here — use Chrome/Edge for voice, or click chips/nodes/Tasks.";return;}
+function setupMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(window.self!==window.top){$("#hint").textContent="⚠ Embedded preview blocks the mic. Download this file and DOUBLE-CLICK it in Chrome for voice — clicks work everywhere.";}
+ if(!SR){toast("Voice needs Chrome or Edge — clicks still work!");$("#hint").textContent="No Web Speech here — use Chrome/Edge for voice, or click chips/nodes/Tasks.";return;}
  const rec=new SR();rec.continuous=true;rec.interimResults=true;let on=false;
+ rec.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed"){on=false;toast("Mic blocked — open this file DIRECTLY in Chrome (not inside a preview/iframe).");$("#hint").textContent="Mic blocked here. Save this file to disk and double-click it in Chrome.";}};
  rec.onresult=e=>{let inter="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)handle(r[0].transcript);else inter+=r[0].transcript;}if(inter){$("#interim").textContent="“"+inter+"”";$("#interim").style.display="block";}};
  rec.onend=()=>{if(on)try{rec.start();}catch{}};
  const toggle=()=>{on=!on;if(on){try{rec.start();}catch{}$("#orb").classList.add("listening");$("#chipState").textContent="listening";$("#hint").textContent="Listening… say “hey laala, open youtube” — interrupt me any time.";}else{rec.stop();$("#orb").classList.remove("listening");$("#chipState").textContent="idle";}};

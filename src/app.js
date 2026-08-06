@@ -1260,6 +1260,9 @@ function toggleWebListening() {
 }
 
 function setupWebSpeech() {
+  if (window.self !== window.top) {
+    setStatusLine('Embedded preview blocks the mic — download LALA-standalone.html and double-click it in Chrome for voice.');
+  }
   state.webSpeech = createWebSpeech({
     interim: (t) => showInterim(t),
     final: (t) => {
