@@ -11,6 +11,7 @@
 background:radial-gradient(1200px 700px at 85% -10%,rgba(167,139,250,.08),transparent 60%),
 radial-gradient(1000px 700px at 8% 110%,rgba(34,211,238,.07),transparent 55%),
 repeating-linear-gradient(115deg,rgba(255,255,255,.014) 0 1px,transparent 1px 7px),#050507}
+#snow{position:fixed;inset:0;z-index:-1;opacity:.55;pointer-events:none}
 .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
 header{display:flex;justify-content:space-between;align-items:center;padding:18px 0}
 .logo{font-size:24px;letter-spacing:5px;font-weight:800;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px rgba(34,211,238,.5))}
@@ -61,6 +62,7 @@ footer{color:var(--dim);font-size:13px;padding:50px 0 30px;text-align:center}
 </style>
 </head>
 <body>
+<canvas id="snow" aria-hidden="true"></canvas>
 <div class="wrap">
 <header><div class="logo">LALA</div>
 <nav><a href="#see">See it</a><a href="#features">Features</a><a href="#install">Install</a><a href="#audit">Audit</a></nav></header>
@@ -158,6 +160,25 @@ bash install.sh        # GPU: bash scripts/install-gpu.sh</code></pre>
 <footer>LALA · v1.0 → v2.0 · built autonomous · MIT</footer>
 </div>
 <script>
+/* PixelSnow (react-bits equivalent, dependency-free canvas) */
+(function(){
+ if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+ const cv=document.getElementById("snow"),cx=cv.getContext("2d");
+ const PX=6;let W,H,cols,rows,flakes=[];
+ function rs(){W=cv.width=innerWidth;H=cv.height=innerHeight;cols=Math.ceil(W/PX);rows=Math.ceil(H/PX);}
+ rs();addEventListener("resize",rs);
+ for(let i=0;i<140;i++)flakes.push({x:Math.random()*cols,y:Math.random()*rows,v:.02+Math.random()*.07,o:.25+Math.random()*.6,w:Math.random()*6.28});
+ (function loop(){
+  cx.clearRect(0,0,W,H);
+  for(const f of flakes){
+   f.y+=f.v;f.w+=.01;f.x+=Math.sin(f.w)*.02;
+   if(f.y>rows){f.y=-1;f.x=Math.random()*cols;}
+   cx.fillStyle="rgba(170,240,255,"+f.o+")";
+   cx.fillRect((f.x|0)*PX,(f.y|0)*PX,PX-1,PX-1);
+  }
+  requestAnimationFrame(loop);
+ })();
+})();
 function cp(b){const t=b.parentElement.querySelector("code").innerText;navigator.clipboard.writeText(t);b.textContent="copied!";setTimeout(()=>b.textContent="copy",1200);}
 </script>
 </body>

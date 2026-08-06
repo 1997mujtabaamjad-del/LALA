@@ -10,6 +10,7 @@
 --glow:0 0 14px rgba(34,211,238,.22),0 0 42px rgba(34,211,238,.10);--gs:0 0 10px rgba(34,211,238,.16);
 --gv:0 0 14px rgba(167,139,250,.25);--text:#eef1f8;--dim:#8f9ab0;--ac:#22d3ee;--ac2:#a78bfa;--ok:#34d399;--bad:#f87171}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
+#snow{position:fixed;inset:0;z-index:-1;opacity:.5;pointer-events:none}
 body{font-family:"Segoe UI",system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;overflow:hidden;
 background:radial-gradient(1200px 700px at 85% -10%,rgba(167,139,250,.07),transparent 60%),
 radial-gradient(1000px 700px at 8% 110%,rgba(34,211,238,.06),transparent 55%),
@@ -92,6 +93,7 @@ label{display:block;font-size:13px;margin:10px 0}
 </style>
 </head>
 <body>
+<canvas id="snow" aria-hidden="true"></canvas>
 <header>
   <div class="brand"><div class="dot"></div><h1>LALA</h1><span class="tag">v1.2 standalone · say “Hey Laala”</span></div>
   <div class="chips"><span class="chip">single-file</span><span class="chip" id="chipRole">default</span><button class="chip" id="gear" title="Brain settings">⚙ brain</button><span class="chip ac" id="chipState">idle</span></div>
@@ -480,6 +482,25 @@ renderTasks();renderHelp();renderCal();setupMic();
 document.title="LALA v2.1 — ready ✔";
 toast("✔ LALA v2.1 ready — click once, then speak or press ▶ Run demo");
 window.addEventListener("pointerdown",function ping(){toast("✔ LALA responding — say “hey laala…” or click a node");window.removeEventListener("pointerdown",ping);});
+/* PixelSnow (react-bits equivalent, dependency-free canvas) */
+(function(){
+ if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+ const cv=document.getElementById("snow"),cx=cv.getContext("2d");
+ const PX=6;let W,H,cols,rows,flakes=[];
+ function rs(){W=cv.width=innerWidth;H=cv.height=innerHeight;cols=Math.ceil(W/PX);rows=Math.ceil(H/PX);}
+ rs();addEventListener("resize",rs);
+ for(let i=0;i<120;i++)flakes.push({x:Math.random()*cols,y:Math.random()*rows,v:.02+Math.random()*.07,o:.2+Math.random()*.55,w:Math.random()*6.28});
+ (function loop(){
+  cx.clearRect(0,0,W,H);
+  for(const f of flakes){
+   f.y+=f.v;f.w+=.01;f.x+=Math.sin(f.w)*.02;
+   if(f.y>rows){f.y=-1;f.x=Math.random()*cols;}
+   cx.fillStyle="rgba(170,240,255,"+f.o+")";
+   cx.fillRect((f.x|0)*PX,(f.y|0)*PX,PX-1,PX-1);
+  }
+  requestAnimationFrame(loop);
+ })();
+})();
 log("sys","LALA v2.1 standalone loaded — ▶ Run demo, or click the brain. ⚙ adds the LLM brain.");
 </script>
 </body>
