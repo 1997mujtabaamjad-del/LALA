@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LALA — your autonomous desktop voice assistant</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E"/>
+<style>
+:root{--ac:#22d3ee;--ac2:#a78bfa;--dim:#8f9ab0;--ok:#34d399}
+*{box-sizing:border-box}body{margin:0;font:16px/1.65 "Segoe UI",system-ui,sans-serif;color:#eef1f8;
+background:radial-gradient(1200px 700px at 85% -10%,rgba(167,139,250,.08),transparent 60%),
+radial-gradient(1000px 700px at 8% 110%,rgba(34,211,238,.07),transparent 55%),
+repeating-linear-gradient(115deg,rgba(255,255,255,.014) 0 1px,transparent 1px 7px),#050507}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+header{display:flex;justify-content:space-between;align-items:center;padding:18px 0}
+.logo{font-size:24px;letter-spacing:5px;font-weight:800;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px rgba(34,211,238,.5))}
+nav a{color:var(--dim);text-decoration:none;margin-left:18px;font-size:14px}
+nav a:hover{color:var(--ac)}
+.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:30px;align-items:center;padding:40px 0 20px}
+h1{font-size:44px;line-height:1.15;margin:0 0 14px}
+h1 em{font-style:normal;color:var(--ac);text-shadow:0 0 18px rgba(34,211,238,.6)}
+.sub{color:var(--dim);font-size:17px;max-width:52ch}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.btn{padding:12px 20px;border-radius:12px;border:1px solid rgba(34,211,238,.4);background:rgba(34,211,238,.07);color:#eef1f8;cursor:pointer;font-size:15px;text-decoration:none;box-shadow:0 0 14px rgba(34,211,238,.2);display:inline-block}
+.btn.pri{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#050508;font-weight:800;border:none;box-shadow:0 0 22px rgba(34,211,238,.5)}
+.btn:hover{filter:brightness(1.2)}
+/* orb */
+.stagebox{position:relative;width:340px;height:340px;margin:auto}
+.ring{position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(34,211,238,.25);animation:sp 26s linear infinite}
+.ring2{inset:-34px;animation:sp 44s linear infinite reverse;border-color:rgba(167,139,250,.22)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.node{position:absolute;top:50%;left:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:rgba(5,5,8,.9);border:1px solid rgba(34,211,238,.35);display:grid;place-items:center;font-size:19px;transform:rotate(var(--a)) translate(var(--r,132px)) rotate(calc(var(--a)*-1));box-shadow:0 0 10px rgba(34,211,238,.25)}
+.ring2 .node{--r:168px}
+.ni{animation:sp 26s linear infinite reverse}
+.ring2 .ni{animation:sp 44s linear infinite}
+.core{position:absolute;top:50%;left:50%;width:120px;height:120px;margin:-60px;border-radius:50%;display:grid;place-items:center;font-size:52px;background:radial-gradient(circle at 32% 30%,#9beefb,var(--ac) 55%,#0e7490);box-shadow:0 0 26px rgba(34,211,238,.7),0 0 70px rgba(34,211,238,.3);animation:beat 3s ease-in-out infinite}
+@keyframes beat{50%{box-shadow:0 0 34px rgba(52,211,153,.7),0 0 90px rgba(52,211,153,.3)}}
+h2{font-size:26px;margin:60px 0 8px;color:var(--ac);text-shadow:0 0 12px rgba(34,211,238,.4)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+.card{border:1px solid rgba(34,211,238,.22);border-radius:14px;padding:16px;background:rgba(255,255,255,.025);box-shadow:0 0 14px rgba(34,211,238,.12)}
+.card b{color:var(--ac)}
+.card p{margin:6px 0 0;color:var(--dim);font-size:14px}
+pre{background:#0a0a0e;border:1px solid rgba(34,211,238,.25);border-radius:12px;padding:14px 16px;overflow:auto;font-size:13.5px;box-shadow:0 0 14px rgba(34,211,238,.12);position:relative}
+code{color:#7deefc}
+.copy{position:absolute;top:8px;right:8px;border:1px solid rgba(34,211,238,.4);background:rgba(34,211,238,.1);color:var(--ac);border-radius:8px;padding:3px 8px;cursor:pointer;font-size:11px}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
+td,th{border:1px solid rgba(34,211,238,.18);padding:9px 12px;text-align:left}
+th{color:var(--ac)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid rgba(52,211,153,.5);color:var(--ok);font-size:12px;box-shadow:0 0 10px rgba(52,211,153,.3)}
+.pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.pipe span{border:1px solid rgba(167,139,250,.4);border-radius:999px;padding:6px 14px;font-size:13px;box-shadow:0 0 10px rgba(167,139,250,.25)}
+.pipe i{color:var(--ac2)}
+footer{color:var(--dim);font-size:13px;padding:50px 0 30px;text-align:center}
+@media(max-width:900px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.grid{grid-template-columns:1fr}.stagebox{width:280px;height:280px}.node{--r:108px}.ring2 .node{--r:136px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="logo">LALA</div>
+<nav><a href="#see">See it</a><a href="#features">Features</a><a href="#install">Install</a><a href="#audit">Audit</a></nav></header>
+
+<section class="hero">
+ <div>
+  <h1>Say <em>“Hey Laala”</em> —<br/>your desktop just listens.</h1>
+  <p class="sub">A autonomous voice assistant: multi-agent brain, 5-layer memory, world model,
+  planning, vision, digital twin, streaming voice pipeline — in one repo, three bodies
+  (desktop app · web app · single HTML file). Zero paid dependencies required.</p>
+  <div class="cta">
+   <a class="btn pri" href="https://raw.githubusercontent.com/1997mujtabaamjad-del/LALA/arena/019fcde4-lala/LALA-standalone.html" download="LALA.html">⬇ Get the single-file app</a>
+   <a class="btn" href="#install">Install scripts</a>
+   <a class="btn" href="https://github.com/1997mujtabaamjad-del/LALA">GitHub repo</a>
+  </div>
+ </div>
+ <div class="stagebox">
+  <div class="ring">
+   <div class="node" style="--a:0deg"><span class="ni">🗣</span></div>
+   <div class="node" style="--a:60deg"><span class="ni">🧠</span></div>
+   <div class="node" style="--a:120deg"><span class="ni">👁</span></div>
+   <div class="node" style="--a:180deg"><span class="ni">🗓</span></div>
+   <div class="node" style="--a:240deg"><span class="ni">💰</span></div>
+   <div class="node" style="--a:300deg"><span class="ni">🏠</span></div>
+  </div>
+  <div class="ring ring2">
+   <div class="node" style="--a:30deg"><span class="ni">🌦</span></div>
+   <div class="node" style="--a:90deg"><span class="ni">💡</span></div>
+   <div class="node" style="--a:150deg"><span class="ni">🎵</span></div>
+   <div class="node" style="--a:210deg"><span class="ni">🔎</span></div>
+   <div class="node" style="--a:270deg"><span class="ni">🤖</span></div>
+   <div class="node" style="--a:330deg"><span class="ni">👥</span></div>
+  </div>
+  <div class="core">🧠</div>
+ </div>
+</section>
+
+<section id="see">
+ <h2>See it on your desktop — 3 ways</h2>
+ <table>
+  <tr><th>Way</th><th>Command / file</th><th>What you get</th></tr>
+  <tr><td><b>HTML</b></td><td><code>double-click LALA.html</code> (button above)</td><td>full app in browser: voice, demo, roles, autonomy, profiles</td></tr>
+  <tr><td><b>GIT</b></td><td><code>git clone https://github.com/1997mujtabaamjad-del/LALA.git && cd LALA && bash install.sh</code></td><td>desktop assistant + Electron UI + launchers</td></tr>
+  <tr><td><b>PYTHON</b></td><td><code>python -m assistant</code> (or <code>--chat</code>, <code>--milestone</code>, <code>--selftest</code>)</td><td>GUI / terminal / proof / audit</td></tr>
+ </table>
+ <pre><button class="copy" onclick="cp(this)">copy</button><code>git clone https://github.com/1997mujtabaamjad-del/LALA.git && cd LALA && bash install.sh && lala --milestone</code></pre>
+</section>
+
+<section id="features">
+ <h2>The nine layers (v2.0)</h2>
+ <div class="grid">
+  <div class="card"><b>🧑‍💼 Multi-Agent Brain</b><p>CEO delegates to Research · Coding · Vision · Finance · Scheduler · Health · Home agents.</p></div>
+  <div class="card"><b>🗄 Long-Term Memory</b><p>working · session · semantic · episodic · procedural layers + consent-gated voiceprints.</p></div>
+  <div class="card"><b>🌍 World Model</b><p>network, battery, weather, calendar, processes, IoT devices — context-aware answers.</p></div>
+  <div class="card"><b>🧭 Autonomous Planning</b><p>“prepare my interview” → researched, résumé opened, questions drafted, reminders set.</p></div>
+  <div class="card"><b>👁 Computer Vision</b><p>screen capture + OCR (“read the screen”); webcam/face/gesture ready for consent.</p></div>
+  <div class="card"><b>🪞 Digital Twin</b><p>live mirror of processes/files/devices — “what changed?” diffs your world.</p></div>
+  <div class="card"><b>🎙 Voice Pipeline</b><p>wake → STT → intent → planner → tools → response → TTS, streaming end-to-end, barge-in.</p></div>
+  <div class="card"><b>🧰 Tool Ecosystem</b><p>browser · terminal · code · email · calendar · weather · maps · finance · home · GitHub…</p></div>
+  <div class="card"><b>🦾 Robotics</b><p>pair ESP32/Pi/arms/drones via config; motion is confirm-gated.</p></div>
+ </div>
+ <h2>Pipeline</h2>
+ <div class="pipe"><span>🗣 Wake “Hey Laala”</span><i>→</i><span>🎙 Streaming STT</span><i>→</i><span>🧭 Intent</span><i>→</i><span>🧑💼 Planner/CEO</span><i>→</i><span>🧰 Tools</span><i>→</i><span>💬 Response</span><i>→</i><span>🔊 Streaming TTS</span></div>
+</section>
+
+<section id="install">
+ <h2>One-click installers</h2>
+ <pre><button class="copy" onclick="cp(this)">copy</button><code># Windows (PowerShell)
+iwr https://raw.githubusercontent.com/1997mujtabaamjad-del/LALA/v1.2/scripts/install.ps1 -UseBasicParsing | iex
+# macOS
+curl -fsSL https://raw.githubusercontent.com/1997mujtabaamjad-del/LALA/v1.2/scripts/install-mac.sh | bash
+# Linux
+bash install.sh        # GPU: bash scripts/install-gpu.sh</code></pre>
+</section>
+
+<section id="audit">
+ <h2>Self-verified</h2>
+ <p><span class="pill">51/51 functional checks</span> <span class="pill">98 python tests</span>
+ <span class="pill">19 js tests</span> <span class="pill">secrets masked</span> <span class="pill">confirm-gated exec</span></p>
+ <pre><button class="copy" onclick="cp(this)">copy</button><code>bash scripts/autorun.sh   # audits every subsystem, prints ✔/⏭/ matrix</code></pre>
+</section>
+
+<footer>LALA · v1.0 → v2.0 · built autonomous · MIT</footer>
+</div>
+<script>
+function cp(b){const t=b.parentElement.querySelector("code").innerText;navigator.clipboard.writeText(t);b.textContent="copied!";setTimeout(()=>b.textContent="copy",1200);}
+</script>
+</body>
+</html>
