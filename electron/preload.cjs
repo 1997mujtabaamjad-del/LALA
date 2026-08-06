@@ -33,6 +33,10 @@ contextBridge.exposeInMainWorld('lala', {
   sttFinish: () => ipcRenderer.invoke('stt:finish'),
   saveRecording: (pcm, text) => ipcRenderer.invoke('rec:save', { pcm, text }),
 
+  // Neural VAD (optional)
+  vadStatus: () => ipcRenderer.invoke('vad:status'),
+  vadSpeech: (pcm) => ipcRenderer.invoke('vad:speech', pcm),
+
   // Wake word stream
   wakeStart: () => ipcRenderer.invoke('wake:start'),
   wakeFeed: (pcm) => ipcRenderer.invoke('wake:feed', pcm),

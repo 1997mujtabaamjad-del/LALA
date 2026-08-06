@@ -204,6 +204,46 @@ const SP=d=>localStorage.setItem("lala.prof",JSON.stringify(d));
 const fin=()=>JSON.parse(localStorage.getItem("lala.fin")||"[]");
 const crm=()=>JSON.parse(localStorage.getItem("lala.crm")||"[]");
 let watches={};
+/* ---- in-browser voiceprints (multi-user) ---- */
+function fft(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;
+ if(i<j){const tr=re[i];re[i]=re[j];re[j]=tr;const ti=im[i];im[i]=im[j];im[j]=ti;}}
+ for(let len=2;len<=n;len<<=1){const ang=-2*Math.PI/len,wR=Math.cos(ang),wI=Math.sin(ang);
+  for(let i=0;i<n;i+=len){let cR=1,cI=0;for(let k=0;k<len/2;k++){const a=i+k,b=i+k+len/2;
+   const tR=re[b]*cR-im[b]*cI,tI=re[b]*cI+im[b]*cR;re[b]=re[a]-tR;im[b]=im[a]-tI;re[a]+=tR;im[a]+=tI;
+   const nR=cR*wR-cI*wI;cI=cR*wI+cI*wR;cR=nR;}}}}
+function voiceprintJS(x){const frame=400,hop=160,bands=20;
+ if(!x||x.length<frame)return new Array(bands).fill(0);
+ const feats=[];
+ for(let i=0;i+frame<=x.length;i+=hop){
+  const re=new Float64Array(512),im=new Float64Array(512);
+  for(let k=0;k<frame;k++)re[k]=x[i+k]*(0.5-0.5*Math.cos(2*Math.PI*k/(frame-1)));
+  fft(re,im);
+  const maxbin=Math.max(2,Math.floor(4000/(16000/2)*256));
+  const band=[];
+  for(let b=0;b<bands;b++){const a=Math.floor(1+(maxbin-1)*b/bands),c2=Math.max(a+1,Math.floor(1+(maxbin-1)*(b+1)/bands));
+   let s=0;for(let k=a;k<c2;k++)s+=Math.hypot(re[k],im[k]);band.push(Math.log(s/(c2-a)+1e-6));}
+  feats.push(band);}
+ const v=new Array(bands).fill(0);
+ for(const f of feats)for(let b=0;b<bands;b++)v[b]+=f[b]/feats.length;
+ const mean=v.reduce((a,b)=>a+b,0)/bands;for(let b=0;b<bands;b++)v[b]-=mean;
+ const nrm=Math.sqrt(v.reduce((a,b)=>a+b*b,0))||1;return v.map(b=>b/nrm);}
+let tapRing=[],tapOn=false;
+async function startTap(){if(tapOn)return;try{
+ const st=await navigator.mediaDevices.getUserMedia({audio:true});
+ const ac=new (window.AudioContext||window.webkitAudioContext)();
+ const src=ac.createMediaStreamSource(st),pr=ac.createScriptProcessor(2048,1,1),g=ac.createGain();
+ g.gain.value=0;src.connect(pr);pr.connect(g);g.connect(ac.destination);
+ pr.onaudioprocess=e=>{const d=e.inputBuffer.getChannelData(0);
+  const ratio=Math.max(1,Math.round(ac.sampleRate/16000));
+  for(let i=0;i<d.length;i+=ratio)tapRing.push(d[i]);
+  if(tapRing.length>48000)tapRing.splice(0,tapRing.length-48000);};
+ tapOn=true;}catch{}}
+function matchVoiceNow(){const d=P();if(!Object.values(d.profiles).some(p=>p.voice))return null;
+ const v=voiceprintJS(tapRing.slice());let best=null,bd=0.35;
+ for(const[name,prof]of Object.entries(d.profiles)){if(!prof.voice)continue;
+  let acc=0;for(let i=0;i<20;i++)acc+=(v[i]-prof.voice[i])**2;
+  const dist=Math.sqrt(acc);if(dist<bd){bd=dist;best=name;}}
+ return best;}
 function startWatch(k){stopWatch(k);watches[k]=setInterval(async()=>{
   if(k==="cal"){const evs=calList().filter(e=>e.ts>Date.now()&&e.ts-Date.now()<9e5&&!e.an);evs.forEach(e=>{e.an=1;toast("📅 Heads up — "+e.title);speak("Heads up, "+e.title+" starts soon.");});}
   else{const w=await weather("");if(/rain|storm|drizzle|thunder/i.test(w||"")){toast("🌧 "+w);speak("Weather alert.");}},6e4);}
@@ -267,7 +307,10 @@ const CMDS=[
  {p:["switch profile to <n>","use profile <n>"],d:"Switch profile",f:m=>{const d=P();if(!d.profiles[m.n])return "No profile '"+m.n+"' yet — say “create profile "+m.n+"”.";d.active=m.n;SP(d);return "Switched to "+m.n+" — personalizing.";}},
  {p:["list profiles","show profiles"],d:"List profiles",f:()=>{const n=Object.keys(P().profiles);return n.length?"Profiles: "+n.join(", ")+".":"No profiles yet.";}},
  {p:["who am i","which profile"],d:"Who",f:()=>{const d=P();return d.active?"You're "+d.active+".":"Guest mode — no active profile.";}},
- {p:["remember my voice","learn my voice"],d:"Voice enroll",f:()=>"Voice enrollment ships in the desktop app — this portable file demos the reactive layer."},
+ {p:["remember my voice","learn my voice"],d:"Voice enroll",f:async()=>{await startTap();await delay(600);
+  const d=P();const name=d.active||"main";d.profiles[name]=d.profiles[name]||{facts:""};
+  d.profiles[name].voice=voiceprintJS(tapRing.slice());SP(d);
+  return `Got it, ${name} — I'll recognize your voice now.`;}},
  // autonomy
  {p:["remind me to <r>"],d:"Reminder",f:m=>{const t=m.r.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);if(!t)return "When? Try “remind me to stretch at 5 pm”.";let h=+t[1],mm=+(t[2]||0);if(t[3]==="pm"&&h<12)h+=12;const w=new Date();w.setHours(h,mm,0,0);if(w<new Date())w.setDate(w.getDate()+1);const msg=m.r.split(/\bat\b/)[0].trim();setTimeout(()=>{toast("⏰ Reminder: "+msg);speak("Reminder: "+msg);},w-new Date());return "I'll remind you at "+w.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+".";}},
  {p:["watch my calendar"],d:"Watch cal",f:()=>{startWatch("cal");return "Watching your calendar — 15-minute heads-ups.";}},
@@ -331,9 +374,11 @@ function setupMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecogn
  if(!SR){toast("Voice needs Chrome or Edge — clicks still work!");$("#hint").textContent="No Web Speech here — use Chrome/Edge for voice, or click chips/nodes/Tasks.";return;}
  const rec=new SR();rec.continuous=true;rec.interimResults=true;let on=false;
  rec.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed"){on=false;toast("Mic blocked — open this file DIRECTLY in Chrome (not inside a preview/iframe).");$("#hint").textContent="Mic blocked here. Save this file to disk and double-click it in Chrome.";}};
- rec.onresult=e=>{let inter="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)handle(r[0].transcript);else inter+=r[0].transcript;}if(inter){$("#interim").textContent="“"+inter+"”";$("#interim").style.display="block";}};
+ rec.onresult=e=>{let inter="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];
+  if(r.isFinal){const who=matchVoiceNow();if(who){const d=P();if(d.active!==who){d.active=who;SP(d);$("#chipRole").textContent=who;respond("Welcome back, "+who+".");}}handle(r[0].transcript);}else inter+=r[0].transcript;}
+  if(inter){$("#interim").textContent="“"+inter+"”";$("#interim").style.display="block";}};
  rec.onend=()=>{if(on)try{rec.start();}catch{}};
- const toggle=()=>{on=!on;if(on){try{rec.start();}catch{}$("#orb").classList.add("listening");$("#chipState").textContent="listening";$("#hint").textContent="Listening… say “hey laala, open youtube” — interrupt me any time.";}else{rec.stop();$("#orb").classList.remove("listening");$("#chipState").textContent="idle";}};
+ const toggle=()=>{on=!on;if(on){try{rec.start();}catch{}startTap();$("#orb").classList.add("listening");$("#chipState").textContent="listening";$("#hint").textContent="Listening… say “hey laala, open youtube” — interrupt me any time.";}else{rec.stop();$("#orb").classList.remove("listening");$("#chipState").textContent="idle";}};
  $("#orb").addEventListener("click",toggle);
  // browser rule: mic may start only after a user gesture → first click ANYWHERE arms it
  window.addEventListener("pointerdown",function arm(){ if(!on) toggle(); window.removeEventListener("pointerdown",arm); });}

@@ -1131,8 +1131,15 @@ async function beginBargeCycle() {
 async function armBargeMonitor() {
   if (!desktop || state.bargeMon || state.wakeListener || state.pttActive) return;
   if (!('speechSynthesis' in window)) return;
+  if (!state.vadReady) {
+    try { state.vadReady = (await window.lala.vadStatus()).ready; } catch { state.vadReady = false; }
+  }
+  const remoteVad = state.vadReady
+    ? (i16) => window.lala.vadSpeech(i16).then((r) => r.p != null && r.p > 0.5)
+    : null;
   try {
     state.bargeMon = await startBargeMonitor({
+      remoteVad,
       onSpeech: () => {
         // 1) stop playback  2) cancel generation  3) new cycle
         speechSynthesis.cancel();

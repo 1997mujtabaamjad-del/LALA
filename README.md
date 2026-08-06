@@ -165,6 +165,21 @@ calls tools that map onto the existing action executor, and each call shows as a
 polite miss. The deterministic router stays as the zero-latency fast path for
 exact commands.
 
+### ⚙️ GPU packaging & trained wake word
+
+- **GPU**: `bash scripts/install-gpu.sh` — CUDA torch + faster-whisper fp16 +
+  onnxruntime-gpu; `lala --bench` then shows STT ms drop. Auto-used via `stt_device: auto`.
+- **Trained “Hey Laala”**:
+  ```bash
+  python -m assistant.train_wakeword --synthesize 40   # Piper-generated positives/negatives
+  python -m assistant.train_wakeword --record 20      # your real voice (optional)
+  python -m assistant.train_wakeword --train          # trains if TF present, else exact steps
+  ```
+  Drop the produced `hey_laala.onnx` into `assistant/data/models/` — the wake
+  backend picks custom models up automatically.
+- **Electron neural barge-in**: `npm i onnxruntime-node` + copy
+  `silero_vad.onnx` to `<userData>/models/` → barge-in uses Silero instead of energy.
+
 ### 🧬 LALA 2.0 — the nine layers
 
 1. **Multi-agent brain** (`agents.py`) — CEO agent plans & delegates to Research,

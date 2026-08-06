@@ -6,6 +6,7 @@ const path = require('path');
 const Store = require('./store.cjs');
 const actions = require('./actions.cjs');
 const asr = require('./asr.cjs');
+const vad = require('./vad.cjs');
 
 let store = null;
 let mainWindow = null;
@@ -171,6 +172,10 @@ function registerIpc() {
   ipcMain.handle('stt:feed', (_e, pcm) => asr.sttFeed(Buffer.from(pcm)));
   ipcMain.handle('stt:finish', () => asr.sttFinish());
 
+  // ---- Neural VAD (optional) -------------------------------------------------
+  ipcMain.handle('vad:status', () => vad.status());
+  ipcMain.handle('vad:speech', async (_e, pcm) => ({ p: await vad.speech(pcm) }));
+
   // ---- Recording storage ------------------------------------------------------
   ipcMain.handle('rec:save', (_e, { pcm, text }) => {
     try {
@@ -239,6 +244,7 @@ function registerIpc() {
 app.whenReady().then(() => {
   store = new Store(app.getPath('userData'));
   asr.init({ userDataDir: app.getPath('userData'), win: () => mainWindow });
+  vad.init(app.getPath('userData'));
 
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
     const allowed = ['media', 'audioCapture', 'microphone', 'clipboard-read', 'clipboard-sanitized-write'];

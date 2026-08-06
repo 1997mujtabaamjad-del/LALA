@@ -108,7 +108,7 @@ export async function startStreamCapture({ onChunk, autoStop = false, onAutoStop
 }
 
 /** Mic stays open during TTS; fires once when the user starts speaking. */
-export async function startBargeMonitor({ onSpeech }) {
+export async function startBargeMonitor({ onSpeech, remoteVad = null }) {
   const stream = await openMic();
   const Ctx = window.AudioContext || window.webkitAudioContext;
   const ctx = new Ctx();
@@ -123,14 +123,9 @@ export async function startBargeMonitor({ onSpeech }) {
   let sustained = 0;
   let fired = false;
 
-  processor.onaudioprocess = (event) => {
+  const consider = (flag, cbMs) => {
     if (fired) return;
-    const input = event.inputBuffer.getChannelData(0);
-    let sum = 0;
-    for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
-    const rms = Math.sqrt(sum / input.length);
-    const cbMs = (input.length / ctx.sampleRate) * 1000;
-    if (rms > BARGE_RMS) {
+    if (flag) {
       sustained += cbMs;
       if (sustained >= 250) {
         fired = true;
@@ -140,6 +135,19 @@ export async function startBargeMonitor({ onSpeech }) {
     } else {
       sustained = 0;
     }
+  };
+
+  processor.onaudioprocess = (event) => {
+    if (fired) return;
+    const input = event.inputBuffer.getChannelData(0);
+    const cbMs = (input.length / ctx.sampleRate) * 1000;
+    if (remoteVad) {
+      remoteVad(downsample(input, ctx.sampleRate)).then((flag) => consider(flag, cbMs));
+      return;
+    }
+    let sum = 0;
+    for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+    consider(Math.sqrt(sum / input.length) > BARGE_RMS, cbMs);
   };
 
   function stop() {
