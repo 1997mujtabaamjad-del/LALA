@@ -129,6 +129,9 @@ def run():
     r.check("vision: dashboard fn", lambda: callable(__import__("assistant.vision",
             fromlist=["monitor_dashboard"]).monitor_dashboard) or 1 / 0)
     r.check("twin: refresh+diff", lambda: __import__("assistant.twin", fromlist=["diff"]).diff())
+    r.check("twin: tabs+displays+cloud", lambda: set(__import__("assistant.twin",
+            fromlist=["refresh"]).refresh()[0]) >=
+            {"tabs", "displays", "cloud", "world", "files"} or 1 / 0)
     r.check("vision: graceful", lambda: vision.describe())
     r.check("robotics: no robots", lambda: __import__("assistant.robotics",
             fromlist=["status"]).status())

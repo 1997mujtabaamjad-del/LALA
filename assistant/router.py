@@ -209,6 +209,12 @@ def handle(text, memory=None):
         return "", {"type": "phone-photo"}
     if t in ("watch my dashboard", "monitor my dashboard", "watch the dashboard"):
         return "", {"type": "dashboard"}
+    if t in ("what tabs are open", "my browser tabs", "browser tabs", "my tabs"):
+        return "", {"type": "tabs"}
+    if t in ("desktop layout", "my displays", "monitor setup", "my monitors"):
+        return "", {"type": "displays"}
+    if t in ("my cloud storage", "cloud storage status", "cloud status"):
+        return "", {"type": "cloud"}
 
     # ---- memory (notes) -------------------------------------------------------
     m = re.match(r"^(?:remember|note) that (.+)$", t)
@@ -519,6 +525,22 @@ def perform(action):
             from . import vision
 
             return vision.monitor_dashboard(15)
+        elif kind == "tabs":
+            from . import twin
+
+            tabs = twin._browser_tabs()
+            return ("Open tabs: " + " · ".join(tabs[:6]) + ".") if tabs \
+                else "No browser windows visible right now."
+        elif kind == "displays":
+            from . import twin
+
+            d = twin._displays()
+            return ("Desktop layout: " + ", ".join(d) + ".") if d \
+                else "Display list unavailable on this OS."
+        elif kind == "cloud":
+            from . import twin
+
+            return "Cloud storage: " + "; ".join(twin._cloud()) + "."
         elif kind == "guide":
             from . import config, guide
 
