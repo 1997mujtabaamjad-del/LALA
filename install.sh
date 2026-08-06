@@ -7,8 +7,9 @@ echo "=============================================="
 echo "  LALA — one-click install"
 echo "=============================================="
 
-PY="$(command -v python3 || true)"
-if [ -z "$PY" ]; then echo "✖ python3 is required"; exit 1; fi
+PY="$(command -v python3.14 || command -v python3 || true)"
+if [ -z "$PY" ]; then echo "✖ python3 (3.10–3.14) is required"; exit 1; fi
+echo "→ using $PY ($("$PY" --version 2>&1))"
 echo "→ python: $PY ($("$PY" --version 2>&1))"
 
 # 1. virtualenv + dependencies -------------------------------------------------

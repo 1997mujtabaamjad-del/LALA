@@ -31,8 +31,9 @@ Set-Location $dir
 
 # 2. python env + deps  (accepts `python` OR the `py` launcher)
 $script:usepy = $false
-if (Has python) { }
+if (Has python3.14) { }
 elseif (Has py) { $script:usepy = $true }
+elseif (Has python) { }
 else {
     Write-Host "✖ Python not found. Fix it in ONE of these ways, then re-run:"
     Write-Host "    1) winget install Python.Python.3.12"
@@ -41,7 +42,7 @@ else {
     Write-Host "  Then CLOSE this PowerShell and open a NEW one."
     pause; exit 1
 }
-function prun { if ($script:usepy) { & py -3 @args } else { & python @args } }
+function prun { if ($script:usepy) { $t = & py -3.14 --version 2>$null; if ($LASTEXITCODE -eq 0) { & py -3.14 @args } else { & py -3 @args } } elseif (Has python3.14) { & python3.14 @args } else { & python @args } }
 if (!(Test-Path .venv)) { Write-Host "-> creating .venv …"; prun -m venv .venv }
 Write-Host "-> installing Python deps (STT/TTS/VAD/wake; heavy ones optional) …"
 .\.venv\Scripts\python -m pip install -q --upgrade pip

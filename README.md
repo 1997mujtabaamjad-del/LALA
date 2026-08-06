@@ -1,5 +1,7 @@
 # LALA 🎙️
 
+**Python 3.10 – 3.14 ready** — installers auto-prefer `python3.14` when present.
+
 **LALA** is a voice command assistant for your desktop — now with **two engines**:
 
 ## ⬇️ One-click install
