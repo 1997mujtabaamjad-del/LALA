@@ -71,8 +71,8 @@ set "LALABAT=%~dp0lala.bat"
 
 set "SM=%APPDATA%\Microsoft\Windows\Start Menu\Programs\LALA"
 if not exist "%SM%" mkdir "%SM%"
-powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut('%SM%\LALA.lnk');$s.TargetPath='%LALABAT%';$s.Arguments='--app';$s.WorkingDirectory='%~dp0';$s.IconLocation='%LALABAT%';$s.Save();$d=$w.CreateShortcut('%USERPROFILE%\Desktop\LALA.lnk');$d.TargetPath='%LALABAT%';$d.Arguments='--app';$d.WorkingDirectory='%~dp0';$d.Save()"
-echo = Desktop + Start Menu shortcuts created (they open the full app)
+powershell -NoProfile -Command "$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut('%SM%\LALA.lnk');$s.TargetPath='%LALABAT%';$s.Arguments='--app';$s.WorkingDirectory='%~dp0';$s.Save();$d=$w.CreateShortcut('%USERPROFILE%\Desktop\LALA.lnk');$d.TargetPath='%LALABAT%';$d.Arguments='--app';$d.WorkingDirectory='%~dp0';$d.Save();$a=$w.CreateShortcut('%USERPROFILE%\Desktop\LALA Desktop App.lnk');$a.TargetPath='%~dp0LALA-APP.bat';$a.WorkingDirectory='%~dp0';$a.Save()"
+echo = Shortcuts created: "LALA" (browser app) + "LALA Desktop App" (own window)
 
 set /p AUTO="Start LALA automatically when you log in? [y/N] "
 if /i "%AUTO%"=="y" (

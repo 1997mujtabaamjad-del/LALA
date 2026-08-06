@@ -2,6 +2,9 @@
 
 const { app, BrowserWindow, ipcMain, session, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
+const http = require('http');
+const fs = require('fs');
 
 const Store = require('./store.cjs');
 const actions = require('./actions.cjs');
@@ -12,6 +15,43 @@ let store = null;
 let mainWindow = null;
 let tray = null;
 let isQuitting = false;
+let brainChild = null; // python brain we started ourselves (killed on quit)
+
+// ---------------------------------------------------------------------------
+// Self-contained desktop app: if the Python brain (:8420) isn't running,
+// start it from the local .venv so `npm start` / LALA-APP.bat is all you need.
+// ---------------------------------------------------------------------------
+
+function brainUp() {
+  return new Promise((resolve) => {
+    const req = http.get('http://127.0.0.1:8420/status', (res) => {
+      res.resume();
+      resolve(true);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(1200, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+async function ensureBrain() {
+  if (await brainUp()) return; // browser app or --serve already running
+  const root = path.join(__dirname, '..');
+  const py = process.platform === 'win32'
+    ? path.join(root, '.venv', 'Scripts', 'python.exe')
+    : path.join(root, '.venv', 'bin', 'python');
+  if (!fs.existsSync(py)) return; // no venv → commands-only mode
+  brainChild = spawn(py, ['-m', 'assistant', '--serve'], {
+    cwd: root,
+    stdio: 'ignore'
+  });
+  brainChild.on('error', () => { brainChild = null; });
+  for (let i = 0; i < 25 && !(await brainUp()); i++) {
+    await new Promise((r) => setTimeout(r, 300));
+  }
+}
 
 // GPU hardware acceleration for the UI (Chromium). Applies before any window
 // is created; toggle lives in Settings → General. Default: on.
@@ -241,10 +281,11 @@ function registerIpc() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   store = new Store(app.getPath('userData'));
   asr.init({ userDataDir: app.getPath('userData'), win: () => mainWindow });
   vad.init(app.getPath('userData'));
+  await ensureBrain(); // start the Python brain if nothing is listening on :8420
 
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
     const allowed = ['media', 'audioCapture', 'microphone', 'clipboard-read', 'clipboard-sanitized-write'];
@@ -263,6 +304,10 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  if (brainChild) { // stop the brain we started (leave a user's own brain alone)
+    try { brainChild.kill(); } catch { /* already gone */ }
+    brainChild = null;
+  }
 });
 
 app.on('window-all-closed', () => {
