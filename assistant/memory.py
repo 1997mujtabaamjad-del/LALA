@@ -1,10 +1,6 @@
 """
 Conversation memory + long-term notes.
-
-- Chat history is persisted to assistant/data/memory.json so the assistant
-  remembers previous conversations across sessions.
-- Long-term notes ("remember that I like tea") live in data/notes.json and are
-  always injected into the system prompt.
+Paths resolve from config.DATA_DIR at call time (so tests/audits can redirect).
 """
 
 import json
@@ -13,16 +9,20 @@ import time
 
 from . import config
 
-MEMORY_FILE = os.path.join(config.DATA_DIR, "memory.json")
-NOTES_FILE = os.path.join(config.DATA_DIR, "notes.json")
-
 
 class Memory:
     def __init__(self):
-        os.makedirs(config.DATA_DIR, exist_ok=True)
-        self.history = self._read(MEMORY_FILE, [])
-        self.notes = self._read(NOTES_FILE, [])
+        self._h = None
+        self._n = None
 
+    # ------------------------------------------------------------ paths
+    def _mem_file(self):
+        return os.path.join(config.DATA_DIR, "memory.json")
+
+    def _notes_file(self):
+        return os.path.join(config.DATA_DIR, "notes.json")
+
+    # ------------------------------------------------------------ io
     @staticmethod
     def _read(path, fallback):
         try:
@@ -33,28 +33,40 @@ class Memory:
 
     @staticmethod
     def _write(path, value):
+        os.makedirs(config.DATA_DIR, exist_ok=True)
         with open(path, "w", encoding="utf8") as fh:
             json.dump(value, fh, indent=2)
 
-    # ---- chat history ----
+    # ------------------------------------------------------------ history
+    @property
+    def history(self):
+        if self._h is None:
+            self._h = self._read(self._mem_file(), [])
+        return self._h
+
+    @property
+    def notes(self):
+        if self._n is None:
+            self._n = self._read(self._notes_file(), [])
+        return self._n
+
     def add(self, role, content):
         self.history.append({"role": role, "content": content, "ts": int(time.time())})
-        # keep the file bounded
         if len(self.history) > 400:
-            self.history = self.history[-400:]
-        self._write(MEMORY_FILE, self.history)
+            self._h = self.history[-400:]
+        self._write(self._mem_file(), self.history)
 
     def recent(self, n):
         return [{"role": m["role"], "content": m["content"]} for m in self.history[-n:]]
 
     def clear(self):
-        self.history = []
-        self._write(MEMORY_FILE, self.history)
+        self._h = []
+        self._write(self._mem_file(), self._h)
 
-    # ---- long-term notes ----
+    # ------------------------------------------------------------ notes
     def add_note(self, text):
         self.notes.append({"text": text, "ts": int(time.time())})
-        self._write(NOTES_FILE, self.notes)
+        self._write(self._notes_file(), self.notes)
 
     def notes_text(self):
         return "; ".join(n["text"] for n in self.notes[-20:])

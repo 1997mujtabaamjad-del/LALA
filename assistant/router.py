@@ -192,6 +192,13 @@ def handle(text, memory=None):
     if t in ("budget analysis", "analyze my spending"):
         return "", {"type": "finance-agent"}
 
+    # ---- memory (notes) -------------------------------------------------------
+    m = re.match(r"^(?:remember|note) that (.+)$", t)
+    if m:
+        return "Got it — I'll remember that.", {"type": "memory", "op": "add", "note": m.group(1)}
+    if t in ("what do you remember", "your notes", "list notes"):
+        return "", {"type": "memory", "op": "list"}
+
     # ---- profiles (v1.2) ----------------------------------------------------
     m = re.match(r"^(?:create|new) profile (.+)$", t)
     if m:
@@ -350,6 +357,15 @@ def perform(action):
             return f"Saved {action['name']} @ {action['company']}."
         elif kind == "contacts":
             return roles.contact_list()
+        elif kind == "memory":
+            from .memory import Memory
+
+            mem = Memory()
+            if action["op"] == "add":
+                mem.add_note(action["note"])
+                return f"Remembered: {action['note']}."
+            txt = mem.notes_text()
+            return f"I remember: {txt}." if txt else "No notes yet."
         elif kind == "profile":
             from . import profiles as _p
 
