@@ -12,7 +12,17 @@ activate it once with the two commands noted in that file):
 
 **From source** — double-click:
 - **Windows:** `install.bat`
-- **Linux / macOS:** `install.sh` (or `bash install.sh`)
+- **Windows one-liner** (any PC, no git):
+
+```powershell
+iwr https://raw.githubusercontent.com/1997mujtabaamjad-del/LALA/v1.2/scripts/install.ps1 -UseBasicParsing | iex
+```
+
+Downloads the `v1.2` tag, creates the venv + deps, adds **Start Menu & Desktop
+shortcuts**, offers **start-at-login** and the optional Electron UI, then launches
+LALA. Equivalent file-based: `powershell -ExecutionPolicy Bypass -File scripts\install.ps1`.
+
+**Linux / macOS:** `install.sh` (or `bash install.sh`)
 
 Both create a venv, install every dependency (STT/TTS/VAD/wake + optional Electron
 UI), add a **Start Menu / app-menu / Desktop launcher**, then offer the milestone
