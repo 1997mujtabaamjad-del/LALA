@@ -74,6 +74,16 @@ def run_bench(cfg):
     ms, _ = _ms(e2e)
     rows.append(("end-to-end (synthetic)", ms, "vad+stt+llm+tts"))
 
+    # §7 budget: deterministic simple-command chain (intent → route → reply)
+    from . import latency as _lat
+
+    timer, _kind, reply, _action = _lat.simple_chain("what time is it")
+    budget = _lat.SIMPLE_COMMAND_BUDGET_MS
+    rows.append(("simple command e2e", timer.work_ms,
+                 f"deterministic path — {reply!r} — "
+                 + ("PASS" if reply and timer.work_ms <= budget else "FAIL")
+                 + f" (budget {int(budget)} ms)"))
+
     return rows
 
 

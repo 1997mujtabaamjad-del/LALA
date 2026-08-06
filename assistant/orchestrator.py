@@ -21,6 +21,7 @@ class Assistant:
         self.confirm_fn = confirm or self._stdin_confirm
         self.memory = Memory()
         self._last_action = None
+        self.last_turn = None  # per-stage latency trace of the last utterance
 
         # LALA 2.0: shared vault + security injection for router/agents
         from . import router as _router
@@ -100,23 +101,41 @@ class Assistant:
 
     # ------------------------------------------------------------ core
     def process(self, text, follow_up=False, spoken=True):
-        """Handle one user utterance (voice or typed). Returns the reply."""
+        """Handle one user utterance (voice or typed). Returns the reply.
+
+        Every turn is timed stage-by-stage (§7 voice pipeline):
+        stt → intent → route → tool → reply → tts. Simple commands take
+        the deterministic fast path and must stay well under one second;
+        each turn logs its own ⏱ trace."""
         self.log("you", text)
         from . import intent as _intent
+        from . import latency as _latency
 
-        self.vault.event(f"{text} [intent:{_intent.detect(text)}]")
+        timer = _latency.TurnTimer()
+        if getattr(self.pipeline, "last_stt_ms", None) is not None:
+            timer.mark("stt", self.pipeline.last_stt_ms)
+            self.pipeline.last_stt_ms = None
+
+        with timer.stage("intent"):
+            kind = _intent.detect(text)
+        self.vault.event(f"{text} [intent:{kind}]")
         interruption = None
 
-        response, action = router.handle(text, self.memory)
+        with timer.stage("route"):
+            response, action = router.handle(text, self.memory)
         self._last_action = action["type"] if action else None
+        fast_path = action is not None
         if action is not None:
             if action.get("confirm") and not self.confirm_fn(text):
-                self._say("Okay, cancelled.", spoken)
+                self._say("Okay, cancelled.", spoken, timer=timer)
+                self._log_latency(timer, text, kind, fast_path=True)
                 return "Okay, cancelled."
             if action["type"] == "voice-enroll":
-                reply = self._enroll_voice()
+                with timer.stage("tool"):
+                    reply = self._enroll_voice()
             else:
-                side_note = router.perform(action)
+                with timer.stage("tool"):
+                    side_note = router.perform(action)
                 reply = (response + (" " + side_note if side_note else "")).strip()
         else:
             self.status("thinking")
@@ -129,30 +148,47 @@ class Assistant:
                 # is still generating. Barge-in cancels generation + playback
                 # and captures the interruption as a new cycle.
                 if can_speak:
-                    interruption, reply = self.pipeline.speak_tokens(
-                        lambda stop: tools.chat_with_tools_stream(
-                            self.cfg, self.memory, text, stop_event=stop))
+                    with timer.stage("reply"):
+                        interruption, reply = self.pipeline.speak_tokens(
+                            lambda stop: tools.chat_with_tools_stream(
+                                self.cfg, self.memory, text, stop_event=stop))
                     spoken = False
                 else:
-                    reply = "".join(tools.chat_with_tools_stream(
-                        self.cfg, self.memory, text))
+                    with timer.stage("reply"):
+                        reply = "".join(tools.chat_with_tools_stream(
+                            self.cfg, self.memory, text))
             elif can_speak:
                 # Stream tokens into sentence-level TTS for minimal latency.
-                interruption, reply = self.pipeline.speak_tokens(
-                    lambda stop: llm.ask_stream(
-                        self.cfg, self.memory, text, stop_event=stop))
+                with timer.stage("reply"):
+                    interruption, reply = self.pipeline.speak_tokens(
+                        lambda stop: llm.ask_stream(
+                            self.cfg, self.memory, text, stop_event=stop))
                 spoken = False
             else:
-                reply = llm.ask(self.cfg, self.memory, text)
+                with timer.stage("reply"):
+                    reply = llm.ask(self.cfg, self.memory, text)
 
         self.memory.add("user", text)
         self.memory.add("assistant", reply)
-        self._say(reply, spoken)
+        self._say(reply, spoken, timer=timer)
+        self._log_latency(timer, text, kind, fast_path=fast_path)
 
         if interruption:
             # The user barged in: their interruption is the next utterance.
             self.process(interruption, follow_up=False, spoken=True)
         return reply
+
+    def _log_latency(self, timer, text, kind, fast_path):
+        """Store + log the per-stage trace for the turn we just ran."""
+        self.last_turn = {
+            "text": text,
+            "intent": kind,
+            "path": "fast" if fast_path else "llm",
+            "stages": {k: round(v, 3) for k, v in timer.stages.items()},
+            "work_ms": round(timer.work_ms, 2),
+            "total_ms": round(timer.total_ms, 2),
+        }
+        self.log("system", f"⏱ {timer.trace()} — {timer.verdict(fast_path=fast_path)}")
 
     def _enroll_voice(self):
         from . import mic, profiles
@@ -186,9 +222,12 @@ class Assistant:
         except (EOFError, OSError):
             return False
 
-    def _say(self, text, spoken=True):
+    def _say(self, text, spoken=True, timer=None):
         # TTS with barge-in lives in the pipeline; an interruption becomes
-        # the next utterance.
+        # the next utterance. Synthesis time is folded into the turn timer.
         interruption = self.pipeline.speak(text, spoken=spoken)
+        if timer is not None and self.pipeline.last_tts_ms is not None:
+            timer.mark("tts", self.pipeline.last_tts_ms)
+            self.pipeline.last_tts_ms = None
         if interruption:
             self.process(interruption, follow_up=False, spoken=True)

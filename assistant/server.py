@@ -42,7 +42,18 @@ def make_server(cfg=None, port=DEFAULT_PORT):
 
         def do_GET(self):
             if self.path.rstrip("/") == "/status":
-                self._json(200, {"ok": True, "name": cfg["name"], "version": __version__})
+                from . import latency
+
+                self._json(200, {
+                    "ok": True,
+                    "name": cfg["name"],
+                    "version": __version__,
+                    "pipeline": {
+                        "stages": list(latency.STAGES),
+                        "simple_command_budget_ms": latency.SIMPLE_COMMAND_BUDGET_MS,
+                        "last_turn": assistant.last_turn,
+                    },
+                })
             elif self.path.rstrip("/") == "/config":
                 from . import sync
 

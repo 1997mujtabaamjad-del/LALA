@@ -29,6 +29,8 @@ class Pipeline:
         self._busy = threading.Event()
         self.wake_listener = None
         self.on_audio = None  # optional hook: called with each captured utterance
+        self.last_stt_ms = None  # speech-recognition stage timing (§7)
+        self.last_tts_ms = None  # speech-synthesis stage timing (§7)
 
     def vad(self):
         if self._vad is None:
@@ -101,7 +103,8 @@ class Pipeline:
     # ------------------------------------------------------------- stage 2+3
     def listen(self, max_seconds=8.0, require_speech=True):
         """Record with VAD endpointing while streaming STT types partials.
-        Returns (audio_int16 | None, transcript, partials)."""
+        Returns (audio_int16 | None, transcript, partials).
+        Timing lands in self.last_stt_ms (speech recognition stage §7)."""
         transcriber = stt.StreamingTranscriber(self.cfg)
         partials = []
 
@@ -115,13 +118,16 @@ class Pipeline:
                                          require_speech=require_speech,
                                          on_chunk=on_chunk, vad=self.vad())
         if audio is None:
+            self.last_stt_ms = None
             return None, "", partials
+        t0 = time.perf_counter()
         text = transcriber.finish()
         if not text:
             try:
                 text = stt.transcribe(audio, self.cfg)
             except Exception:  # noqa: BLE001
                 text = ""
+        self.last_stt_ms = (time.perf_counter() - t0) * 1000
         return audio, text, partials
 
     # ------------------------------------------------------------- recording
@@ -160,15 +166,19 @@ class Pipeline:
         return (interruption or None), reply
 
     def speak(self, text, spoken=True):
-        """TTS with barge-in. Returns the user's interruption text, if any."""
+        """TTS with barge-in. Returns the user's interruption text, if any.
+        Synthesis latency lands in self.last_tts_ms (§7 speech synthesis)."""
         self.log(self.cfg["name"], text)
         if not spoken:
+            self.last_tts_ms = None
             return None
         stop = threading.Event()
         monitor = mic.BargeMonitor(stop, vad=self.vad()) if mic.available() else None
         if monitor:
             monitor.start()
+        t0 = time.perf_counter()
         tts.speak(text, self.cfg, stop_event=stop)
+        self.last_tts_ms = (time.perf_counter() - t0) * 1000
         barged = bool(monitor and monitor.barged)
         if monitor:
             monitor.stop()

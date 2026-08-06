@@ -134,6 +134,42 @@ function allCommands() {
   return [...state.custom, ...state.defaults];
 }
 
+/* --------------------- §7 voice pipeline: per-utterance latency trace ---
+   Wake → STT → intent → planner → tool → reply → TTS. Simple commands
+   run the deterministic path and must land well under one second; every
+   utterance shows its own ⏱ trace in the status line.                    */
+
+const PIPE_BUDGET_MS = 1000;
+const Pipe = {
+  t0: 0,
+  marks: {},
+  active: false,
+  begin() { this.t0 = performance.now(); this.marks = {}; this.active = true; },
+  mark(name) {
+    if (this.active && this.marks[name] == null) this.marks[name] = performance.now();
+  },
+  render() {
+    if (!this.active) return '';
+    this.active = false;
+    const order = ['intent', 'exec', 'tts'];
+    const segs = [];
+    let prev = this.t0;
+    let last = this.t0;
+    for (const name of order) {
+      if (this.marks[name] != null) {
+        segs.push(`${name} ${Math.max(0, Math.round(this.marks[name] - prev))} ms`);
+        prev = this.marks[name];
+        last = prev;
+      }
+    }
+    const total = Math.max(0, Math.round(last - this.t0));
+    const verdict = total <= PIPE_BUDGET_MS ? 'under 1 s ✓' : 'LLM path';
+    const line = `⏱ pipeline ${total} ms — ${segs.join(' · ') || 'no stages'} · ${verdict}`;
+    window.lastPipelineMs = total;
+    return line;
+  },
+};
+
 /* ------------------------------------------------------------------ TTS */
 
 let preferredVoice = null;
@@ -177,6 +213,9 @@ async function speakEleven(text) {
 }
 
 function speak(text, { cancel = true } = {}) {
+  Pipe.mark('tts'); // §7 speech-synthesis stage reached → render the trace
+  const trace = Pipe.render();
+  if (trace) setStatusLine(trace);
   if (!state.settings.voiceResponses || !text) return;
   if (state.settings.elevenlabsKey) { speakEleven(text); armBargeMonitor(); return; }
   if (!('speechSynthesis' in window)) return;
@@ -190,6 +229,7 @@ function speak(text, { cancel = true } = {}) {
 
 function respond(text, { silent = false } = {}) {
   if (!text) return;
+  Pipe.mark('exec'); // §7 tool execution + response generation done
   state.recentChat.push({ role: 'assistant', content: text });
   if (state.recentChat.length > 20) state.recentChat = state.recentChat.slice(-20);
   addLog('lala', text);
@@ -210,6 +250,7 @@ function setOrbMode(mode) {
 async function handleTranscript(rawText) {
   let text = String(rawText || '').trim();
   if (!text) return;
+  Pipe.begin(); // §7: start the per-utterance latency trace (wake → …)
 
   // strip the wake phrase: "hey laala, open youtube" -> "open youtube"
   const wake = detectWakeWord(text);
@@ -220,6 +261,7 @@ async function handleTranscript(rawText) {
       return;
     }
     text = wake.rest;
+    Pipe.mark('wake'); // wake-word strip done; intent work starts below
   }
 
   state.lastTranscript = text;
@@ -248,8 +290,9 @@ async function handleTranscript(rawText) {
     return;
   }
 
-  // 3) Normal command matching.
+  // 3) Normal command matching (§7 intent detection).
   const match = matchCommand(allCommands(), text);
+  Pipe.mark('intent');
   if (!match) {
     // 3a) Agentic + streaming: tokens speak sentence-by-sentence while the
     //     model keeps generating; tool rounds run silently in between.
@@ -257,6 +300,7 @@ async function handleTranscript(rawText) {
     state.abortCtl = new AbortController();
     let streamed = '';
     const toolReply = await llmToolLoopStream(text, (tok) => {
+      Pipe.mark('exec'); // first response token (LLM path — over budget is fine)
       streamed += tok;
       showResponse(streamed);
       const parts = streamed.split(/(?<=[.!?])\s+/);

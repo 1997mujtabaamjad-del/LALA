@@ -14,10 +14,10 @@ import urllib.request
 
 import numpy as np
 
-from . import (agents, autonomy, calendar_store, config, intent, llm, memory,
-               mic, planner, profiles, roles, router, security, stt, sync,
-               tools, train_wakeword, tts, vad, vault, vision, wake, weather,
-               websearch, world)
+from . import (agents, autonomy, calendar_store, config, intent, latency,
+               llm, memory, mic, planner, profiles, roles, router, security,
+               stt, sync, tools, train_wakeword, tts, vad, vault, vision,
+               wake, weather, websearch, world)
 from .vault import Vault
 
 NET_EXC = ("URLError", "SSLError", "ConnectionError", "MaxRetryError", "NewConnectionError")
@@ -177,6 +177,26 @@ def run():
     r.check("bench: rows", lambda: len(__import__("assistant.bench", fromlist=["run_bench"])
             .run_bench(cfg)) >= 5 or 1 / 0)
     r.check("milestone: all stages", lambda: len(run_milestone_safe(cfg)) == 6 or 1 / 0)
+
+    # ---- §7 voice-pipeline latency budget ----
+    def _simple_ok():
+        timer, kind, reply, action = latency.simple_chain("what time is it")
+        assert reply and action, "deterministic chain produced no reply"
+        assert kind in ("command", "schedule", "smalltalk", "question", "goal",
+                        "vision", "world", "twin", "health", "finance",
+                        "research", "coding", "home", "memory"), kind
+        assert timer.work_ms <= latency.SIMPLE_COMMAND_BUDGET_MS, \
+            f"simple command took {timer.work_ms:.1f} ms"
+        return f"{timer.work_ms:.2f} ms < {int(latency.SIMPLE_COMMAND_BUDGET_MS)} ms"
+    r.check("pipeline: simple cmd < 1 s", _simple_ok)
+
+    def _report_ok():
+        rows = latency.run_latency_report(cfg)
+        assert len(rows) >= 7, f"only {len(rows)} rows"
+        bad = [n for n, _ms, ok, _note in rows if not ok]
+        assert not bad, f"over budget: {bad}"
+        return f"{len(rows)} scenarios under budget"
+    r.check("pipeline: latency report", _report_ok)
 
     return r
 

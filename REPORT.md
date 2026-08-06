@@ -20,7 +20,8 @@ bodies**:
 
 Every stage streams (STT partials while speaking, LLM tokens while speaking, TTS
 sentence-by-sentence), every stage degrades gracefully, and the whole chain proves
-itself with `--milestone` and reports its latency with `--bench`.
+itself with `--milestone`, reports its latency with `--bench`, and audits the
+sub-second budget for simple commands with `--latency`.
 
 ---
 
@@ -69,6 +70,17 @@ itself with `--milestone` and reports its latency with `--bench`.
 | **LLM** | Ollama (local) → OpenAI → mock; **tool calling** (10 tools, results fed back, ≤4 rounds); memory = last 12 messages + long-term notes; Laala persona system prompt | tokens as generated |
 | **TTS** | Piper (local, CUDA EP) · ElevenLabs (turbo) · browser speechSynthesis; sentence-ready → speak immediately; generation continues while speaking | sentence streaming |
 | **Barge-in** | mic open during TTS; on your speech: ⛔ playback, ⛔ generation (stop token / `AbortController` / `generator.close()`), 🎙 new listening cycle | instant |
+
+**Latency budget (spec §7).** Simple commands must answer *well under one second*.
+They take the deterministic fast path — intent detection → router → action → reply —
+and never touch the LLM. Every real turn logs its own trace
+(`⏱ intent 14 µs · route 0.5 ms · tool 5 µs — under 1000 ms ✓`), the brain server
+exposes the last turn's stage timings on `/status`, and the Electron/web app plus the
+standalone HTML show a live pipeline HUD per utterance. `python -m assistant --latency`
+audits every stage of the chain against the 1000 ms budget (exit code 1 on breach);
+`--bench` adds it to the per-backend latency table. Measured in the build sandbox:
+simple commands complete in **well under 1 ms** of processing work, and the synthetic
+audio chain (wake → VAD → streaming STT → intent → route) in **< 1 ms** end to end.
 
 ---
 

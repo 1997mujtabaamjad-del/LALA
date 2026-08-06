@@ -12,6 +12,7 @@
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 #snow{position:fixed;inset:0;z-index:-1;opacity:.5;pointer-events:none}
 .flapline{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#pipe{font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;color:#7deefc;opacity:.9;text-align:center;margin:10px auto 0;max-width:680px;display:none}
 /* Teams mission control */
 .teamgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tagent{border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:10px;background:rgba(255,255,255,.03);text-align:center;font-size:12px;color:#8f9ab0;transition:all .3s}
@@ -178,6 +179,7 @@ label{display:block;font-size:13px;margin:10px 0}
     <div class="hint">Click the brain & speak (Chrome/Edge) · hover rings · click nodes</div>
     <div id="interim" class="bubble int" style="display:none"></div>
     <div id="response" class="bubble res" style="display:none"></div>
+    <div id="pipe" aria-live="polite"></div>
     <div class="sugs">
       <label>Try:</label>
       <button class="btn accent" id="demo">▶ Run demo</button>
@@ -336,8 +338,14 @@ function playBlob(b){return new Promise(res=>{const a=new Audio(URL.createObject
 async function speakEl(text){const sents=text.match(/[^.!?]+[.!?]+/g)||[text];let prefetch=null;
  for(let i=0;i<sents.length;i++){const cur=prefetch||fetchEl(sents[i]);prefetch=i+1<sents.length?fetchEl(sents[i+1]):null;
   try{await playBlob(await cur);}catch{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(sents[i]);speechSynthesis.speak(u);await new Promise(r=>{u.onend=r;});}}}
-function speak(t){if(CFG.elKey){speakEl(t);return;}if(!("speechSynthesis" in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=1.03;speechSynthesis.speak(u);}
-function respond(t){log("lala",t);const r=$("#response");r.textContent=t;r.style.display="block";speak(t);}
+// §7 voice-pipeline latency trace: wake → STT → intent → tool → reply → TTS
+const PL={t0:0,m:{},on:false,b(){this.t0=performance.now();this.m={};this.on=true;},k(n){if(this.on&&this.m[n]==null)this.m[n]=performance.now();},r(){if(!this.on)return;this.on=false;
+ const o=["intent","exec","tts"];let prev=this.t0,last=this.t0,s=[];
+ for(const n of o){if(this.m[n]!=null){s.push(n+" "+Math.max(0,Math.round(this.m[n]-prev))+"ms");prev=this.m[n];last=prev;}}
+ const tot=Math.max(0,Math.round(last-this.t0));const el=$("#pipe");
+ if(el){el.textContent="⏱ pipeline "+tot+" ms — "+(s.join(" · ")||"no stages")+(tot<=1000?" · under 1 s ✓":" · LLM path");el.style.display="block";}}};
+function speak(t){PL.k("tts");PL.r();if(CFG.elKey){speakEl(t);return;}if(!("speechSynthesis" in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=1.03;speechSynthesis.speak(u);}
+function respond(t){PL.k("exec");log("lala",t);const r=$("#response");r.textContent=t;r.style.display="block";speak(t);}
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitSilence(){if(!("speechSynthesis" in window))return delay(500);await delay(200);const t0=Date.now();while((speechSynthesis.speaking||speechSynthesis.pending)&&Date.now()-t0<5000)await delay(120);}
 
@@ -426,12 +434,13 @@ function match(text){const n=norm(text);
  return null;}
 
 async function handle(text){text=(text||"").trim();if(!text)return;
+ PL.b(); // §7: start the per-utterance latency trace
  // wake-word strip: "hey laala, open youtube" -> "open youtube"
  const wm=norm(text).match(/^(?:hey|ok|hi|hello)?\s*(?:laala|lala|la la)\b[, ]*(.*)$/);
- if(wm){ if(!wm[1]){log("you",text);respond("Yes? I'm listening…");return;} text=wm[1]; }
+ if(wm){ if(!wm[1]){log("you",text);respond("Yes? I'm listening…");return;} text=wm[1];PL.k("wake"); }
  log("you",text);$("#interim").style.display="none";
  if(dict&&!"stop dictation".includes(norm(text))){dictBuf.push(text);$("#interim").textContent="“"+text+"”";$("#interim").style.display="block";return;}
- const hit=match(text);
+ const hit=match(text);PL.k("intent"); // §7 intent detection done
  if(!hit){
   const b=await brain(text);
   if(b){respond(b);return;}

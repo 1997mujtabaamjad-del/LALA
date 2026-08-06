@@ -62,7 +62,10 @@ Verify anytime: `bash scripts/autorun.sh` (51 functional checks + 98 py + 19 js 
 ## 7. Voice Pipeline — ✅
 - [x] Wake → STT → Intent → Planner → Tools → Response → TTS
 - [x] Streaming everywhere (STT partials, LLM tokens, sentence TTS, barge-in)
-- [x] Sub-second simple-command path — `--bench` reports per-stage ms
+- [x] Sub-second simple-command path — deterministic intent→route→reply never touches the LLM
+- [x] Latency audit — `--latency` checks every stage against the 1000 ms budget (exit 1 on breach)
+- [x] Per-turn ⏱ trace — every real utterance logs its own stage-by-stage timings (+ `/status`)
+- [x] Visible in the UI — Electron/web app and the standalone show a live pipeline HUD
 
 ## 8. Tool Ecosystem — ✅
 - [x] Terminal access + code execution (confirm-gated)

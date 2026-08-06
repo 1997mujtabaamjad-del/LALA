@@ -265,7 +265,36 @@ python -m assistant --bench
   llm first token               240.0 ms   ollama
   tts speak                     180.0 ms   piper
   end-to-end (synthetic)         31.0 ms   vad+stt+llm+tts
+  simple command e2e              0.4 ms   deterministic path — PASS (budget 1000 ms)
 ```
+
+### ⚡ The sub-second budget (spec §7)
+
+Simple commands must answer **well under one second**. They take the deterministic
+fast path — intent → router → action → reply — and never touch the LLM.
+
+```bash
+python -m assistant --latency     # audits every stage against the 1000 ms budget
+```
+```
+  ✓ wake word match                        0.00 ms   regex over normalized text (avg of 50)
+  ✓ intent detection                       0.00 ms   10 utterances classified (avg)
+  ✓ simple command: “what time is it”      0.43 ms   intent→route→reply, deterministic
+  ✓ simple command: “open youtube”         0.03 ms   intent→route→reply, deterministic
+  ✓ simple command: “volume up”            0.36 ms   intent→route→reply, deterministic
+  ✓ planner (goal → steps)                 0.00 ms   template “interview-prep”: 5 steps
+  ✓ audio chain (synthetic)                0.39 ms   wake→VAD→streaming-STT→intent→route
+  ✓ speech synthesis                       —         streamed after reply, barge-in can cancel
+
+  All simple-command paths are well under one second. ✓
+```\
+
+Every **real** turn is timed too: each utterance logs a one-line trace
+(`⏱ intent 14 µs · route 0.5 ms · tool 5 µs — under 1000 ms ✓`), the brain
+server exposes the last turn's stage timings on `GET /status`, and the
+Electron/web app and the standalone HTML show a live **⏱ pipeline HUD** per
+utterance. Exit code is `1` if any simple-command path breaches the budget,
+so `--latency` can gate CI.
 
 ### 🏁 The milestone: one unified pipeline
 

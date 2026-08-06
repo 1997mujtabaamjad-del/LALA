@@ -8,6 +8,7 @@ Entry point.
   python -m assistant --deploy   # guided ElevenLabs/Piper + service deployment
   python -m assistant --autostart on|off
   python -m assistant --milestone [--speak]   # prove the full pipeline works
+  python -m assistant --latency  # §7 voice-pipeline latency vs the sub-1 s budget
 """
 
 import argparse
@@ -38,7 +39,13 @@ def chat_repl():
         if text in ("exit", "quit", "bye"):
             break
         reply = assistant.process(text, follow_up=False, spoken=False)
-        print(f"{cfg['name']}> {reply}\n")
+        print(f"{cfg['name']}> {reply}")
+        lt = assistant.last_turn
+        if lt:
+            stages = " · ".join(f"{k} {v:.2f} ms" for k, v in lt["stages"].items())
+            budget = "(under 1 s ✓)" if lt["path"] == "fast" else "(llm path)"
+            print(f"   ⏱ {stages} — {budget}")
+        print()
     print("Bye!")
 
 
@@ -106,6 +113,9 @@ def main():
                         help="auto-run functional audit of EVERY subsystem")
     parser.add_argument("--bench", action="store_true",
                         help="latency report: ms per pipeline stage on this machine")
+    parser.add_argument("--latency", action="store_true",
+                        help="voice-pipeline (§7) latency vs the sub-1 s budget; "
+                             "exit code 1 if any simple-command path is over budget")
     parser.add_argument("--speak", action="store_true",
                         help="with --milestone: play the TTS stage aloud")
     args = parser.parse_args()
@@ -170,7 +180,6 @@ def main():
         return
     if args.selftest:
         from . import selftest
-        import sys
 
         sys.exit(selftest.main())
     if args.bench:
@@ -181,6 +190,15 @@ def main():
             print(f"  {stage:26} {ms:8.1f} ms   {note}")
         print("=========================================\n")
         return
+    if args.latency:
+        from . import config, latency
+
+        print("\n========== LALA VOICE PIPELINE (§7) ==========")
+        rows = latency.run_latency_report(config.load())
+        for line in latency.report_lines(rows):
+            print(line)
+        print("=" * 48 + "\n")
+        sys.exit(0 if all(ok for _n, _ms, ok, _note in rows) else 1)
     if args.chat:
         chat_repl()
         return
