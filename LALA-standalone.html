@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>LALA — Voice Assistant (standalone)</title>
+<title>LALA v1.2 — standalone preview</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E"/>
 <style>
 :root{--bg-0:#050507;--bg-1:#0a0a0e;--panel:rgba(255,255,255,.028);--pb:rgba(34,211,238,.28);
@@ -93,8 +93,8 @@ label{display:block;font-size:13px;margin:10px 0}
 </head>
 <body>
 <header>
-  <div class="brand"><div class="dot"></div><h1>LALA</h1><span class="tag">standalone · say “Hey Laala”</span></div>
-  <div class="chips"><span class="chip">single-file</span><span class="chip ac" id="chipState">idle</span></div>
+  <div class="brand"><div class="dot"></div><h1>LALA</h1><span class="tag">v1.2 standalone · say “Hey Laala”</span></div>
+  <div class="chips"><span class="chip">single-file</span><span class="chip" id="chipRole">default</span><span class="chip ac" id="chipState">idle</span></div>
 </header>
 <main>
   <section class="panel stage">
@@ -106,7 +106,7 @@ label{display:block;font-size:13px;margin:10px 0}
         <button class="node" style="--a:135deg" data-say="hello lala" title="TTS"><span class="ni">🔊</span></button>
         <button class="node" style="--a:180deg" data-say="user guide" title="Barge-in"><span class="ni">✋</span></button>
         <button class="node" style="--a:225deg" data-say="remember that I love biryani" title="Memory"><span class="ni">🧿</span></button>
-        <button class="node" style="--a:270deg" data-say="lights to warm" title="Tools"><span class="ni">🧰</span></button>
+        <button class="node" style="--a:270deg" data-say="switch to sales" title="Roles"><span class="ni">💼</span></button>
         <button class="node" style="--a:315deg" data-say="weather in hyderabad" title="Streaming"><span class="ni">⚡</span></button>
       </div>
       <div class="orbit out">
@@ -114,11 +114,11 @@ label{display:block;font-size:13px;margin:10px 0}
         <button class="node" style="--a:36deg"  data-say="add meeting tomorrow at 10am" title="Calendar"><span class="ni">📅</span></button>
         <button class="node" style="--a:72deg"  data-say="lights to blue" title="Lights"><span class="ni">💡</span></button>
         <button class="node" style="--a:108deg" data-say="play lofi beats" title="Music"><span class="ni">🎵</span></button>
-        <button class="node" style="--a:144deg" data-say="search for telugu food" title="Search"><span class="ni">🔎</span></button>
+        <button class="node" style="--a:144deg" data-say="research telugu cinema" title="Research"><span class="ni">🔬</span></button>
         <button class="node" style="--a:180deg" data-say="open youtube" title="Apps"><span class="ni">🖥</span></button>
-        <button class="node" style="--a:216deg" data-say="take a screenshot" title="Screenshot"><span class="ni">📸</span></button>
-        <button class="node" style="--a:252deg" data-say="start dictation" title="Dictation"><span class="ni">✂️</span></button>
-        <button class="node" style="--a:288deg" data-say="set volume to 40 percent" title="System"><span class="ni">🎚</span></button>
+        <button class="node" style="--a:216deg" data-say="run my morning routine" title="Autonomy"><span class="ni">🤖</span></button>
+        <button class="node" style="--a:252deg" data-say="create profile asha" title="Profiles"><span class="ni">👥</span></button>
+        <button class="node" style="--a:288deg" data-say="add expense 250 for coffee" title="Finance"><span class="ni">💰</span></button>
         <button class="node" style="--a:324deg" data-say="help" title="All commands"><span class="ni">📖</span></button>
       </div>
       <div class="orb" id="orb" title="Click to listen (mic)">
@@ -132,16 +132,16 @@ label{display:block;font-size:13px;margin:10px 0}
         </div>
       </div>
     </div>
-    <div class="hint">Click the brain & speak (Chrome/Edge) · hover the rings · click any node</div>
+    <div class="hint">Click the brain & speak (Chrome/Edge) · hover rings · click nodes</div>
     <div id="interim" class="bubble int" style="display:none"></div>
     <div id="response" class="bubble res" style="display:none"></div>
     <div class="sugs">
       <label>Try:</label>
       <button class="btn accent" id="demo">▶ Run demo</button>
       <button class="sug" data-say="hey laala">hey laala</button>
-      <button class="sug" data-say="what time is it">what time is it</button>
-      <button class="sug" data-say="weather in hyderabad">weather</button>
-      <button class="sug" data-say="flip a coin">coin</button>
+      <button class="sug" data-say="switch to finance">finance mode</button>
+      <button class="sug" data-say="run my morning routine">routine</button>
+      <button class="sug" data-say="create profile asha">profile</button>
       <button class="sug" data-say="help">help</button>
     </div>
   </section>
@@ -154,7 +154,7 @@ label{display:block;font-size:13px;margin:10px 0}
       <button class="tab" data-t="help">Help</button>
     </div>
     <div class="pane on" id="p-log"><div class="log" id="log"></div></div>
-    <div class="pane" id="p-tasks"><p class="muted">▶ runs the real behavior + speaks the reply.</p><div id="tasks"></div></div>
+    <div class="pane" id="p-tasks"><p class="muted">▶ runs the behavior + speaks the reply.</p><div id="tasks"></div></div>
     <div class="pane" id="p-skills">
       <div class="tg">🌦 Weather</div>
       <div class="row"><input id="w-city" placeholder="City (blank = your location)"/><button class="btn" id="w-go">Get</button></div>
@@ -180,6 +180,18 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const norm=t=>(t||"").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu," ").replace(/\s+/g," ").trim();
 const JOKES=["Why do programmers prefer dark mode? Because light attracts bugs.","I told my computer I needed a break — it said: no problem, I'll go to sleep.","Why did the developer go broke? He used up all his cache.","There are 10 kinds of people: those who understand binary and those who don't.","I'd tell you a UDP joke, but you might not get it."];
 const GUIDE="Here's how to talk to me. Say “Hey Laala” and wait for the beep, then speak. Or click the brain and release when done. You can interrupt me any time — just start talking. After I answer, keep talking; I listen on until you pause or say “stop listening”. Try “open youtube”, “weather in hyderabad”, “add meeting tomorrow at 3 pm”, or “lights to warm”. Say “help” for everything.";
+const ROLES={researcher:"Researcher mode: findings → evidence → conclusion.",chief_of_staff:"Chief-of-Staff mode: run the day, prioritize.",sales:"Sales mode: pipeline, objections, cadence.",developer:"Developer mode: precise, edge cases.",strategist:"Strategist mode: options, trade-offs, recommendation.",finance:"Finance mode: numbers, assumptions, currency.",design:"Design mode: hierarchy, contrast, kind critique.",crm:"CRM mode: warm relationships, follow-ups."};
+const RALIAS={research:"researcher","chief of staff":"chief_of_staff",dev:"developer",strategy:"strategist",designer:"design",finances:"finance"};
+let curRole="";
+const P=()=>JSON.parse(localStorage.getItem("lala.prof")||'{"profiles":{},"active":""}');
+const SP=d=>localStorage.setItem("lala.prof",JSON.stringify(d));
+const fin=()=>JSON.parse(localStorage.getItem("lala.fin")||"[]");
+const crm=()=>JSON.parse(localStorage.getItem("lala.crm")||"[]");
+let watches={};
+function startWatch(k){stopWatch(k);watches[k]=setInterval(async()=>{
+  if(k==="cal"){const evs=calList().filter(e=>e.ts>Date.now()&&e.ts-Date.now()<9e5&&!e.an);evs.forEach(e=>{e.an=1;toast("📅 Heads up — "+e.title);speak("Heads up, "+e.title+" starts soon.");});}
+  else{const w=await weather("");if(/rain|storm|drizzle|thunder/i.test(w||"")){toast("🌧 "+w);speak("Weather alert.");}},6e4);}
+function stopWatch(k){if(watches[k])clearInterval(watches[k]);delete watches[k];}
 
 function toast(m){const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(t._x);t._x=setTimeout(()=>t.style.display="none",4200);}
 function log(w,m){const d=document.createElement("div");d.className="le "+w;d.innerHTML='<span class="who">'+(w==="you"?"YOU":w==="lala"?"LALA":"SYS")+"</span><span></span>";d.lastChild.textContent=m;$("#log").prepend(d);}
@@ -188,8 +200,6 @@ function respond(t){log("lala",t);const r=$("#response");r.textContent=t;r.style
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitSilence(){if(!("speechSynthesis" in window))return delay(500);await delay(200);const t0=Date.now();while((speechSynthesis.speaking||speechSynthesis.pending)&&Date.now()-t0<5000)await delay(120);}
 
-/* ---- skills ---- */
-const store=k=>JSON.parse(localStorage.getItem(k)||"[]"), save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 async function weather(city){
   try{
     let lat,lon,name;
@@ -204,39 +214,61 @@ async function weather(city){
 }
 async function wiki(q){try{const r=await(await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(q))).json();return r.extract||null;}catch{return null;}}
 
-/* ---- commands ---- */
 const CMDS=[
- {p:["what time is it","time"],d:"Time",f:()=> "It's "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+"."},
- {p:["what's the date","what is the date","date"],d:"Date",f:()=>"Today is "+new Date().toLocaleDateString([],{weekday:"long",year:"numeric",month:"long",day:"numeric"})+"."},
- {p:["weather","what's the weather"],d:"Local weather",w:"__weather__"},
- {p:["weather in <c>","weather for <c>"],d:"City weather",w:"__weather__"},
- {p:["who is <q>","what is <q>","tell me about <q>"],d:"Web answer",w:"__wiki__"},
+ {p:["what time is it","time"],d:"Time",f:()=>"It's "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+"."},
+ {p:["what's the date","date"],d:"Date",f:()=>"Today is "+new Date().toLocaleDateString([],{weekday:"long",year:"numeric",month:"long",day:"numeric"})+"."},
+ {p:["weather","what's the weather"],d:"Local weather",w:"__w__"},
+ {p:["weather in <c>","weather for <c>"],d:"City weather",w:"__w__"},
+ {p:["who is <q>","what is <q>","tell me about <q>"],d:"Web answer",w:"__k__"},
+ {p:["research <t>"],d:"Research",f:async m=>{const a=await wiki(m.t);window.open("https://scholar.google.com/scholar?q="+encodeURIComponent(m.t));return (a?a+" ":"")+"Opened Google Scholar.";}},
+ {p:["swot for <t>"],d:"SWOT",f:m=>"SWOT for "+m.t+" — S: focus+speed. W: small team. O: niche dominance. T: fast followers. Rec: pick one beachhead, validate weekly."},
  {p:["search for <q>","search <q>","google <q>"],d:"Search",f:m=>{window.open("https://www.google.com/search?q="+encodeURIComponent(m.q),"_blank");return "Searching for "+m.q+".";}},
  {p:["play <q>","play <q> on youtube"],d:"Music",f:m=>{window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(m.q),"_blank");return "Playing "+m.q+" on YouTube.";}},
- {p:["open <a>"],d:"Open apps/sites",f:m=>{const U={youtube:"https://youtube.com",google:"https://google.com",github:"https://github.com",gmail:"https://mail.google.com",maps:"https://maps.google.com",chatgpt:"https://chat.openai.com",whatsapp:"https://web.whatsapp.com",twitter:"https://x.com",reddit:"https://reddit.com",netflix:"https://netflix.com",linkedin:"https://linkedin.com"};const u=U[m.a]||("https://www.google.com/search?q="+encodeURIComponent(m.a));window.open(u,"_blank");return "Opening "+m.a+".";}},
+ {p:["open <a>"],d:"Open apps/sites",f:m=>{const U={youtube:"https://youtube.com",google:"https://google.com",github:"https://github.com",gmail:"https://mail.google.com",maps:"https://maps.google.com",chatgpt:"https://chat.openai.com",whatsapp:"https://web.whatsapp.com",twitter:"https://x.com",reddit:"https://reddit.com",netflix:"https://netflix.com",linkedin:"https://linkedin.com"};window.open(U[m.a]||("https://www.google.com/search?q="+encodeURIComponent(m.a)),"_blank");return "Opening "+m.a+".";}},
  {p:["add <x>"],d:"Calendar add",f:m=>{const w=parseWhen(m.x);if(!w)return "I need a time — try “add dentist tomorrow at 3 pm”.";const t=calTitle(m.x);const ev=store("lala.cal");ev.push({id:"ev"+Date.now(),when:w.toISOString(),title:t});save("lala.cal",ev);renderCal();return `Added “${t}” for ${w.toLocaleString([],{weekday:"long",hour:"2-digit",minute:"2-digit"})}.`;}},
  {p:["what's on my calendar","my calendar","my schedule"],d:"Calendar list",f:()=>{const ev=calList();return ev.length?"Up next: "+ev.map(e=>e.title+" — "+new Date(e.ts).toLocaleString([],{weekday:"short",hour:"2-digit",minute:"2-digit"})).join("; ")+".":"Your calendar is clear.";}},
  {p:["turn on the lights","lights on"],d:"Lights on",f:()=>{lights("on");return "Lights on.";}},
  {p:["turn off the lights","lights off"],d:"Lights off",f:()=>{lights("off");return "Lights off.";}},
  {p:["set lights to <n> percent","set the lights to <n> percent"],d:"Brightness",f:m=>{lights("set",+m.n);return `Lights set to ${m.n}%.`;}},
  {p:["lights to <c>","set lights to <c>"],d:"Light color",f:m=>{lights("color",m.c);return "Lights set to "+m.c+".";}},
- {p:["set volume to <n> percent","volume <n> percent"],d:"Volume",f:m=>"Volume "+m.n+"% (desktop app applies it system-wide)."},
- {p:["volume up","louder"],d:"Vol up",f:()=>"Volume up (desktop)."},
- {p:["volume down","quieter"],d:"Vol down",f:()=>"Volume down (desktop)."},
+ {p:["set volume to <n> percent","volume <n> percent"],d:"Volume",f:m=>"Volume "+m.n+"% (desktop applies system-wide)."},
  {p:["take a screenshot","screenshot"],d:"Screenshot",f:()=>"Screenshot is a desktop feature — run the full app!"},
  {p:["start dictation"],d:"Dictation",f:()=>{dict=true;toast("Dictating — say “stop dictation” to copy.");return "Dictation started — speak freely.";}},
  {p:["stop dictation"],d:"Dictation stop",f:()=>{dict=false;const t=dictBuf.join(" ");dictBuf=[];if(t){navigator.clipboard&&navigator.clipboard.writeText(t);return `Copied ${t.split(/\s+/).length} words to your clipboard.`;}return "Nothing captured.";}},
  {p:["remember that <n>","note that <n>"],d:"Remember",f:m=>{const n=store("lala.notes");n.push(m.n);save("lala.notes",n);return "Got it — I'll remember that: "+m.n+".";}},
  {p:["what do you remember","your notes"],d:"Recall",f:()=>{const n=store("lala.notes");return n.length?"I remember: "+n.slice(-5).join("; ")+".":"No notes yet.";}},
+ // roles
+ {p:["switch to <r>","switch to <r> mode","act as <r>","be my <r>","enter <r> mode"],d:"Role switch",f:m=>{const r=RALIAS[m.r]||m.r;if(!ROLES[r])return "No “"+m.r+"” mode. Try: researcher, chief of staff, sales, developer, strategist, finance, design, crm.";curRole=r;$("#chipRole").textContent=r.replace("_"," ");return ROLES[r];}},
+ {p:["back to normal","default mode"],d:"Default",f:()=>{curRole="";$("#chipRole").textContent="default";return "Back to default assistant.";}},
+ {p:["which mode","current mode"],d:"Mode",f:()=>curRole?ROLES[curRole]:"default"},
+ // profiles
+ {p:["create profile <n>","new profile <n>"],d:"Create profile",f:m=>{const d=P();d.profiles[m.n]=d.profiles[m.n]||{facts:""};SP(d);return "Profile '"+m.n+"' ready.";}},
+ {p:["switch profile to <n>","use profile <n>"],d:"Switch profile",f:m=>{const d=P();if(!d.profiles[m.n])return "No profile '"+m.n+"' yet — say “create profile "+m.n+"”.";d.active=m.n;SP(d);return "Switched to "+m.n+" — personalizing.";}},
+ {p:["list profiles","show profiles"],d:"List profiles",f:()=>{const n=Object.keys(P().profiles);return n.length?"Profiles: "+n.join(", ")+".":"No profiles yet.";}},
+ {p:["who am i","which profile"],d:"Who",f:()=>{const d=P();return d.active?"You're "+d.active+".":"Guest mode — no active profile.";}},
+ {p:["remember my voice","learn my voice"],d:"Voice enroll",f:()=>"Voice enrollment ships in the desktop app — this portable file demos the reactive layer."},
+ // autonomy
+ {p:["remind me to <r>"],d:"Reminder",f:m=>{const t=m.r.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);if(!t)return "When? Try “remind me to stretch at 5 pm”.";let h=+t[1],mm=+(t[2]||0);if(t[3]==="pm"&&h<12)h+=12;const w=new Date();w.setHours(h,mm,0,0);if(w<new Date())w.setDate(w.getDate()+1);const msg=m.r.split(/\bat\b/)[0].trim();setTimeout(()=>{toast("⏰ Reminder: "+msg);speak("Reminder: "+msg);},w-new Date());return "I'll remind you at "+w.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+".";}},
+ {p:["watch my calendar"],d:"Watch cal",f:()=>{startWatch("cal");return "Watching your calendar — 15-minute heads-ups.";}},
+ {p:["watch the weather"],d:"Watch wx",f:()=>{startWatch("wx");return "Watching the weather — rain alerts on.";}},
+ {p:["stop watching","clear reminders"],d:"Unwatch",f:()=>{Object.keys(watches).forEach(stopWatch);return "Watchers cleared.";}},
+ {p:["run my morning routine","morning routine","start my day"],d:"Routine",f:async()=>{const evs=calList();const wx=await weather("");return "Good morning! "+(wx||"")+" Today: "+(evs.length?evs.slice(0,4).map(e=>e.title).join("; "):"no events — a clear runway.")+" Routine complete.";}},
+ {p:["take care of <g>","handle <g>","autonomously <g>"],d:"Goal",f:m=>"Autonomous goals need the full app (Ollama/OpenAI) — this portable file demos the reactive layer for “"+m.g+"”."},
+ // finance & crm
+ {p:["add expense <a> for <x>"],d:"Expense",f:m=>{const r=fin();r.push({amount:parseFloat(m.a)||0,desc:m.x});localStorage.setItem("lala.fin",JSON.stringify(r));return "Recorded "+(+m.a).toLocaleString()+" for "+m.x+".";}},
+ {p:["finance summary","spend summary"],d:"Finance",f:()=>{const r=fin();return r.length?"Total: "+r.reduce((s,x)=>s+x.amount,0).toLocaleString()+". Recent: "+r.slice(-3).map(x=>x.desc+" ("+x.amount+")").join("; ")+".":"No expenses yet.";}},
+ {p:["add contact <n> at <c>"],d:"Contact",f:m=>{const r=crm();r.push({name:m.n,company:m.c});localStorage.setItem("lala.crm",JSON.stringify(r));return "Saved "+m.n+" @ "+m.c+".";}},
+ {p:["show contacts","my contacts"],d:"Contacts",f:()=>{const r=crm();return r.length?"Contacts: "+r.slice(-5).map(x=>x.name+" @ "+x.company).join("; ")+".":"No contacts yet.";}},
  {p:["flip a coin","coin flip","heads or tails"],d:"Coin",f:()=>Math.random()<.5?"Heads!":"Tails!"},
  {p:["roll a dice","roll dice"],d:"Dice",f:()=>"You rolled a "+(1+Math.floor(Math.random()*6))+"."},
  {p:["tell me a joke","joke","make me laugh"],d:"Joke",f:()=>JOKES[Math.floor(Math.random()*JOKES.length)]},
  {p:["user guide","tutorial","how do i use you"],d:"Guide",f:()=>GUIDE},
- {p:["hello lala","hi lala","hey lala"],d:"Greeting",f:()=>"Hello! I'm LALA. Say “help” to see what I can do."},
+ {p:["hello lala","hi lala","hey lala"],d:"Greeting",f:()=>{const d=P();return (d.active?"Welcome back, "+d.active+"! ":"Hello! ")+"I'm LALA"+(curRole?" in "+curRole.replace("_"," ")+" mode":"")+". Say “help” for my skills.";}},
  {p:["stop listening"],d:"End chat",f:()=>"Okay — I'll wait for the wake word."},
  {p:["help","what can i say","list commands"],d:"Help",f:()=>{switchTab("help");return "Here's everything I understand — see the Help tab.";}},
 ];
 let dict=false,dictBuf=[];
+const store=k=>JSON.parse(localStorage.getItem(k)||"[]"), save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 function parseWhen(t){const m=norm(t).match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);if(!m)return null;let h=+m[1],mm=+(m[2]||0);if(m[3]==="pm"&&h<12)h+=12;const d=new Date();if(/\btomorrow\b/.test(t))d.setDate(d.getDate()+1);d.setHours(h,mm,0,0);return d;}
 function calTitle(t){return t.split(/\b(?:today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|at)\b/)[0].replace(/\b(?:to|on) my calendar\b/,"").trim()||"event";}
 function calList(){return store("lala.cal").map(e=>({...e,ts:Date.parse(e.when)})).filter(e=>e.ts>Date.now()-36e5).sort((a,b)=>a.ts-b.ts).slice(0,6);}
@@ -253,50 +285,47 @@ async function handle(text){text=(text||"").trim();if(!text)return;log("you",tex
  if(dict&&!"stop dictation".includes(norm(text))){dictBuf.push(text);$("#interim").textContent="“"+text+"”";$("#interim").style.display="block";return;}
  const hit=match(text);
  if(!hit){respond("Sorry, I didn't recognize that. Say “help” to see my skills.");return;}
- const{c,m}=hit;
- let reply;
- if(c.w==="__weather__")reply=await weather(m.c||"")||"I couldn't reach a weather service right now.";
- else if(c.w==="__wiki__")reply=await wiki(m.q)||"No instant answer — opening search would need the full app.";
- else reply=c.f(m);
+ const{c,m}=hit;let reply;
+ if(c.w==="__w__")reply=await weather(m.c||"")||"I couldn't reach a weather service right now.";
+ else if(c.w==="__k__")reply=await wiki(m.q)||"No instant answer in portable mode.";
+ else reply=await c.f(m);
  respond(reply);}
 
-/* ---- demo ---- */
-const DEMO=["hey laala","what time is it","weather in hyderabad","add demo meeting tomorrow at 10am","lights to blue","flip a coin","tell me a joke","stop listening"];
+const DEMO=["hey laala","what time is it","weather in hyderabad","add demo meeting tomorrow at 10am","switch to finance","add expense 250 for coffee","create profile asha","run my morning routine","flip a coin","tell me a joke","stop listening"];
 let demoing=false;
 async function runDemo(){if(demoing)return;demoing=true;$("#demo").disabled=true;
  for(const t of DEMO){$("#orb").classList.add("listening");$("#interim").textContent="“"+t+"”";$("#interim").style.display="block";await delay(900);$("#orb").classList.remove("listening");await handle(t);await waitSilence();await delay(350);}
- respond("That's LALA — click the brain and speak to try it yourself!");demoing=false;$("#demo").disabled=false;}
+ respond("That's LALA v1.2 — roles, autonomy & profiles in one file. Click the brain and speak!");demoing=false;$("#demo").disabled=false;}
 
-/* ---- mic (Web Speech) ---- */
 function setupMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast("Mic needs Chrome/Edge.");return;}
  const rec=new SR();rec.continuous=true;rec.interimResults=true;let on=false;
  rec.onresult=e=>{let inter="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)handle(r[0].transcript);else inter+=r[0].transcript;}if(inter){$("#interim").textContent="“"+inter+"”";$("#interim").style.display="block";}};
  rec.onend=()=>{if(on)try{rec.start();}catch{}};
  $("#orb").addEventListener("click",()=>{on=!on;if(on){try{rec.start();}catch{}$("#orb").classList.add("listening");$("#chipState").textContent="listening";}else{rec.stop();$("#orb").classList.remove("listening");$("#chipState").textContent="idle";}});}
 
-/* ---- UI build ---- */
-const TASKS=[["🎙 Voice",[["Wake + reply","hey laala"],["Streaming answer","what time is it"],["Barge-in demo","user guide"],["Full demo","@demo"]]],
-["ℹ️ Info",[["Time","what time is it"],["Date","what's the date"],["Local weather","weather"],["City weather","weather in hyderabad"]]],
-["🔎 Web",[["Instant answer","who is kalpana chawla"],["Search","search for telugu food"]]],
-["📅 Calendar",[["Add event","add demo meeting tomorrow at 10am"],["List","what's on my calendar"]]],
-["💡 Lights",[["On","turn on the lights"],["Off","turn off the lights"],["40%","set lights to 40 percent"],["Blue","lights to blue"]]],
-["🎵 Media",[["Music","play lofi beats"],["YouTube","open youtube"]]],
-["🧿 Memory",[["Remember","remember that I love biryani"],["Recall","what do you remember"]]],
-["😄 Fun",[["Coin","flip a coin"],["Dice","roll a dice"],["Joke","tell me a joke"],["Guide","user guide"],["Help","help"]]]];
-function renderTasks(){const w=$("#tasks");w.innerHTML="";for(const[g,items]of TASKS){const h=document.createElement("div");h.className="tg";h.textContent=g;w.appendChild(h);for(const[l,s]of items){const b=document.createElement("button");b.className="tr";b.innerHTML='<span class="p">▶</span> '+l;b.onclick=()=>s==="@demo"?runDemo():handle(s);w.appendChild(b);}}}
-function renderHelp(){const w=$("#help");w.innerHTML="";for(const c of CMDS){const r=document.createElement("div");r.className="helprow";const d=document.createElement("span");d.className="d";d.textContent=c.d;r.appendChild(d);for(const p of c.p){const b=document.createElement("button");b.className="pc";b.textContent=p;b.onclick=()=>handle(p.replace(/<[^>]+>/g,"something"));r.appendChild(b);}w.appendChild(r);}}
+const TASKS=[["🎙 Voice",[["Wake + reply","hey laala"],["Time","what time is it"],["Barge-in demo","user guide"],["Full demo","@demo"]]],
+["💼 Roles",[["Researcher","switch to researcher"],["Chief of Staff","switch to chief of staff"],["Sales","switch to sales"],["Developer","switch to developer"],["Strategist","switch to strategist"],["Finance","switch to finance"],["Design","switch to design"],["CRM","switch to crm"],["Back to default","back to normal"]]],
+["🤖 Autonomy",[["Morning routine","run my morning routine"],["Reminder 5pm","remind me to stretch at 5 pm"],["Watch calendar","watch my calendar"],["Watch weather","watch the weather"],["Goal","take care of researching our top competitor"],["Clear","stop watching"]]],
+["👥 Profiles",[["Create","create profile asha"],["Switch","switch profile to asha"],["List","list profiles"],["Who am I","who am i"],["Learn my voice","remember my voice"]]],
+["ℹ️ Info",[["Local weather","weather"],["City weather","weather in hyderabad"],["Research","research telugu cinema"],["SWOT","swot for a voice startup"]]],
+["📅 Calendar",[["Add","add demo meeting tomorrow at 10am"],["List","what's on my calendar"],["Export","@exp"]]],
+["💰 Finance/CRM",[["Expense","add expense 250 for coffee"],["Summary","finance summary"],["Contact","add contact asha at acme"],["Contacts","show contacts"]]],
+["😄 Fun",[["Coin","flip a coin"],["Dice","roll a dice"],["Joke","tell me a joke"]]]];
+function renderTasks(){const w=$("#tasks");w.innerHTML="";for(const[g,items]of TASKS){const h=document.createElement("div");h.className="tg";h.textContent=g;w.appendChild(h);for(const[l,s]of items){const b=document.createElement("button");b.className="tr";b.innerHTML='<span class="p">▶</span> '+l;b.onclick=()=>s==="@demo"?runDemo():s==="@exp"?expIcs():handle(s);w.appendChild(b);}}}
+function renderHelp(){const w=$("#help");w.innerHTML="";for(const c of CMDS){const r=document.createElement("div");r.className="helprow";const d=document.createElement("span");d.className="d";d.textContent=c.d+(curRole?"":"");r.appendChild(d);for(const p of c.p){const b=document.createElement("button");b.className="pc";b.textContent=p;b.onclick=()=>handle(p.replace(/<[^>]+>/g,"something"));r.appendChild(b);}w.appendChild(r);}}
 function switchTab(t){$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.t===t));$$(".pane").forEach(p=>p.classList.toggle("on",p.id==="p-"+t));}
+function expIcs(){const ev=calList();const pad=n=>String(n).padStart(2,"0");let ics="BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//LALA//EN\r\n";for(const e of ev){const d=new Date(e.ts);ics+=`BEGIN:VEVENT\r\nUID:${e.id}@lala\r\nDTSTART:${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00\r\nSUMMARY:${e.title}\r\nEND:VEVENT\r\n`;}ics+="END:VCALENDAR\r\n";const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));a.download="lala-calendar.ics";a.click();toast("Exported .ics");}
 $$(".tab").forEach(b=>b.onclick=()=>switchTab(b.dataset.t));
 $$(".sug").forEach(b=>b.onclick=()=>handle(b.dataset.say));
 $$(".node").forEach(n=>n.onclick=()=>handle(n.dataset.say));
 $("#demo").onclick=runDemo;
 $("#w-go").onclick=async()=>{$("#w-out").textContent="Fetching…";$("#w-out").textContent=await weather($("#w-city").value.trim())||"Unreachable.";speak($("#w-out").textContent);};
 $("#c-add").onclick=()=>handle(`add ${$("#c-title").value||"meeting"} ${$("#c-day").value==="1"?"tomorrow":"today"} at ${$("#c-time").value}`);
-$("#c-exp").onclick=()=>{const ev=calList();const pad=n=>String(n).padStart(2,"0");let ics="BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//LALA//EN\r\n";for(const e of ev){const d=new Date(e.ts);ics+=`BEGIN:VEVENT\r\nUID:${e.id}@lala\r\nDTSTART:${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00\r\nSUMMARY:${e.title}\r\nEND:VEVENT\r\n`;}ics+="END:VCALENDAR\r\n";const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));a.download="lala-calendar.ics";a.click();toast("Exported .ics");};
+$("#c-exp").onclick=expIcs;
 $("#l-on").onclick=()=>handle("turn on the lights");$("#l-off").onclick=()=>handle("turn off the lights");
 for(const[c,hex]of Object.entries(LC)){const b=document.createElement("button");b.style.background=hex;b.title=c;b.onclick=()=>handle("lights to "+c);$("#l-sw").appendChild(b);}
 renderTasks();renderHelp();renderCal();setupMic();
-log("sys","Standalone LALA loaded — click ▶ Run demo or the brain.");
+log("sys","LALA v1.2 standalone loaded — ▶ Run demo, or click the brain.");
 </script>
 </body>
 </html>
