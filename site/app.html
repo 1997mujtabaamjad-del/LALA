@@ -173,6 +173,19 @@ label{display:block;font-size:13px;margin:10px 0}
   </section>
 </main>
 <div class="toast" id="toast"></div>
+<div id="michelp" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:70;place-items:center">
+ <div style="background:#0a0a0e;border:1px solid rgba(248,113,113,.5);border-radius:16px;padding:22px;width:min(480px,92vw);box-shadow:0 0 30px rgba(248,113,113,.3);font-size:14px;line-height:1.7">
+  <h3 style="margin:0 0 10px;color:#f87171">🎙 Microphone blocked — fix in 3 clicks</h3>
+  1. Look at the <b>address bar</b> — click the 🔒/⚠/📷 icon → <b>Microphone → Allow</b><br/>
+  2. Chrome menu → Settings → <b>Privacy → Site settings → Microphone</b> → remove LALA from “Blocked”<br/>
+  3. Windows: Settings → <b>Privacy → Microphone</b> → “Let apps access” = ON<br/>
+  4. If you're inside a <b>preview/iframe</b>, mic can NEVER work there — double-click the downloaded file instead.<br/>
+  <div style="display:flex;gap:10px;margin-top:14px">
+   <button class="btn accent" id="mic-retry">Retry microphone</button>
+   <button class="btn" id="mic-close">Use clicks only</button>
+  </div>
+ </div>
+</div>
 <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:none;place-items:center">
   <div style="background:#0a0a0e;border:1px solid rgba(34,211,238,.4);border-radius:16px;padding:22px;width:min(430px,92vw);box-shadow:0 0 30px rgba(34,211,238,.25)">
     <h3 style="margin:0 0 10px;color:#22d3ee">🧠 Brain settings</h3>
@@ -373,13 +386,13 @@ function setupMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecogn
  if(window.self!==window.top){$("#hint").textContent="⚠ Embedded preview blocks the mic. Download this file and DOUBLE-CLICK it in Chrome for voice — clicks work everywhere.";}
  if(!SR){toast("Voice needs Chrome or Edge — clicks still work!");$("#hint").textContent="No Web Speech here — use Chrome/Edge for voice, or click chips/nodes/Tasks.";return;}
  const rec=new SR();rec.continuous=true;rec.interimResults=true;let on=false;
- rec.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed"){on=false;toast("Mic blocked — open this file DIRECTLY in Chrome (not inside a preview/iframe).");$("#hint").textContent="Mic blocked here. Save this file to disk and double-click it in Chrome.";}};
+ rec.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed"){on=false;$("#michelp").style.display="grid";$("#hint").textContent="Mic blocked — follow the 3 clicks, then Retry.";}};
  rec.onresult=e=>{let inter="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];
   if(r.isFinal){const who=matchVoiceNow();if(who){const d=P();if(d.active!==who){d.active=who;SP(d);$("#chipRole").textContent=who;respond("Welcome back, "+who+".");}}handle(r[0].transcript);}else inter+=r[0].transcript;}
   if(inter){$("#interim").textContent="“"+inter+"”";$("#interim").style.display="block";}};
  rec.onend=()=>{if(on)try{rec.start();}catch{}};
  const toggle=()=>{on=!on;if(on){try{rec.start();}catch{}startTap();$("#orb").classList.add("listening");$("#chipState").textContent="listening";$("#hint").textContent="Listening… say “hey laala, open youtube” — interrupt me any time.";}else{rec.stop();$("#orb").classList.remove("listening");$("#chipState").textContent="idle";}};
- $("#orb").addEventListener("click",toggle);
+ $("#orb").addEventListener("click",toggle);window.__toggleMic=toggle;
  // browser rule: mic may start only after a user gesture → first click ANYWHERE arms it
  window.addEventListener("pointerdown",function arm(){ if(!on) toggle(); window.removeEventListener("pointerdown",arm); });}
 
@@ -461,6 +474,8 @@ $("#gear").onclick=()=>{$("#cfg-key").value=CFG.key||"";$("#cfg-brain").value=CF
 $("#cfg-close").onclick=()=>$("#modal").style.display="none";
 $("#cfg-save").onclick=()=>{CFG={key:$("#cfg-key").value.trim(),brain:$("#cfg-brain").value.trim(),elKey:$("#cfg-el").value.trim()};localStorage.setItem("lala.cfg",JSON.stringify(CFG));$("#modal").style.display="none";toast(CFG.key||CFG.brain?"🧠 Brain connected.":CFG.elKey?"🔊 ElevenLabs voice on.":"Brain off — offline commands still work.");};
 
+$("#mic-retry").onclick=()=>{$("#michelp").style.display="none";window.__toggleMic&&window.__toggleMic();};
+$("#mic-close").onclick=()=>{$("#michelp").style.display="none";toast("Clicks & demo still work — voice optional.");};
 renderTasks();renderHelp();renderCal();setupMic();
 document.title="LALA v2.1 — ready ✔";
 toast("✔ LALA v2.1 ready — click once, then speak or press ▶ Run demo");
