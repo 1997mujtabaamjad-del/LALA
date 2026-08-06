@@ -97,6 +97,16 @@ label{display:block;font-size:13px;margin:10px 0}
 </style>
 </head>
 <body>
+<div id="xh" style="position:fixed;inset:0;pointer-events:none;z-index:10000">
+ <svg width="100%" height="100%" style="position:absolute;inset:0">
+  <defs>
+   <filter id="filter-noise-x"><feTurbulence id="fx" type="fractalNoise" baseFrequency="0.000001" numOctaves="1"/><feDisplacementMap in="SourceGraphic" scale="40"/></filter>
+   <filter id="filter-noise-y"><feTurbulence id="fy" type="fractalNoise" baseFrequency="0.000001" numOctaves="1"/><feDisplacementMap in="SourceGraphic" scale="40"/></filter>
+  </defs>
+ </svg>
+ <div id="xh-h" style="position:absolute;width:100%;height:1px;background:#7deefc;opacity:0;transition:opacity .9s cubic-bezier(.33,1,.68,1);pointer-events:none"></div>
+ <div id="xh-v" style="position:absolute;height:100%;width:1px;background:#7deefc;opacity:0;transition:opacity .9s cubic-bezier(.33,1,.68,1);pointer-events:none"></div>
+</div>
 <canvas id="snow" aria-hidden="true"></canvas>
 <header>
   <div class="brand"><div class="dot"></div><h1>LALA</h1><span class="tag">v1.2 standalone · say “Hey Laala”</span></div>
@@ -540,6 +550,31 @@ function SplitFlap(el,o){
  })();
 })();
 SplitFlap(document.getElementById("flap"),{words:['LAUNCH READY','SYNC ONLINE','SIGNAL LIVE'],flipDuration:0.12,stagger:0.06,cycleDelay:2400,charset:"alphanumeric",flipsPerChar:8,tileColor:"#111827",textColor:"#f8fafc",tileRadius:8,gap:6,fontSize:24,loop:true,padTo:12});
+/* Crosshair (react-bits equivalent, no GSAP) */
+(function(){
+ if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+ const h=document.getElementById("xh-h"),v=document.getElementById("xh-v"),
+       fx=document.getElementById("fx"),fy=document.getElementById("fy");
+ let mx=0,my=0,px=0,py=0,started=false,glitch=false,gt0=0;
+ addEventListener("mousemove",e=>{mx=e.clientX;my=e.clientY;
+  if(!started){started=true;px=mx;py=my;h.style.opacity=1;v.style.opacity=1;}});
+ document.addEventListener("mouseleave",()=>{h.style.opacity=0;v.style.opacity=0;started=false;});
+ document.querySelectorAll("a,button").forEach(el=>{
+  el.addEventListener("mouseenter",()=>{glitch=true;gt0=performance.now();
+   h.style.filter="url(#filter-noise-x)";v.style.filter="url(#filter-noise-y)";});
+  el.addEventListener("mouseleave",()=>{glitch=false;h.style.filter=v.style.filter="none";
+   fx.setAttribute("baseFrequency","0.000001");fy.setAttribute("baseFrequency","0.000001");});
+ });
+ const lerp=(a,b,n)=>(1-n)*a+n*b;
+ (function loop(){
+  px=lerp(px,mx,.15);py=lerp(py,my,.15);
+  v.style.transform="translateX("+px+"px)";h.style.transform="translateY("+py+"px)";
+  if(glitch){const t=Math.min(1,(performance.now()-gt0)/500);const e2=1-(1-t)*(1-t);
+   const b=(1-e2)+1e-6;fx.setAttribute("baseFrequency",b);fy.setAttribute("baseFrequency",b);
+   if(t>=1){glitch=false;h.style.filter=v.style.filter="none";}}
+  requestAnimationFrame(loop);
+ })();
+})();
 log("sys","LALA v2.1 standalone loaded — ▶ Run demo, or click the brain. ⚙ adds the LLM brain.");
 </script>
 </body>
