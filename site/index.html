@@ -62,6 +62,25 @@ background:#111827;color:#f8fafc;box-shadow:inset 0 -0.35em 0 rgba(0,0,0,.45),0 
 transition:transform .1s}
 .flap.flip{transform:scaleY(.6)}
 footer{color:var(--dim);font-size:13px;padding:50px 0 30px;text-align:center}
+/* ChromaGrid (react-bits equivalent) */
+.chroma-grid{position:relative;display:grid;grid-template-columns:repeat(3,300px);justify-content:center;gap:.75rem;padding:1rem;--x:50%;--y:50%;--r:240px}
+@media(max-width:1000px){.chroma-grid{grid-template-columns:repeat(auto-fit,300px)}}
+@media(max-width:480px){.chroma-grid{grid-template-columns:300px}}
+.chroma-card{position:relative;display:flex;flex-direction:column;width:300px;border-radius:20px;overflow:hidden;border:1px solid #333;transition:border-color .3s ease;background:var(--card-gradient);--mouse-x:50%;--mouse-y:50%;--spotlight-color:rgba(255,255,255,.3);cursor:pointer}
+.chroma-card:hover{border-color:var(--card-border)}
+.chroma-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at var(--mouse-x) var(--mouse-y),var(--spotlight-color),transparent 70%);pointer-events:none;opacity:0;transition:opacity .5s ease;z-index:2}
+.chroma-card:hover::before{opacity:1}
+.chroma-art{flex:1;display:grid;place-items:center;font-size:64px;padding:22px;filter:saturate(.9)}
+.chroma-info{position:relative;z-index:1;padding:.75rem 1rem;color:#fff;display:grid;grid-template-columns:1fr auto;row-gap:.25rem}
+.chroma-info .role,.chroma-info .handle{color:#aaa}
+.chroma-info .name{margin:0;font-size:16px}
+.chroma-overlay{position:absolute;inset:0;pointer-events:none;z-index:3;backdrop-filter:grayscale(1) brightness(.78);-webkit-backdrop-filter:grayscale(1) brightness(.78);background:rgba(0,0,0,.001);
+mask-image:radial-gradient(circle var(--r) at var(--x) var(--y),transparent 0%,transparent 15%,rgba(0,0,0,.1) 30%,rgba(0,0,0,.22) 45%,rgba(0,0,0,.35) 60%,rgba(0,0,0,.5) 75%,rgba(0,0,0,.68) 88%,#fff 100%);
+-webkit-mask-image:radial-gradient(circle var(--r) at var(--x) var(--y),transparent 0%,transparent 15%,rgba(0,0,0,.1) 30%,rgba(0,0,0,.22) 45%,rgba(0,0,0,.35) 60%,rgba(0,0,0,.5) 75%,rgba(0,0,0,.68) 88%,#fff 100%)}
+.chroma-fade{position:absolute;inset:0;pointer-events:none;z-index:4;backdrop-filter:grayscale(1) brightness(.78);-webkit-backdrop-filter:grayscale(1) brightness(.78);background:rgba(0,0,0,.001);
+mask-image:radial-gradient(circle var(--r) at var(--x) var(--y),#fff 0%,#fff 15%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.78) 45%,rgba(255,255,255,.65) 60%,rgba(255,255,255,.5) 75%,rgba(255,255,255,.32) 88%,transparent 100%);
+-webkit-mask-image:radial-gradient(circle var(--r) at var(--x) var(--y),#fff 0%,#fff 15%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.78) 45%,rgba(255,255,255,.65) 60%,rgba(255,255,255,.5) 75%,rgba(255,255,255,.32) 88%,transparent 100%);
+opacity:1;transition:opacity .25s ease}
 @media(max-width:900px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.grid{grid-template-columns:1fr}.stagebox{width:280px;height:280px}.node{--r:108px}.ring2 .node{--r:136px}}
 </style>
@@ -156,6 +175,39 @@ footer{color:var(--dim);font-size:13px;padding:50px 0 30px;text-align:center}
  <div class="pipe"><span>🗣 Wake “Hey Laala”</span><i>→</i><span>🎙 Streaming STT</span><i>→</i><span>🧭 Intent</span><i>→</i><span>🧑💼 Planner/CEO</span><i>→</i><span>🧰 Tools</span><i>→</i><span>💬 Response</span><i>→</i><span>🔊 Streaming TTS</span></div>
 </section>
 
+<section id="agents">
+ <h2>Meet the agents — ChromaGrid</h2>
+ <p style="color:var(--dim);font-size:14px">The grid sleeps in grayscale; move your cursor to reveal each agent in color. Hover a card for its spotlight; click to jump to its spec.</p>
+ <div class="chroma-grid" id="cgrid">
+  <article class="chroma-card" data-url="#features" style="--card-border:#22d3ee;--card-gradient:linear-gradient(145deg,#22d3ee,#000)">
+   <div class="chroma-art">🧑‍</div>
+   <footer class="chroma-info"><h3 class="name">CEO Agent</h3><span class="handle">@ceo</span><p class="role">Plans & delegates</p></footer>
+  </article>
+  <article class="chroma-card" data-url="#features" style="--card-border:#10B981;--card-gradient:linear-gradient(210deg,#10B981,#000)">
+   <div class="chroma-art">🔬</div>
+   <footer class="chroma-info"><h3 class="name">Research Agent</h3><span class="handle">@research</span><p class="role">Search & verify</p></footer>
+  </article>
+  <article class="chroma-card" data-url="#features" style="--card-border:#F59E0B;--card-gradient:linear-gradient(165deg,#F59E0B,#000)">
+   <div class="chroma-art">🧑‍</div>
+   <footer class="chroma-info"><h3 class="name">Coding Agent</h3><span class="handle">@code</span><p class="role">Writes & fixes (confirmed)</p></footer>
+  </article>
+  <article class="chroma-card" data-url="#features" style="--card-border:#EF4444;--card-gradient:linear-gradient(195deg,#EF4444,#000)">
+   <div class="chroma-art">👁</div>
+   <footer class="chroma-info"><h3 class="name">Vision Agent</h3><span class="handle">@vision</span><p class="role">Screens, OCR, dashboards</p></footer>
+  </article>
+  <article class="chroma-card" data-url="#audit" style="--card-border:#8B5CF6;--card-gradient:linear-gradient(225deg,#8B5CF6,#000)">
+   <div class="chroma-art">🛡</div>
+   <footer class="chroma-info"><h3 class="name">Security Agent</h3><span class="handle">@sec</span><p class="role">Gates, audit, masks secrets</p></footer>
+  </article>
+  <article class="chroma-card" data-url="#features" style="--card-border:#06B6D4;--card-gradient:linear-gradient(135deg,#06B6D4,#000)">
+   <div class="chroma-art">💰</div>
+   <footer class="chroma-info"><h3 class="name">Finance Agent</h3><span class="handle">@fin</span><p class="role">Spend & budgets</p></footer>
+  </article>
+  <div class="chroma-overlay"></div>
+  <div class="chroma-fade"></div>
+ </div>
+</section>
+
 <section id="install">
  <h2>One-click installers</h2>
  <pre><button class="copy" onclick="cp(this)">copy</button><code># Windows (PowerShell)
@@ -230,6 +282,22 @@ function SplitFlap(el,o){
   }
   requestAnimationFrame(loop);
  })();
+})();
+/* ChromaGrid (react-bits equivalent, no GSAP) */
+(function(){
+ const el=document.getElementById("cgrid");if(!el)return;
+ const fade=el.querySelector(".chroma-fade");
+ let tx=el.clientWidth/2,ty=el.clientHeight/2,x=tx,y=ty;
+ el.addEventListener("pointermove",e=>{const r=el.getBoundingClientRect();tx=e.clientX-r.left;ty=e.clientY-r.top;fade.style.opacity=0;});
+ el.addEventListener("pointerleave",()=>{fade.style.opacity=1;});
+ el.querySelectorAll(".chroma-card").forEach(c=>{
+  c.addEventListener("mousemove",e=>{const r=c.getBoundingClientRect();
+   c.style.setProperty("--mouse-x",(e.clientX-r.left)+"px");c.style.setProperty("--mouse-y",(e.clientY-r.top)+"px");});
+  c.addEventListener("click",()=>{const u=c.dataset.url;if(u)location.hash=u.replace("#","");});
+ });
+ (function loop(){x+=(tx-x)*.2;y+=(ty-y)*.2;
+  el.style.setProperty("--x",x+"px");el.style.setProperty("--y",y+"px");
+  requestAnimationFrame(loop);})();
 })();
 /* Crosshair (react-bits equivalent, no GSAP) */
 (function(){

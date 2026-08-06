@@ -12,6 +12,23 @@
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 #snow{position:fixed;inset:0;z-index:-1;opacity:.5;pointer-events:none}
 .flapline{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+/* ChromaGrid (react-bits equivalent) */
+.chroma-grid{position:relative;display:grid;grid-template-columns:repeat(auto-fit,220px);justify-content:center;gap:.6rem;padding:.5rem;--x:50%;--y:50%;--r:180px}
+.chroma-card{position:relative;display:flex;flex-direction:column;width:220px;border-radius:16px;overflow:hidden;border:1px solid #333;transition:border-color .3s ease;background:var(--card-gradient);--mouse-x:50%;--mouse-y:50%;--spotlight-color:rgba(255,255,255,.3);cursor:pointer}
+.chroma-card:hover{border-color:var(--card-border)}
+.chroma-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at var(--mouse-x) var(--mouse-y),var(--spotlight-color),transparent 70%);pointer-events:none;opacity:0;transition:opacity .5s ease;z-index:2}
+.chroma-card:hover::before{opacity:1}
+.chroma-art{flex:1;display:grid;place-items:center;font-size:44px;padding:14px}
+.chroma-info{position:relative;z-index:1;padding:.6rem .8rem;color:#fff;display:grid;grid-template-columns:1fr auto;row-gap:.2rem}
+.chroma-info .role,.chroma-info .handle{color:#aaa}
+.chroma-info .name{margin:0;font-size:14px}
+.chroma-overlay{position:absolute;inset:0;pointer-events:none;z-index:3;backdrop-filter:grayscale(1) brightness(.78);-webkit-backdrop-filter:grayscale(1) brightness(.78);background:rgba(0,0,0,.001);
+mask-image:radial-gradient(circle var(--r) at var(--x) var(--y),transparent 0%,transparent 15%,rgba(0,0,0,.1) 30%,rgba(0,0,0,.22) 45%,rgba(0,0,0,.35) 60%,rgba(0,0,0,.5) 75%,rgba(0,0,0,.68) 88%,#fff 100%);
+-webkit-mask-image:radial-gradient(circle var(--r) at var(--x) var(--y),transparent 0%,transparent 15%,rgba(0,0,0,.1) 30%,rgba(0,0,0,.22) 45%,rgba(0,0,0,.35) 60%,rgba(0,0,0,.5) 75%,rgba(0,0,0,.68) 88%,#fff 100%)}
+.chroma-fade{position:absolute;inset:0;pointer-events:none;z-index:4;backdrop-filter:grayscale(1) brightness(.78);-webkit-backdrop-filter:grayscale(1) brightness(.78);background:rgba(0,0,0,.001);
+mask-image:radial-gradient(circle var(--r) at var(--x) var(--y),#fff 0%,#fff 15%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.78) 45%,rgba(255,255,255,.65) 60%,rgba(255,255,255,.5) 75%,rgba(255,255,255,.32) 88%,transparent 100%);
+-webkit-mask-image:radial-gradient(circle var(--r) at var(--x) var(--y),#fff 0%,#fff 15%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.78) 45%,rgba(255,255,255,.65) 60%,rgba(255,255,255,.5) 75%,rgba(255,255,255,.32) 88%,transparent 100%);
+opacity:1;transition:opacity .25s ease}
 .flap{display:grid;place-items:center;width:.78em;height:1.25em;font-family:Consolas,Menlo,monospace;font-weight:700;
 background:#111827;color:#f8fafc;box-shadow:inset 0 -0.35em 0 rgba(0,0,0,.45),0 0 10px rgba(34,211,238,.15);transition:transform .1s}
 .flap.flip{transform:scaleY(.6)}
@@ -169,6 +186,7 @@ label{display:block;font-size:13px;margin:10px 0}
       <button class="tab" data-t="tasks">Tasks</button>
       <button class="tab" data-t="skills">Skills</button>
       <button class="tab" data-t="help">Help</button>
+      <button class="tab" data-t="agents">Agents</button>
     </div>
     <div class="pane on" id="p-log"><div class="log" id="log"></div></div>
     <div class="pane" id="p-tasks"><p class="muted">▶ runs the behavior + speaks the reply.</p><div id="tasks"></div></div>
@@ -187,6 +205,19 @@ label{display:block;font-size:13px;margin:10px 0}
       <div class="skill" id="l-out">Demo mode — desktop app drives real bulbs.</div>
     </div>
     <div class="pane" id="p-help"><div id="help"></div></div>
+    <div class="pane" id="p-agents">
+      <p class="muted">Grayscale until your cursor reveals color — hover for spotlight, click for spec.</p>
+      <div class="chroma-grid" id="cgrid">
+        <article class="chroma-card" style="--card-border:#22d3ee;--card-gradient:linear-gradient(145deg,#22d3ee,#000)"><div class="chroma-art">🧑‍</div><footer class="chroma-info"><h3 class="name">CEO</h3><span class="handle">@ceo</span><p class="role">Plans & delegates</p></footer></article>
+        <article class="chroma-card" style="--card-border:#10B981;--card-gradient:linear-gradient(210deg,#10B981,#000)"><div class="chroma-art">🔬</div><footer class="chroma-info"><h3 class="name">Research</h3><span class="handle">@research</span><p class="role">Search & verify</p></footer></article>
+        <article class="chroma-card" style="--card-border:#F59E0B;--card-gradient:linear-gradient(165deg,#F59E0B,#000)"><div class="chroma-art">🧑‍</div><footer class="chroma-info"><h3 class="name">Coding</h3><span class="handle">@code</span><p class="role">Fixes (confirmed)</p></footer></article>
+        <article class="chroma-card" style="--card-border:#EF4444;--card-gradient:linear-gradient(195deg,#EF4444,#000)"><div class="chroma-art">👁</div><footer class="chroma-info"><h3 class="name">Vision</h3><span class="handle">@vision</span><p class="role">OCR & screens</p></footer></article>
+        <article class="chroma-card" style="--card-border:#8B5CF6;--card-gradient:linear-gradient(225deg,#8B5CF6,#000)"><div class="chroma-art">🛡</div><footer class="chroma-info"><h3 class="name">Security</h3><span class="handle">@sec</span><p class="role">Gates & audit</p></footer></article>
+        <article class="chroma-card" style="--card-border:#06B6D4;--card-gradient:linear-gradient(135deg,#06B6D4,#000)"><div class="chroma-art">💰</div><footer class="chroma-info"><h3 class="name">Finance</h3><span class="handle">@fin</span><p class="role">Spend & budgets</p></footer></article>
+        <div class="chroma-overlay"></div>
+        <div class="chroma-fade"></div>
+      </div>
+    </div>
   </section>
 </main>
 <div class="toast" id="toast"></div>
@@ -574,6 +605,21 @@ SplitFlap(document.getElementById("flap"),{words:['LAUNCH READY','SYNC ONLINE','
    if(t>=1){glitch=false;h.style.filter=v.style.filter="none";}}
   requestAnimationFrame(loop);
  })();
+})();
+/* ChromaGrid (react-bits equivalent, no GSAP) */
+(function(){
+ const el=document.getElementById("cgrid");if(!el)return;
+ const fade=el.querySelector(".chroma-fade");
+ let tx=el.clientWidth/2,ty=el.clientHeight/2,x=tx,y=ty;
+ el.addEventListener("pointermove",e=>{const r=el.getBoundingClientRect();tx=e.clientX-r.left;ty=e.clientY-r.top;fade.style.opacity=0;});
+ el.addEventListener("pointerleave",()=>{fade.style.opacity=1;});
+ el.querySelectorAll(".chroma-card").forEach(c=>{
+  c.addEventListener("mousemove",e=>{const r=c.getBoundingClientRect();
+   c.style.setProperty("--mouse-x",(e.clientX-r.left)+"px");c.style.setProperty("--mouse-y",(e.clientY-r.top)+"px");});
+ });
+ (function loop(){x+=(tx-x)*.2;y+=(ty-y)*.2;
+  el.style.setProperty("--x",x+"px");el.style.setProperty("--y",y+"px");
+  requestAnimationFrame(loop);})();
 })();
 log("sys","LALA v2.1 standalone loaded — ▶ Run demo, or click the brain. ⚙ adds the LLM brain.");
 </script>
