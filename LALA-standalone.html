@@ -94,7 +94,7 @@ label{display:block;font-size:13px;margin:10px 0}
 <body>
 <header>
   <div class="brand"><div class="dot"></div><h1>LALA</h1><span class="tag">v1.2 standalone · say “Hey Laala”</span></div>
-  <div class="chips"><span class="chip">single-file</span><span class="chip" id="chipRole">default</span><span class="chip ac" id="chipState">idle</span></div>
+  <div class="chips"><span class="chip">single-file</span><span class="chip" id="chipRole">default</span><button class="chip" id="gear" title="Brain settings">⚙ brain</button><span class="chip ac" id="chipState">idle</span></div>
 </header>
 <main>
   <section class="panel stage">
@@ -173,6 +173,20 @@ label{display:block;font-size:13px;margin:10px 0}
   </section>
 </main>
 <div class="toast" id="toast"></div>
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:none;place-items:center">
+  <div style="background:#0a0a0e;border:1px solid rgba(34,211,238,.4);border-radius:16px;padding:22px;width:min(430px,92vw);box-shadow:0 0 30px rgba(34,211,238,.25)">
+    <h3 style="margin:0 0 10px;color:#22d3ee">🧠 Brain settings</h3>
+    <label>OpenAI API key (enables smart answers + autonomous tools)
+      <input id="cfg-key" type="password" placeholder="sk-… (optional)"/></label>
+    <label>…or local brain URL (run <code>python -m assistant --serve</code>)
+      <input id="cfg-brain" type="text" placeholder="http://127.0.0.1:8420"/></label>
+    <div class="row" style="margin-top:12px">
+      <button class="btn accent" id="cfg-save">Save</button>
+      <button class="btn" id="cfg-close">Close</button>
+    </div>
+    <p class="muted" style="margin-top:10px">No key? LALA still runs all 60+ commands offline. Key stays in THIS browser only.</p>
+  </div>
+</div>
 
 <script>
 "use strict";
@@ -288,7 +302,11 @@ async function handle(text){text=(text||"").trim();if(!text)return;
  log("you",text);$("#interim").style.display="none";
  if(dict&&!"stop dictation".includes(norm(text))){dictBuf.push(text);$("#interim").textContent="“"+text+"”";$("#interim").style.display="block";return;}
  const hit=match(text);
- if(!hit){respond("Sorry, I didn't recognize that. Say “help” to see my skills.");return;}
+ if(!hit){
+  const b=await brain(text);
+  if(b){respond(b);return;}
+  respond(CFG.key||CFG.brain?"The brain couldn't answer that one.","Sorry, I didn't recognize that. Say “help”, or add a brain via ⚙.");
+  return;}
  const{c,m}=hit;let reply;
  if(c.w==="__w__")reply=await weather(m.c||"")||"I couldn't reach a weather service right now.";
  else if(c.w==="__k__")reply=await wiki(m.q)||"No instant answer in portable mode.";
@@ -334,8 +352,65 @@ $("#c-add").onclick=()=>handle(`add ${$("#c-title").value||"meeting"} ${$("#c-da
 $("#c-exp").onclick=expIcs;
 $("#l-on").onclick=()=>handle("turn on the lights");$("#l-off").onclick=()=>handle("turn off the lights");
 for(const[c,hex]of Object.entries(LC)){const b=document.createElement("button");b.style.background=hex;b.title=c;b.onclick=()=>handle("lights to "+c);$("#l-sw").appendChild(b);}
+/* ---------------- brain (LLM + tools) ---------------- */
+let CFG=JSON.parse(localStorage.getItem("lala.cfg")||'{"key":"","brain":""}');
+const TOOLS=[
+ {type:"function",function:{name:"get_weather",description:"Current weather + forecast for a city",parameters:{type:"object",properties:{city:{type:"string"}},required:[]}}},
+ {type:"function",function:{name:"web_search",description:"Look up a fact online",parameters:{type:"object",properties:{query:{type:"string"}},required:["query"]}}},
+ {type:"function",function:{name:"control_lights",description:"Control smart lights",parameters:{type:"object",properties:{op:{type:"string",enum:["on","off","set","color"]},value:{type:"integer"},color:{type:"string"}},required:["op"]}}},
+ {type:"function",function:{name:"calendar_add",description:"Add calendar event",parameters:{type:"object",properties:{title:{type:"string"},when_text:{type:"string"}},required:["title","when_text"]}}},
+ {type:"function",function:{name:"calendar_list",description:"List upcoming events",parameters:{type:"object",properties:{}}}},
+ {type:"function",function:{name:"open_url",description:"Open a website",parameters:{type:"object",properties:{url:{type:"string"}},required:["url"]}}},
+ {type:"function",function:{name:"play_music",description:"Play music via YouTube",parameters:{type:"object",properties:{query:{type:"string"}},required:["query"]}}},
+ {type:"function",function:{name:"get_time",description:"Current time",parameters:{type:"object",properties:{}}}},
+ {type:"function",function:{name:"get_date",description:"Today's date",parameters:{type:"object",properties:{}}}}];
+async function runTool(n,a){
+ try{
+  if(n==="get_weather")return await weather(a.city||"")||"Weather unreachable.";
+  if(n==="web_search")return await wiki(a.query)||"No instant answer.";
+  if(n==="control_lights"){lights(a.op,a.color||a.value);return "Lights "+a.op+".";}
+  if(n==="calendar_add"){const w=parseWhen(a.when_text||"");if(!w)return "Need a time like 'tomorrow at 3pm'.";const ev=store("lala.cal");ev.push({id:"ev"+Date.now(),when:w.toISOString(),title:a.title});save("lala.cal",ev);renderCal();return "Added "+a.title+".";}
+  if(n==="calendar_list"){const ev=calList();return ev.length?ev.map(e=>e.title).join(", "):"Calendar clear.";}
+  if(n==="open_url"){window.open(a.url,"_blank");return "Opened.";}
+  if(n==="play_music"){window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(a.query),"_blank");return "Playing "+a.query+".";}
+  if(n==="get_time")return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  if(n==="get_date")return new Date().toLocaleDateString([],{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  return "done";
+ }catch(e){return "tool failed";}
+}
+function persona(){let p="You are Laala, a warm, upbeat voice assistant. Replies are spoken aloud — keep them 1-3 sentences unless asked. Use tools when the request needs live data or actions.";
+ if(curRole)p+=" ACTIVE ROLE — "+ROLES[curRole];return p;}
+async function brain(text){
+ if(CFG.key){
+  let messages=[{role:"system",content:persona()},{role:"user",content:text}];
+  try{
+   for(let i=0;i<4;i++){
+    const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{Authorization:"Bearer "+CFG.key,"content-type":"application/json"},body:JSON.stringify({model:"gpt-4o-mini",messages,tools:TOOLS})});
+    if(!r.ok)return null;
+    const m=(await r.json()).choices[0].message;messages.push(m);
+    const calls=m.tool_calls||[];
+    if(!calls.length)return m.content||"";
+    for(const c of calls){let a={};try{a=JSON.parse(c.function.arguments||"{}")}catch{}
+     log("sys","🔧 "+c.function.name);
+     messages.push({role:"tool",tool_call_id:c.id,content:String(await runTool(c.function.name,a))});}
+   }
+  }catch{return null;}
+  return null;
+ }
+ if(CFG.brain){
+  try{
+   const r=await fetch(CFG.brain.replace(/\/+$/,"")+"/chat",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text})});
+   const j=await r.json();return j.reply||null;
+  }catch{return null;}
+ }
+ return null;
+}
+$("#gear").onclick=()=>{$("#cfg-key").value=CFG.key||"";$("#cfg-brain").value=CFG.brain||"";$("#modal").style.display="grid";};
+$("#cfg-close").onclick=()=>$("#modal").style.display="none";
+$("#cfg-save").onclick=()=>{CFG={key:$("#cfg-key").value.trim(),brain:$("#cfg-brain").value.trim()};localStorage.setItem("lala.cfg",JSON.stringify(CFG));$("#modal").style.display="none";toast(CFG.key||CFG.brain?"🧠 Brain connected.":"Brain off — offline commands still work.");};
+
 renderTasks();renderHelp();renderCal();setupMic();
-log("sys","LALA v1.2 standalone loaded — ▶ Run demo, or click the brain.");
+log("sys","LALA v1.2 standalone loaded — ▶ Run demo, or click the brain. ⚙ adds the LLM brain.");
 </script>
 </body>
 </html>
