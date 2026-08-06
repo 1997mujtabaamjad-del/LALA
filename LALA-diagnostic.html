@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>LALA diagnostic</title>
+<style>
+body{background:#050507;color:#eef1f8;font:15px/1.6 "Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px}
+h1{color:#22d3ee;text-shadow:0 0 12px rgba(34,211,238,.6)}
+button{background:linear-gradient(135deg,#22d3ee,#a78bfa);border:0;border-radius:10px;color:#050508;font-weight:700;font-size:15px;padding:12px 22px;cursor:pointer}
+.out{width:min(680px,92vw);min-height:60px;background:#0a0a0e;border:1px solid rgba(34,211,238,.3);border-radius:12px;padding:14px;white-space:pre-wrap;font-family:Consolas,monospace;font-size:13px;box-shadow:0 0 18px rgba(34,211,238,.15)}
+.ok{color:#34d399}.bad{color:#f87171}.dim{color:#8f9ab0}
+</style>
+</head>
+<body>
+<h1>🧠 LALA diagnostic</h1>
+<div class="out" id="env"></div>
+<button onclick="testMic()">1 · Test microphone</button>
+<button onclick="testSR()">2 · Test speech recognition (“say something”)</button>
+<button onclick="testTTS()">3 · Test voice output</button>
+<div class="out" id="log">results appear here…</div>
+<script>
+const $=id=>document.getElementById(id);
+const say=(m,c)=>{const d=document.createElement("div");d.className=c||"";d.textContent=m;$("log").appendChild(d);};
+$("env").textContent =
+ "browser: "+navigator.userAgent.split(") ")[0].replace("Mozilla/5(","")+
+ "\nsecure context: "+(window.isSecureContext?"YES":"NO")+
+ "\ninside iframe: "+(window.self!==window.top?"YES (mic blocked!)":"NO")+
+ "\npage: "+location.protocol+"//"+(location.host||"(file)")+
+ "\nWeb Speech API: "+(window.SpeechRecognition||window.webkitSpeechRecognition?"present":"MISSING");
+
+async function testMic(){
+ say("--- microphone ---","dim");
+ if(!navigator.mediaDevices){say("✗ mediaDevices missing (needs Chrome, direct open, internet)","bad");return;}
+ try{
+  const s=await navigator.mediaDevices.getUserMedia({audio:true});
+  say("✓ microphone permission GRANTED — hardware OK","ok");
+  s.getTracks().forEach(t=>t.stop());
+ }catch(e){say("✗ mic error: "+e.name+" — "+(e.name==="NotAllowedError"?"blocked: check the camera-icon at the address bar / Chrome settings → Site settings → Microphone":e.message),"bad");}
+}
+
+function testSR(){
+ say("--- speech recognition ---","dim");
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){say("✗ Web Speech API missing — use Chrome/Edge, or the desktop app (Vosk/Deepgram)","bad");return;}
+ const r=new SR();r.lang="en-IN";r.interimResults=true;
+ let done=false;
+ r.onstart=()=>say("…listening — say something (e.g. “hello lala”)","dim");
+ r.onresult=e=>{done=true;say("✓ heard: "+[...e.results].map(x=>x[0].transcript).join(" "),"ok");};
+ r.onerror=e=>say("✗ recognition error: "+e.error+(e.error==="network"?" — Web Speech needs internet + Google services":"")+(e.error==="not-allowed"?" — mic permission blocked":""),"bad");
+ r.onend=()=>{if(!done)say("· ended without hearing anything (speak louder / closer)","dim");};
+ try{r.start();}catch(e){say("✗ start() threw: "+e.message,"bad");}
+}
+
+function testTTS(){
+ say("--- voice output ---","dim");
+ if(!("speechSynthesis" in window)){say("✗ no speechSynthesis","bad");return;}
+ speechSynthesis.cancel();
+ const u=new SpeechSynthesisUtterance("Hello! LALA voice works.");
+ u.onend=()=>say("✓ voice output OK","ok");
+ u.onerror=e=>say("✗ tts error: "+(e.error||"unknown"),"bad");
+ speechSynthesis.speak(u);
+}
+</script>
+</body>
+</html>
