@@ -201,6 +201,14 @@ def handle(text, memory=None):
         return "", {"type": "pdf"}
     if t in ("new downloads", "what did i download"):
         return "", {"type": "downloads"}
+    if t in ("what windows are open", "open windows", "which windows are open"):
+        return "", {"type": "windows"}
+    if t in ("any faces in the webcam", "is anyone there", "faces on camera"):
+        return "", {"type": "faces"}
+    if t in ("look at my phone photo", "analyze my phone photo", "phone photo"):
+        return "", {"type": "phone-photo"}
+    if t in ("watch my dashboard", "monitor my dashboard", "watch the dashboard"):
+        return "", {"type": "dashboard"}
 
     # ---- memory (notes) -------------------------------------------------------
     m = re.match(r"^(?:remember|note) that (.+)$", t)
@@ -488,6 +496,29 @@ def perform(action):
             dl = extras.fresh_downloads()
             return ("Fresh downloads: " + ", ".join(dl[:5]) + ".") if dl \
                 else "No new downloads in the last hour."
+        elif kind == "windows":
+            from . import world
+
+            w = world._open_windows()
+            return ("Open windows: " + ", ".join(w) + ".") if w \
+                else "No visible window list on this OS."
+        elif kind == "faces":
+            from . import vision
+
+            return vision.faces()
+        elif kind == "phone-photo":
+            from . import vision
+
+            p = vision.latest_photo()
+            if not p:
+                return ("No phone photo yet — send one: POST it to "
+                        "http://127.0.0.1:8420/vision/upload")
+            txt = vision.ocr(p)
+            return f"Your photo says: {txt[:300]}" if txt else "Photo received — OCR unavailable (pip install pytesseract)."
+        elif kind == "dashboard":
+            from . import vision
+
+            return vision.monitor_dashboard(15)
         elif kind == "guide":
             from . import config, guide
 

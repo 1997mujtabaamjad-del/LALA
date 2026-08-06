@@ -51,6 +51,20 @@ def make_server(cfg=None, port=DEFAULT_PORT):
                 self._json(404, {"ok": False})
 
         def do_POST(self):
+            if self.path.startswith("/vision/upload"):
+                import os
+                import time as _t
+
+                from . import config, vision
+
+                os.makedirs(vision.OUT(), exist_ok=True)
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length)
+                path = os.path.join(vision.OUT(), f"phone-{int(_t.time())}.png")
+                with open(path, "wb") as fh:
+                    fh.write(body)
+                self._json(200, {"ok": True, "path": path})
+                return
             if self.path.rstrip("/") == "/config":
                 from . import sync
 

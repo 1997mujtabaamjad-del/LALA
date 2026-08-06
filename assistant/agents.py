@@ -152,21 +152,25 @@ class CEOAgent(Base):
     def execute(self, goal, announce=None):
         steps, plan_name = planner.plan(goal, self.cfg)
         team = self._team()
-        report, done = [], 0
+        report, done, checked = [], 0, 0
         for step in steps:
             agent = team.get(step.get("agent"), ResearchAgent(self.cfg))
             if step.get("agent") == "ceo":
                 result = "Planned next: " + step["task"]
             else:
                 result = agent.run(step["task"])
+            # progress check before moving on
+            ok = bool(result and result.strip() and "failed" not in result.lower())
+            checked += 1 if ok else 0
             done += 1
-            report.append(f"[{done}/{len(steps)}] {agent.name}: {result}")
+            report.append(f"[{done}/{len(steps)}{'✔' if ok else '⚠'}] {agent.name}: {result}")
             if announce:
-                announce(f"Step {done}/{len(steps)} done ({agent.name}).")
+                announce(f"Step {done}/{len(steps)} {'done' if ok else 'skipped'} ({agent.name}).")
             if self.vault:
                 self.vault.event(f"goal:{goal} step:{step['task']} → {result[:80]}")
-        summary = f"Goal “{goal}” via {plan_name}-plan: " + \
-            " | ".join(r.split("] ", 1)[1][:90] for r in report)
+        summary = (f"Goal “{goal}” via {plan_name}-plan "
+                   f"({checked}/{len(steps)} steps verified): " +
+                   " | ".join(r.split("] ", 1)[1][:90] for r in report))
         return summary, report
 
 

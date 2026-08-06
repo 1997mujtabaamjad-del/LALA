@@ -122,8 +122,12 @@ def run():
     r.check("autonomy: due once", lambda: (autonomy.save_tasks([]),
         autonomy.add_task("reminder", __import__("datetime").datetime.now(), {"msg": "x"}),
         len(autonomy.due_tasks()) == 1) or 1 / 0)
-    r.check("world: snapshot", lambda: set(world.snapshot(cfg)) >=
-            {"network", "battery", "weather", "calendar", "devices"} or 1 / 0)
+    r.check("world: snapshot+windows", lambda: set(world.snapshot(cfg)) >=
+            {"network", "battery", "weather", "calendar", "devices", "open_windows"} or 1 / 0)
+    r.check("vision: faces graceful", lambda: __import__("assistant.vision",
+            fromlist=["faces"]).faces())
+    r.check("vision: dashboard fn", lambda: callable(__import__("assistant.vision",
+            fromlist=["monitor_dashboard"]).monitor_dashboard) or 1 / 0)
     r.check("twin: refresh+diff", lambda: __import__("assistant.twin", fromlist=["diff"]).diff())
     r.check("vision: graceful", lambda: vision.describe())
     r.check("robotics: no robots", lambda: __import__("assistant.robotics",
