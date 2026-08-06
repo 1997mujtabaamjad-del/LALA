@@ -29,9 +29,20 @@ if (!(Test-Path "$dir\install.bat")) {
 }
 Set-Location $dir
 
-# 2. python env + deps
-if (!(Has python)) { Write-Host "✖ Install Python 3.10+ first (python.org), then re-run."; pause; exit 1 }
-if (!(Test-Path .venv)) { Write-Host "-> creating .venv …"; python -m venv .venv }
+# 2. python env + deps  (accepts `python` OR the `py` launcher)
+$script:usepy = $false
+if (Has python) { }
+elseif (Has py) { $script:usepy = $true }
+else {
+    Write-Host "✖ Python not found. Fix it in ONE of these ways, then re-run:"
+    Write-Host "    1) winget install Python.Python.3.12"
+    Write-Host "    2) python.org download — CHECK 'Add python.exe to PATH'"
+    Write-Host "    3) Microsoft Store → search 'Python 3.12' → Get"
+    Write-Host "  Then CLOSE this PowerShell and open a NEW one."
+    pause; exit 1
+}
+function prun { if ($script:usepy) { & py -3 @args } else { & python @args } }
+if (!(Test-Path .venv)) { Write-Host "-> creating .venv …"; prun -m venv .venv }
 Write-Host "-> installing Python deps (STT/TTS/VAD/wake; heavy ones optional) …"
 .\.venv\Scripts\python -m pip install -q --upgrade pip
 .\.venv\Scripts\python -m pip install -q -r assistant\requirements.txt
