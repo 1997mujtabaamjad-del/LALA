@@ -168,6 +168,10 @@ class Assistant:
                 with timer.stage("reply"):
                     reply = llm.ask(self.cfg, self.memory, text)
 
+        if not reply:
+            # The brain must never go silent: diagnose instead.
+            reply = self._brain_fallback(text)
+
         self.memory.add("user", text)
         self.memory.add("assistant", reply)
         self._say(reply, spoken, timer=timer)
@@ -189,6 +193,21 @@ class Assistant:
             "total_ms": round(timer.total_ms, 2),
         }
         self.log("system", f"⏱ {timer.trace()} — {timer.verdict(fast_path=fast_path)}")
+
+    def _brain_fallback(self, text):
+        """Never answer with silence — say what's missing and how to fix it."""
+        provider = llm.resolve_provider(self.cfg)
+        if provider == "ollama":
+            diag = llm.ollama_diagnose(self.cfg)
+            if diag:
+                return f"I heard you, but my local brain hiccuped: {diag}."
+            return ("My Ollama brain went quiet for a second — "
+                    "ask me again in a moment.")
+        if provider == "openai":
+            return ("My OpenAI brain didn't answer — check the key in Settings, "
+                    "or start Ollama for a free local brain.")
+        return ("I'm in offline mode — commands still work! For free chat, "
+                "start the Ollama app (you said: “" + text + "”).")
 
     def _enroll_voice(self):
         from . import mic, profiles

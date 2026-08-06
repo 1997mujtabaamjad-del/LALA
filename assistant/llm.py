@@ -151,3 +151,19 @@ def provider_status(cfg):
     status = {"ollama": _ollama_alive(cfg), "openai": bool(cfg.get("openai_api_key"))}
     status["active"] = resolve_provider(cfg)
     return json.loads(json.dumps(status))
+
+
+def ollama_diagnose(cfg):
+    """Why would the local brain stay silent? Returns a human fix-it line."""
+    try:
+        r = requests.get(cfg["ollama_url"] + "/api/tags", timeout=1.5)
+        if not r.ok:
+            return "Ollama answered oddly — restart the Ollama app once."
+        models = [m.get("name", "") for m in (r.json().get("models") or [])]
+        want = cfg.get("ollama_model", "llama3.1")
+        if not any(m == want or m.startswith(want + ":") for m in models):
+            return (f"the model “{want}” is not installed — open PowerShell and run: "
+                    f"ollama pull {want}")
+        return None
+    except requests.RequestException:
+        return "Ollama is not running — open the Ollama app once, then ask me again."

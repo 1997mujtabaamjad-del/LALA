@@ -140,6 +140,9 @@ def make_server(cfg=None, port=DEFAULT_PORT):
                 reply = assistant.process(text, follow_up=False, spoken=False)
                 self._json(200, {"ok": True, "reply": reply or ""})
             except Exception as exc:  # noqa: BLE001
+                import traceback
+
+                traceback.print_exc()  # visible in the black brain window
                 self._json(500, {"ok": False, "reply": "", "error": str(exc)})
 
         def log_message(self, *args):  # keep stdout quiet
