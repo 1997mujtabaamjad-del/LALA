@@ -182,8 +182,19 @@ function setOrbMode(mode) {
 /* ------------------------------------------------------ transcript flow */
 
 async function handleTranscript(rawText) {
-  const text = String(rawText || '').trim();
+  let text = String(rawText || '').trim();
   if (!text) return;
+
+  // strip the wake phrase: "hey laala, open youtube" -> "open youtube"
+  const wake = detectWakeWord(text);
+  if (wake.wake) {
+    if (!wake.rest) {
+      addLog('you', text);
+      respond('Yes? I’m listening…');
+      return;
+    }
+    text = wake.rest;
+  }
 
   state.lastTranscript = text;
   state.recentChat.push({ role: 'user', content: text });

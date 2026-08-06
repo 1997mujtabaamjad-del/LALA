@@ -281,7 +281,11 @@ function match(text){const n=norm(text);
  for(const c of CMDS)for(const p of c.p){if(!p.includes("<"))continue;const params=[];const parts=norm(p).split(/<([^>]+)>/);const re=new RegExp("^"+parts.map((s,i)=>i%2?(params.push(s.trim()),"(.+?)"):s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).filter(Boolean).join("\\s+")+"$");const r=n.match(re);if(r){const m={};params.forEach((k,i)=>m[k]=r[i+1].trim());return{c,m};}}
  return null;}
 
-async function handle(text){text=(text||"").trim();if(!text)return;log("you",text);$("#interim").style.display="none";
+async function handle(text){text=(text||"").trim();if(!text)return;
+ // wake-word strip: "hey laala, open youtube" -> "open youtube"
+ const wm=norm(text).match(/^(?:hey|ok|hi|hello)?\s*(?:laala|lala|la la)\b[, ]*(.*)$/);
+ if(wm){ if(!wm[1]){log("you",text);respond("Yes? I'm listening…");return;} text=wm[1]; }
+ log("you",text);$("#interim").style.display="none";
  if(dict&&!"stop dictation".includes(norm(text))){dictBuf.push(text);$("#interim").textContent="“"+text+"”";$("#interim").style.display="block";return;}
  const hit=match(text);
  if(!hit){respond("Sorry, I didn't recognize that. Say “help” to see my skills.");return;}
@@ -297,11 +301,14 @@ async function runDemo(){if(demoing)return;demoing=true;$("#demo").disabled=true
  for(const t of DEMO){$("#orb").classList.add("listening");$("#interim").textContent="“"+t+"”";$("#interim").style.display="block";await delay(900);$("#orb").classList.remove("listening");await handle(t);await waitSilence();await delay(350);}
  respond("That's LALA v1.2 — roles, autonomy & profiles in one file. Click the brain and speak!");demoing=false;$("#demo").disabled=false;}
 
-function setupMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast("Mic needs Chrome/Edge.");return;}
+function setupMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast("Voice needs Chrome or Edge — clicks still work!");$("#hint").textContent="No Web Speech here — use Chrome/Edge for voice, or click chips/nodes/Tasks.";return;}
  const rec=new SR();rec.continuous=true;rec.interimResults=true;let on=false;
  rec.onresult=e=>{let inter="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)handle(r[0].transcript);else inter+=r[0].transcript;}if(inter){$("#interim").textContent="“"+inter+"”";$("#interim").style.display="block";}};
  rec.onend=()=>{if(on)try{rec.start();}catch{}};
- $("#orb").addEventListener("click",()=>{on=!on;if(on){try{rec.start();}catch{}$("#orb").classList.add("listening");$("#chipState").textContent="listening";}else{rec.stop();$("#orb").classList.remove("listening");$("#chipState").textContent="idle";}});}
+ const toggle=()=>{on=!on;if(on){try{rec.start();}catch{}$("#orb").classList.add("listening");$("#chipState").textContent="listening";$("#hint").textContent="Listening… say “hey laala, open youtube” — interrupt me any time.";}else{rec.stop();$("#orb").classList.remove("listening");$("#chipState").textContent="idle";}};
+ $("#orb").addEventListener("click",toggle);
+ // browser rule: mic may start only after a user gesture → first click ANYWHERE arms it
+ window.addEventListener("pointerdown",function arm(){ if(!on) toggle(); window.removeEventListener("pointerdown",arm); });}
 
 const TASKS=[["🎙 Voice",[["Wake + reply","hey laala"],["Time","what time is it"],["Barge-in demo","user guide"],["Full demo","@demo"]]],
 ["💼 Roles",[["Researcher","switch to researcher"],["Chief of Staff","switch to chief of staff"],["Sales","switch to sales"],["Developer","switch to developer"],["Strategist","switch to strategist"],["Finance","switch to finance"],["Design","switch to design"],["CRM","switch to crm"],["Back to default","back to normal"]]],
