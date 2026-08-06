@@ -11,6 +11,10 @@
 --gv:0 0 14px rgba(167,139,250,.25);--text:#eef1f8;--dim:#8f9ab0;--ac:#22d3ee;--ac2:#a78bfa;--ok:#34d399;--bad:#f87171}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 #snow{position:fixed;inset:0;z-index:-1;opacity:.5;pointer-events:none}
+.flapline{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.flap{display:grid;place-items:center;width:.78em;height:1.25em;font-family:Consolas,Menlo,monospace;font-weight:700;
+background:#111827;color:#f8fafc;box-shadow:inset 0 -0.35em 0 rgba(0,0,0,.45),0 0 10px rgba(34,211,238,.15);transition:transform .1s}
+.flap.flip{transform:scaleY(.6)}
 body{font-family:"Segoe UI",system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;overflow:hidden;
 background:radial-gradient(1200px 700px at 85% -10%,rgba(167,139,250,.07),transparent 60%),
 radial-gradient(1000px 700px at 8% 110%,rgba(34,211,238,.06),transparent 55%),
@@ -100,6 +104,7 @@ label{display:block;font-size:13px;margin:10px 0}
 </header>
 <main>
   <section class="panel stage">
+    <div id="flap" class="flapline" aria-label="status board"></div>
     <div class="ow">
       <div class="orbit in">
         <button class="node" style="--a:0deg"   data-say="hey laala" title="Wake word"><span class="ni">🗣</span></button>
@@ -482,6 +487,39 @@ renderTasks();renderHelp();renderCal();setupMic();
 document.title="LALA v2.1 — ready ✔";
 toast("✔ LALA v2.1 ready — click once, then speak or press ▶ Run demo");
 window.addEventListener("pointerdown",function ping(){toast("✔ LALA responding — say “hey laala…” or click a node");window.removeEventListener("pointerdown",ping);});
+/* SplitFlapText (react-bits equivalent, dependency-free) */
+function SplitFlap(el,o){
+ if(matchMedia("(prefers-reduced-motion: reduce)").matches){el.textContent=o.words[0];return;}
+ const CS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+ const flip=(o.flipDuration||.12)*1000, stag=(o.stagger||.06)*1000, delay=o.cycleDelay||2400,
+       flips=o.flipsPerChar||8; let wi=0;
+ el.style.gap=(o.gap??6)+"px";
+ function build(word){
+  el.innerHTML="";
+  const w=(o.padTo?word.padEnd(o.padTo," "):word);
+  const tiles=[...w].map(ch=>{
+   const t=document.createElement("span");t.className="flap";
+   t.style.background=o.tileColor||"#111827";t.style.color=o.textColor||"#f8fafc";
+   t.style.borderRadius=(o.tileRadius??8)+"px";t.style.fontSize=(o.fontSize||26)+"px";
+   t.textContent=" ";el.appendChild(t);return{t,ch};
+  });
+  tiles.forEach((s,i)=>{
+   let n=0;
+   setTimeout(()=>{
+    const iv=setInterval(()=>{
+     n++;
+     if(n>=flips){clearInterval(iv);s.t.textContent=s.ch;s.t.classList.remove("flip");}
+     else{s.t.textContent=CS[Math.random()*CS.length|0];s.t.classList.add("flip");}
+    },flip);
+   },i*stag);
+  });
+  return tiles.length;
+ }
+ (function cycle(){
+  const len=build(o.words[wi]);
+  setTimeout(()=>{wi=(wi+1)%o.words.length;cycle();},(len-1)*stag+flips*flip+delay);
+ })();
+}
 /* PixelSnow (react-bits equivalent, dependency-free canvas) */
 (function(){
  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
@@ -501,6 +539,7 @@ window.addEventListener("pointerdown",function ping(){toast("✔ LALA responding
   requestAnimationFrame(loop);
  })();
 })();
+SplitFlap(document.getElementById("flap"),{words:['LAUNCH READY','SYNC ONLINE','SIGNAL LIVE'],flipDuration:0.12,stagger:0.06,cycleDelay:2400,charset:"alphanumeric",flipsPerChar:8,tileColor:"#111827",textColor:"#f8fafc",tileRadius:8,gap:6,fontSize:24,loop:true,padTo:12});
 log("sys","LALA v2.1 standalone loaded — ▶ Run demo, or click the brain. ⚙ adds the LLM brain.");
 </script>
 </body>

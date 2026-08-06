@@ -56,6 +56,11 @@ th{color:var(--ac)}
 .pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
 .pipe span{border:1px solid rgba(167,139,250,.4);border-radius:999px;padding:6px 14px;font-size:13px;box-shadow:0 0 10px rgba(167,139,250,.25)}
 .pipe i{color:var(--ac2)}
+.flapline{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.flap{display:grid;place-items:center;width:.78em;height:1.25em;font-family:Consolas,Menlo,monospace;font-weight:700;
+background:#111827;color:#f8fafc;box-shadow:inset 0 -0.35em 0 rgba(0,0,0,.45),0 0 12px rgba(34,211,238,.15);
+transition:transform .1s}
+.flap.flip{transform:scaleY(.6)}
 footer{color:var(--dim);font-size:13px;padding:50px 0 30px;text-align:center}
 @media(max-width:900px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.grid{grid-template-columns:1fr}.stagebox{width:280px;height:280px}.node{--r:108px}.ring2 .node{--r:136px}}
@@ -69,6 +74,7 @@ footer{color:var(--dim);font-size:13px;padding:50px 0 30px;text-align:center}
 
 <section class="hero">
  <div>
+  <div id="flap" class="flapline" aria-label="status board"></div>
   <h1>Say <em>“Hey Laala”</em> —<br/>your desktop just listens.</h1>
   <p class="sub">A autonomous voice assistant: multi-agent brain, 5-layer memory, world model,
   planning, vision, digital twin, streaming voice pipeline — in one repo, three bodies
@@ -160,6 +166,42 @@ bash install.sh        # GPU: bash scripts/install-gpu.sh</code></pre>
 <footer>LALA · v1.0 → v2.0 · built autonomous · MIT</footer>
 </div>
 <script>
+/* SplitFlapText (react-bits equivalent, dependency-free) */
+function SplitFlap(el,o){
+ if(matchMedia("(prefers-reduced-motion: reduce)").matches){el.textContent=o.words[0];el.style.fontSize=o.fontSize+"px";return;}
+ const CS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+ const flip=(o.flipDuration||.12)*1000, stag=(o.stagger||.06)*1000, delay=o.cycleDelay||2400,
+       flips=o.flipsPerChar||8; let wi=0, stop=false;
+ el.style.gap=(o.gap??6)+"px";
+ function build(word){
+  el.innerHTML="";
+  const w=(o.padTo?word.padEnd(o.padTo," "):word);
+  const tiles=[...w].map(ch=>{
+   const t=document.createElement("span");t.className="flap";
+   t.style.background=o.tileColor||"#111827";t.style.color=o.textColor||"#f8fafc";
+   t.style.borderRadius=(o.tileRadius??8)+"px";t.style.fontSize=(o.fontSize||52)+"px";
+   t.textContent=" ";el.appendChild(t);return{t,ch};
+  });
+  tiles.forEach((s,i)=>{
+   let n=0;
+   setTimeout(()=>{
+    const iv=setInterval(()=>{
+     if(stop)return clearInterval(iv);
+     n++;
+     if(n>=flips){clearInterval(iv);s.t.textContent=s.ch;s.t.classList.remove("flip");}
+     else{s.t.textContent=CS[Math.random()*CS.length|0];s.t.classList.add("flip");}
+    },flip);
+   },i*stag);
+  });
+  return tiles.length;
+ }
+ (function cycle(){
+  const len=build(o.words[wi]);
+  setTimeout(()=>{ if(stop)return; wi=(wi+1)%o.words.length; cycle(); },
+   (len-1)*stag + flips*flip + delay);
+ })();
+ return ()=>{stop=true;};
+}
 /* PixelSnow (react-bits equivalent, dependency-free canvas) */
 (function(){
  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
@@ -179,6 +221,7 @@ bash install.sh        # GPU: bash scripts/install-gpu.sh</code></pre>
   requestAnimationFrame(loop);
  })();
 })();
+SplitFlap(document.getElementById("flap"),{words:['LAUNCH READY','SYNC ONLINE','SIGNAL LIVE'],flipDuration:0.12,stagger:0.06,cycleDelay:2400,charset:"alphanumeric",flipsPerChar:8,tileColor:"#111827",textColor:"#f8fafc",tileRadius:8,gap:6,fontSize:52,loop:true,padTo:12});
 function cp(b){const t=b.parentElement.querySelector("code").innerText;navigator.clipboard.writeText(t);b.textContent="copied!";setTimeout(()=>b.textContent="copy",1200);}
 </script>
 </body>
