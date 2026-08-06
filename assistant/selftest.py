@@ -128,6 +128,12 @@ def run():
     r.check("vision: graceful", lambda: vision.describe())
     r.check("robotics: no robots", lambda: __import__("assistant.robotics",
             fromlist=["status"]).status())
+    r.check("extras: pdf graceful", lambda: __import__("assistant.extras",
+            fromlist=["pdf_summary"]).pdf_summary("/nonexistent.pdf"))
+    r.check("extras: downloads list", lambda: __import__("assistant.extras",
+            fromlist=["fresh_downloads"]).fresh_downloads() is not None or 1 / 0)
+    r.check("extras: email gated", lambda: not __import__("assistant.extras",
+            fromlist=["send_email"]).send_email("a@b.c", "s", "b", cfg).startswith("Email sent") or 1 / 0)
 
     # ---- llm / tts / vad / wake ----
     r.check("llm: mock ask", lambda: llm.ask(cfg, None, "hi"))

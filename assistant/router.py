@@ -191,6 +191,13 @@ def handle(text, memory=None):
         return "Running it (security-gated).", {"type": "code", "code": m.group(1)}
     if t in ("budget analysis", "analyze my spending"):
         return "", {"type": "finance-agent"}
+    m = re.match(r"^email (.+?) about (.+)$", t)
+    if m:
+        return "", {"type": "email", "to": m.group(1), "topic": m.group(2)}
+    if t in ("analyze my latest pdf", "read my pdf", "summarize my pdf"):
+        return "", {"type": "pdf"}
+    if t in ("new downloads", "what did i download"):
+        return "", {"type": "downloads"}
 
     # ---- memory (notes) -------------------------------------------------------
     m = re.match(r"^(?:remember|note) that (.+)$", t)
@@ -464,6 +471,21 @@ def perform(action):
             from . import agents, config
 
             return agents.FinanceAgent(config.load(), VAULT, CONFIRM).run("analyze")
+        elif kind == "email":
+            from . import config, extras
+
+            return extras.send_email(action["to"], action["topic"],
+                                     action["topic"], config.load(), CONFIRM)
+        elif kind == "pdf":
+            from . import extras
+
+            return extras.pdf_summary()
+        elif kind == "downloads":
+            from . import extras
+
+            dl = extras.fresh_downloads()
+            return ("Fresh downloads: " + ", ".join(dl[:5]) + ".") if dl \
+                else "No new downloads in the last hour."
         elif kind == "guide":
             from . import config, guide
 

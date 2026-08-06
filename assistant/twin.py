@@ -41,6 +41,9 @@ def refresh(cfg=None):
         "world": world.snapshot(cfg),
         "files": _file_index(),
     }
+    from . import extras
+
+    state["downloads"] = extras.fresh_downloads(60)
     try:
         prev = json.load(open(FILE(), encoding="utf8"))
     except (OSError, ValueError):
