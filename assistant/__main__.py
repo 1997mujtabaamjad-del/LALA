@@ -49,6 +49,39 @@ def chat_repl():
     print("Bye!")
 
 
+def run_app():
+    """The whole product in one process: brain server + web UI in a browser.
+
+    This is what the Desktop/Start-Menu shortcut runs — no Node, no Electron
+    build; just Python and any browser. Ctrl+C (or close the window) stops it.
+    """
+    import threading
+    import webbrowser
+
+    from . import config
+    from .server import make_server
+
+    cfg = config.load()
+    server = make_server(cfg)
+    port = server.server_address[1]
+    url = f"http://127.0.0.1:{port}/"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
+    print(f"\n  LALA is running — opening {url} in your browser.")
+    print("  The brain + this web app stay alive while this window is open.")
+    print("  Ctrl+C (or close the window) to stop.\n")
+    try:
+        webbrowser.open(url)
+    except Exception:  # noqa: BLE001 — headless / no browser
+        print(f"  (couldn't open a browser automatically — go to {url})")
+    try:
+        threading.Event().wait()
+    except KeyboardInterrupt:
+        print("\nStopping LALA…")
+        server.shutdown()
+        server.server_close()
+
+
 def setup():
     from . import config, stt, tts
 
@@ -116,6 +149,9 @@ def main():
     parser.add_argument("--latency", action="store_true",
                         help="voice-pipeline (§7) latency vs the sub-1 s budget; "
                              "exit code 1 if any simple-command path is over budget")
+    parser.add_argument("--app", action="store_true",
+                        help="launch the full LALA app: brain server + web UI "
+                             "in your browser (no Node needed)")
     parser.add_argument("--speak", action="store_true",
                         help="with --milestone: play the TTS stage aloud")
     args = parser.parse_args()
@@ -160,6 +196,9 @@ def main():
         else:
             autostart.uninstall()
             print("auto-start removed.")
+        return
+    if args.app:
+        run_app()
         return
     if args.serve:
         from .server import main as server_main

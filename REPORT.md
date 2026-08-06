@@ -128,8 +128,10 @@ voice commands, results return to the model, only the final reply is spoken.
 | `--deploy` | wizard: TTS engine + voice picker, LLM, autostart, systemd brain service |
 | `--milestone` | proves wake→record→stt→llm→tts chain on this machine (honest *simulated* labels) |
 | `--bench` | ms per stage (wake 0.0 · VAD 5.5/chunk · STT · LLM TTFT · TTS · e2e) |
+| `--latency` | §7 budget audit: every chain stage vs 1000 ms; exit 1 on breach |
 | `--autostart on/off` | login start (Linux .desktop / macOS LaunchAgent / Win Run key) |
-| `--serve` | brain server :8420 (`/status /chat /config`) for the Electron/web app |
+| `--serve` | brain server :8420 (`/status /chat /config` + last-turn latency) for the Electron/web app |
+| `--app` | the whole product in one process: brain server + full web UI in your browser (no Node) |
 | `packaging/release.yml` | on `v*` tags: NSIS/dmg/AppImage/deb + PyInstaller one-file binaries → GitHub Release (2 commands to activate) |
 | `packaging/lala-assistant.spec` | single-file native binary build |
 
@@ -162,8 +164,9 @@ voice commands, results return to the model, only the final reply is spoken.
 ## 8. Quick start
 
 ```bash
-bash install.sh            # or install.bat — one click
-lala --milestone           # prove it · lala --bench · lala --keys · lala --validate
+bash install.sh            # or install.bat — one click (Windows auto-installs Python)
+lala --app                 # the whole app: brain + web UI in your browser (no Node)
+lala --milestone           # prove it · lala --bench · lala --latency · lala --keys
 npm start                  # Electron command center   ·   npm run preview  (browser)
 python -m assistant --serve            # brain for the app
 git tag v1.1 && git push --tags        # builds installers (after activating release.yml)

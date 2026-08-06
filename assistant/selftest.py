@@ -235,7 +235,12 @@ def server_roundtrip():
             assert "It's" in json.load(x)["reply"]
         with urllib.request.urlopen(base + "/config", timeout=5) as x:
             assert "config" in json.load(x)
-        return "3 endpoints ok"
+        # --app: the brain also serves the full web UI
+        with urllib.request.urlopen(base + "/", timeout=5) as x:
+            assert b"<html" in x.read().lower()
+        with urllib.request.urlopen(base + "/app.js", timeout=5) as x:
+            assert b"handleTranscript" in x.read()
+        return "5 endpoints ok (incl. web app)"
     finally:
         srv.shutdown()
 

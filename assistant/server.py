@@ -1,21 +1,41 @@
 """
 Local bridge server: lets the Electron / web LALA app use the Python brain
 (LLM answers + conversation memory) for anything that isn't a hard command.
+Also serves the full web app itself — `python -m assistant --app` opens it.
 
   python -m assistant --serve          # http://127.0.0.1:8420
+  python -m assistant --app            # brain + full UI, opens your browser
 
 Endpoints:
   GET  /status   -> {"ok": true, "name": ...}
   POST /chat     {"text": "..."}  ->  {"reply": "..."}   (also stored in memory)
+  GET  /         -> the web app (src/ served statically)
 """
 
 import json
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import __version__, config
 from .orchestrator import Assistant
 
 DEFAULT_PORT = 8420
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SRC_DIR = os.path.normpath(os.path.join(_ROOT, "src"))
+
+_MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".wav": "audio/wav",
+    ".mp3": "audio/mpeg",
+    ".txt": "text/plain; charset=utf-8",
+}
 
 
 def make_server(cfg=None, port=DEFAULT_PORT):
@@ -59,7 +79,26 @@ def make_server(cfg=None, port=DEFAULT_PORT):
 
                 self._json(200, {"ok": True, "config": sync.to_electron(config.load())})
             else:
+                self._static()
+
+        def _static(self):
+            """Serve the web app (src/) so `--app` is the whole product."""
+            rel = self.path.split("?", 1)[0].lstrip("/") or "index.html"
+            if rel.endswith("/"):
+                rel += "index.html"
+            full = os.path.normpath(os.path.join(SRC_DIR, rel))
+            if not full.startswith(SRC_DIR + os.sep) or not os.path.isfile(full):
                 self._json(404, {"ok": False})
+                return
+            ext = os.path.splitext(full)[1].lower()
+            with open(full, "rb") as fh:
+                body = fh.read()
+            self.send_response(200)
+            self.send_header("Content-Type", _MIME.get(ext, "application/octet-stream"))
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
 
         def do_POST(self):
             if self.path.startswith("/vision/upload"):

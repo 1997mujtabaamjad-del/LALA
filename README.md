@@ -13,14 +13,20 @@ activate it once with the two commands noted in that file):
 - `lala-assistant(.exe)` — single-file Python assistant binary (PyInstaller)
 
 **From source** — double-click:
-- **Windows:** `install.bat`
+- **Windows (3 steps, no typing):**
+  1. Download the ZIP: <https://github.com/1997mujtabaamjad-del/LALA/archive/refs/heads/arena/019fcde4-lala.zip>
+  2. Right-click the ZIP → **Extract All…**
+  3. Open the folder and double-click **`install.bat`** — it installs Python for
+     you if needed (winget), installs LALA's brain + voice components, and puts a
+     **LALA** shortcut on your Desktop + Start Menu. Double-click that shortcut
+     any time: LALA opens as an app in your browser (brain + UI, no Node needed).
 - **Windows one-liner** (any PC, no git):
 
 ```powershell
-iwr https://raw.githubusercontent.com/1997mujtabaamjad-del/LALA/v1.2/scripts/install.ps1 -UseBasicParsing | iex
+iwr https://raw.githubusercontent.com/1997mujtabaamjad-del/LALA/arena/019fcde4-lala/scripts/install.ps1 -UseBasicParsing | iex
 ```
 
-Downloads the `v1.2` tag, creates the venv + deps, adds **Start Menu & Desktop
+Downloads the branch, creates the venv + deps, adds **Start Menu & Desktop
 shortcuts**, offers **start-at-login** and the optional Electron UI, then launches
 LALA. Equivalent file-based: `powershell -ExecutionPolicy Bypass -File scripts\install.ps1`.
 
@@ -40,7 +46,9 @@ self-check and start-at-login. Afterwards:
 
 ```bash
 lala                # run the assistant   (.venv/bin/python -m assistant)
+lala --app          # the whole app in one process: brain + web UI in your browser
 lala --milestone    # prove the whole pipeline
+lala --latency      # §7 voice-pipeline budget audit (sub-1 s simple commands)
 lala --keys         # add your API keys
 ```
 
