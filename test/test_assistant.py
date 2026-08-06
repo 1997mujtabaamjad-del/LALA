@@ -267,6 +267,72 @@ class GuideTest(unittest.TestCase):
         self.assertEqual(action["type"], "guide")
 
 
+class LalaTwoTest(unittest.TestCase):
+    def test_intent_detection(self):
+        from assistant import intent
+
+        self.assertEqual(intent.detect("prepare everything for tomorrow's interview"), "goal")
+        self.assertEqual(intent.detect("read the screen"), "vision")
+        self.assertEqual(intent.detect("log water 8"), "health")
+        self.assertEqual(intent.detect("add expense 5 for tea"), "finance")
+        self.assertEqual(intent.detect("who is ramanujan"), "research")
+
+    def test_planner_interview_template(self):
+        from assistant import planner
+
+        steps, name = planner._template("prepare for my google interview")
+        self.assertEqual(name, "interview-prep")
+        self.assertGreaterEqual(len(steps), 5)
+        self.assertIn("research", [s["agent"] for s in steps])
+
+    def test_vault_layers_and_recall(self):
+        from assistant.vault import Vault
+
+        v = Vault()
+        v.note("user loves biryani on fridays")
+        v.event("meeting with asha about lala 2")
+        v.skill("morning routine", ["briefing", "weather"])
+        hits = v.recall("biryani")
+        self.assertTrue(any("biryani" in t for _l, t in hits))
+
+    def test_security_gates(self):
+        from assistant import security
+
+        self.assertEqual(security.mask("7f795a3500bbb4a67db1"), "7f79…b1")
+        self.assertTrue(security.needs_confirm("coding", security.EXEC))
+        self.assertFalse(security.needs_confirm("research", security.NETWORK))
+        ok, _n = security.gate("coding", security.EXEC)  # no confirm fn → blocked
+        self.assertFalse(ok)
+
+    def test_health_log_and_summary(self):
+        from assistant import agents
+
+        agents.health_log("log water 8")
+        self.assertIn("water", agents.health_log("how's my health"))
+
+    def test_router_lala2_commands(self):
+        _r, action = router.handle("prepare everything for tomorrow's interview")
+        self.assertEqual(action["type"], "ceo")
+        _r, action = router.handle("world status")
+        self.assertEqual(action["type"], "world")
+        _r, action = router.handle("log steps 6000")
+        self.assertEqual(action["type"], "health")
+        _r, action = router.handle("run print(40+2)")
+        self.assertEqual(action["type"], "code")
+
+    def test_world_snapshot_shape(self):
+        from assistant import world
+
+        s = world.snapshot(dict(config.DEFAULTS))
+        for key in ("network", "battery", "weather", "calendar", "devices"):
+            self.assertIn(key, s)
+
+    def test_robotics_no_robots(self):
+        from assistant import robotics
+
+        self.assertIn("No robots", robotics.status())
+
+
 class ProfilesTest(unittest.TestCase):
     def test_crud_and_switch(self):
         from assistant import profiles
@@ -340,8 +406,10 @@ class AutonomyTest(unittest.TestCase):
         self.assertEqual(action["type"], "remind")
         _r, action = router.handle("watch my calendar")
         self.assertEqual((action["type"], action["kind"]), ("watch", "calendar_watch"))
-        _r, action = router.handle("take care of researching competitors")
+        _r, action = router.handle("autonomously researching competitors")
         self.assertEqual(action["type"], "goal")
+        _r, action = router.handle("take care of researching competitors")
+        self.assertEqual(action["type"], "ceo")  # CEO coordinates in v2
         _r, action = router.handle("run my morning routine")
         self.assertEqual(action["type"], "routine")
 

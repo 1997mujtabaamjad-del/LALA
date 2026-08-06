@@ -21,6 +21,14 @@ class Assistant:
         self.confirm_fn = confirm or self._stdin_confirm
         self.memory = Memory()
         self._last_action = None
+
+        # LALA 2.0: shared vault + security injection for router/agents
+        from . import router as _router
+        from .vault import Vault
+
+        self.vault = Vault()
+        _router.CONFIRM = self.confirm_fn
+        _router.VAULT = self.vault
         # The whole loop lives inside the pipeline now; we only plug in
         # thinking (router + LLM + memory) and the end-of-conversation flag.
         self.pipeline = Pipeline(
@@ -94,6 +102,9 @@ class Assistant:
     def process(self, text, follow_up=False, spoken=True):
         """Handle one user utterance (voice or typed). Returns the reply."""
         self.log("you", text)
+        from . import intent as _intent
+
+        self.vault.event(f"{text} [intent:{_intent.detect(text)}]")
         interruption = None
 
         response, action = router.handle(text, self.memory)

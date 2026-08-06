@@ -165,6 +165,33 @@ calls tools that map onto the existing action executor, and each call shows as a
 polite miss. The deterministic router stays as the zero-latency fast path for
 exact commands.
 
+### 🧬 LALA 2.0 — the nine layers
+
+1. **Multi-agent brain** (`agents.py`) — CEO agent plans & delegates to Research,
+   Coding (confirm-gated exec), Vision, Finance, Scheduler, Health, Home agents;
+   Security agent gates every sensitive level (`security.py`, audit log, masked secrets)
+2. **Long-term memory** (`vault.py`) — working / session / semantic / episodic /
+   procedural layers + `recall()` retrieval; voiceprints in profiles (consent-gated);
+   every utterance logged episodic with its intent
+3. **World model** (`world.py`) — network, battery, weather, calendar, top processes,
+   IoT devices, location → *“world status”* answers context-aware
+4. **Autonomous planning** (`planner.py`) — *“prepare everything for tomorrow's
+   interview”* → LLM-JSON or template plan → CEO executes step-by-step with progress
+   announcements and an episodic trail (research → résumé → questions → reminder)
+5. **Computer vision** (`vision.py`) — desktop capture (mss) + OCR (pytesseract):
+   *“read the screen”*; webcam/face/gesture stubs await consent + deps
+6. **Digital twin** (`twin.py`) — live env snapshot; *“what changed”* diffs processes,
+   network, battery, newest docs
+7. **Voice pipeline** — wake → STT → **intent** (`intent.py`) → planner → tools →
+   response → TTS; `--bench` measures each stage
+8. **Tool ecosystem** — browser, terminal/code (confirm), email-ready hooks, calendar,
+   weather, maps, finance, home, GitHub, PDF-ready, sqlite; permission model enforced
+9. **Robotics** (`robotics.py`) — pair ESP32/Pi/arm/drone via `cfg["robots"]`;
+   *“robot status”*, motion actions confirm-gated
+
+Try: `lala --chat` then `prepare everything for tomorrow's interview`, `world status`,
+`log water 8`, `what changed`, `read the screen`.
+
 ### 👥 v1.2 — multi-user voice profiles
 
 - `create profile asha` · `switch profile to asha` · `list profiles` · `who am i`

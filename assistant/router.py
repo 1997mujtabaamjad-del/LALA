@@ -17,6 +17,10 @@ from urllib.parse import quote
 
 from . import autonomy, calendar_store, lights, roles, websearch, weather
 
+# injected by the orchestrator at startup
+CONFIRM = None
+VAULT = None
+
 JOKES = [
     "Why do programmers prefer dark mode? Because light attracts bugs.",
     "I told my computer I needed a break, and it said: no problem, I'll go to sleep.",
@@ -163,6 +167,30 @@ def handle(text, memory=None):
     if t in ("stop listening", "stop listening lala", "that s all for now",
              "thats all for now", "goodbye for now", "you can sleep now", "go idle"):
         return "Okay — I'll wait for the wake word.", {"type": "end-conversation"}
+
+    # ---- LALA 2.0 layers ---------------------------------------------------
+    m = re.match(r"^(?:prepare|plan|take care of|get ready for|organize) (.+)$", t)
+    if m:
+        return "", {"type": "ceo", "goal": m.group(1)}
+    if t in ("world status", "status report", "what's my status", "system status"):
+        return "", {"type": "world"}
+    if t in ("what changed", "anything new"):
+        return "", {"type": "twin"}
+    if t in ("read the screen", "what's on my screen", "look at the screen"):
+        return "", {"type": "vision"}
+    m = re.match(r"^log (\w+) (\d+(?:\.\d+)?)$", t)
+    if m or t in ("how's my health", "health summary"):
+        return "", {"type": "health", "task": t}
+    if t in ("robot status", "robots"):
+        return "", {"type": "robot", "task": "status"}
+    m = re.match(r"^robot (\S+) (.+)$", t)
+    if m:
+        return "", {"type": "robot", "name": m.group(1), "task": m.group(2)}
+    m = re.match(r"^(?:run|execute) (?!.*\broutine\b)(.+)$", t)
+    if m:
+        return "Running it (security-gated).", {"type": "code", "code": m.group(1)}
+    if t in ("budget analysis", "analyze my spending"):
+        return "", {"type": "finance-agent"}
 
     # ---- profiles (v1.2) ----------------------------------------------------
     m = re.match(r"^(?:create|new) profile (.+)$", t)
@@ -385,6 +413,41 @@ def perform(action):
             if steps:
                 return summary + f" (steps: {len(steps)})"
             return summary
+        elif kind == "ceo":
+            from . import agents, config
+
+            ceo = agents.CEOAgent(config.load(), VAULT, CONFIRM)
+            summary, _report = ceo.execute(action["goal"])
+            return summary
+        elif kind == "world":
+            from . import config, world
+
+            return world.status_line(world.snapshot(config.load()))
+        elif kind == "twin":
+            from . import twin
+
+            return twin.diff()
+        elif kind == "vision":
+            from . import vision
+
+            return vision.describe()
+        elif kind == "health":
+            from . import agents
+
+            return agents.health_log(action["task"])
+        elif kind == "robot":
+            from . import robotics
+
+            return robotics.status() if action["task"] == "status" \
+                else robotics.send(action.get("name", ""), action["task"])
+        elif kind == "code":
+            from . import agents, config
+
+            return agents.CodingAgent(config.load(), VAULT, CONFIRM).run("run " + action["code"])
+        elif kind == "finance-agent":
+            from . import agents, config
+
+            return agents.FinanceAgent(config.load(), VAULT, CONFIRM).run("analyze")
         elif kind == "guide":
             from . import config, guide
 
