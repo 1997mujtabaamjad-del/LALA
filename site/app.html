@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>LALA v1.2 — standalone preview</title>
+<title>LALA v2.1 — standalone preview</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E"/>
 <style>
 :root{--bg-0:#050507;--bg-1:#0a0a0e;--panel:rgba(255,255,255,.028);--pb:rgba(34,211,238,.28);
@@ -462,7 +462,10 @@ $("#cfg-close").onclick=()=>$("#modal").style.display="none";
 $("#cfg-save").onclick=()=>{CFG={key:$("#cfg-key").value.trim(),brain:$("#cfg-brain").value.trim(),elKey:$("#cfg-el").value.trim()};localStorage.setItem("lala.cfg",JSON.stringify(CFG));$("#modal").style.display="none";toast(CFG.key||CFG.brain?"🧠 Brain connected.":CFG.elKey?"🔊 ElevenLabs voice on.":"Brain off — offline commands still work.");};
 
 renderTasks();renderHelp();renderCal();setupMic();
-log("sys","LALA v1.2 standalone loaded — ▶ Run demo, or click the brain. ⚙ adds the LLM brain.");
+document.title="LALA v2.1 — ready ✔";
+toast("✔ LALA v2.1 ready — click once, then speak or press ▶ Run demo");
+window.addEventListener("pointerdown",function ping(){toast("✔ LALA responding — say “hey laala…” or click a node");window.removeEventListener("pointerdown",ping);});
+log("sys","LALA v2.1 standalone loaded — ▶ Run demo, or click the brain. ⚙ adds the LLM brain.");
 </script>
 </body>
 </html>
