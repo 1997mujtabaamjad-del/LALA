@@ -94,6 +94,8 @@ def speak_stream(chunks, cfg, stop_event=None):
     """Speak a streaming reply with minimal latency: the first sentence is
     synthesized while the LLM is still generating the rest. Returns full text.
     A set `stop_event` (barge-in) aborts any remaining sentences."""
+    if resolve_provider(cfg) == "elevenlabs":
+        return _speak_stream_el(chunks, cfg, stop_event)
     import queue
     import threading
 
@@ -191,26 +193,16 @@ def _speak_piper(text, stop_event=None):
         pass
 
 
-def _speak_elevenlabs(text, cfg, stop_event=None):
-    from . import elevenlabs
-
-    if stop_event is not None and stop_event.is_set():
-        return
-    mp3_bytes = elevenlabs.synthesize(
-        cfg["elevenlabs_api_key"],
-        cfg["elevenlabs_voice_id"],
-        text,
-        model=cfg.get("elevenlabs_model", elevenlabs.DEFAULT_MODEL),
-    )
+def _play_mp3(mp3_bytes, stop_event=None):
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
         tmp.write(mp3_bytes)
         mp3 = tmp.name
     played = False
-    try:  # decode with ffmpeg when available
+    try:
         wav = mp3 + ".wav"
         subprocess.run(["ffmpeg", "-y", "-i", mp3, wav], check=True,
                        capture_output=True, timeout=60)
-        _play_wav(wav, stop_event)
+        _play_wav(wav)
         played = True
         try:
             os.unlink(wav)
@@ -219,7 +211,6 @@ def _speak_elevenlabs(text, cfg, stop_event=None):
     except (OSError, subprocess.SubprocessError):
         pass
     if not played:
-        # keep the audio around so it isn't wasted (e.g. headless machines)
         keep = os.path.join(config.DATA_DIR, "last_speech.mp3")
         os.makedirs(config.DATA_DIR, exist_ok=True)
         os.replace(mp3, keep)
@@ -228,3 +219,49 @@ def _speak_elevenlabs(text, cfg, stop_event=None):
         os.unlink(mp3)
     except OSError:
         pass
+
+
+def _speak_stream_el(chunks, cfg, stop_event):
+    """ElevenLabs streaming: sentences synthesize in a 2-worker pool while
+    earlier sentences play — first audio lands in ~300 ms."""
+    import queue
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    from . import elevenlabs
+
+    key = cfg["elevenlabs_api_key"]
+    voice = cfg["elevenlabs_voice_id"]
+    model = cfg.get("elevenlabs_model", elevenlabs.DEFAULT_MODEL)
+
+    q = queue.Queue()
+
+    def producer():
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            buf = ""
+            for chunk in chunks:
+                full.append(chunk)
+                if stop_event is not None and stop_event.is_set():
+                    break
+                buf += chunk
+                sentences, buf = split_sentences(buf)
+                for s in sentences:
+                    q.put(ex.submit(elevenlabs.synthesize, key, voice, s, model))
+            if buf.strip():
+                q.put(ex.submit(elevenlabs.synthesize, key, voice, buf.strip(), model))
+            q.put(None)
+
+    full = []
+    t = threading.Thread(target=producer, daemon=True)
+    t.start()
+    while True:
+        item = q.get()
+        if item is None:
+            break
+        if stop_event is not None and stop_event.is_set():
+            break
+        try:
+            _play_mp3(item.result(), stop_event)
+        except Exception:  # noqa: BLE001
+            pass
+    return "".join(full) if full else ""

@@ -151,8 +151,34 @@ if ('speechSynthesis' in window) {
   speechSynthesis.onvoiceschanged = pickVoice;
 }
 
+function fetchEleven(sentence) {
+  return fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM/stream', {
+    method: 'POST',
+    headers: { 'xi-api-key': state.settings.elevenlabsKey, 'content-type': 'application/json' },
+    body: JSON.stringify({ text: sentence, model_id: 'eleven_turbo_v2_5' })
+  }).then((r) => { if (!r.ok) throw new Error('el'); return r.blob(); });
+}
+
+function playBlob(blob) {
+  return new Promise((res) => {
+    const a = new Audio(URL.createObjectURL(blob));
+    a.onended = res; a.onerror = res; a.play();
+  });
+}
+
+async function speakEleven(text) {
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  let prefetch = null;
+  for (let i = 0; i < sentences.length; i++) {
+    const cur = prefetch || fetchEleven(sentences[i]);
+    prefetch = i + 1 < sentences.length ? fetchEleven(sentences[i + 1]) : null;
+    try { await playBlob(await cur); } catch { break; }
+  }
+}
+
 function speak(text, { cancel = true } = {}) {
   if (!state.settings.voiceResponses || !text) return;
+  if (state.settings.elevenlabsKey) { speakEleven(text); armBargeMonitor(); return; }
   if (!('speechSynthesis' in window)) return;
   if (cancel) speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
@@ -1809,6 +1835,7 @@ function renderSettingsForm() {
   $$('input[name="engine"]').forEach((r) => { r.checked = r.value === s.engine; });
   $('#openai-key').value = s.openaiKey || '';
   $('#deepgram-key').value = s.deepgramKey || '';
+  $('#elevenlabs-key').value = s.elevenlabsKey || '';
   $('#whisper-model').value = s.whisperModel || 'whisper-1';
   $('#language').value = s.language || 'en-US';
   $('#voice-responses').checked = !!s.voiceResponses;
@@ -1948,6 +1975,7 @@ function bindUI() {
     state.settings.engine = ($$('input[name="engine"]').find((r) => r.checked) || {}).value || 'auto';
     state.settings.openaiKey = $('#openai-key').value.trim();
     state.settings.deepgramKey = $('#deepgram-key').value.trim();
+    state.settings.elevenlabsKey = $('#elevenlabs-key').value.trim();
     state.settings.whisperModel = $('#whisper-model').value;
     state.settings.language = $('#language').value;
     state.settings.voiceResponses = $('#voice-responses').checked;

@@ -178,6 +178,8 @@ label{display:block;font-size:13px;margin:10px 0}
     <h3 style="margin:0 0 10px;color:#22d3ee">🧠 Brain settings</h3>
     <label>OpenAI API key (enables smart answers + autonomous tools)
       <input id="cfg-key" type="password" placeholder="sk-… (optional)"/></label>
+    <label>ElevenLabs API key (premium neural voice, streamed)
+      <input id="cfg-el" type="password" placeholder="optional"/></label>
     <label>…or local brain URL (run <code>python -m assistant --serve</code>)
       <input id="cfg-brain" type="text" placeholder="http://127.0.0.1:8420"/></label>
     <div class="row" style="margin-top:12px">
@@ -209,7 +211,12 @@ function stopWatch(k){if(watches[k])clearInterval(watches[k]);delete watches[k];
 
 function toast(m){const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(t._x);t._x=setTimeout(()=>t.style.display="none",4200);}
 function log(w,m){const d=document.createElement("div");d.className="le "+w;d.innerHTML='<span class="who">'+(w==="you"?"YOU":w==="lala"?"LALA":"SYS")+"</span><span></span>";d.lastChild.textContent=m;$("#log").prepend(d);}
-function speak(t){if(!("speechSynthesis" in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=1.03;speechSynthesis.speak(u);}
+function fetchEl(s){return fetch("https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM/stream",{method:"POST",headers:{"xi-api-key":CFG.elKey,"content-type":"application/json"},body:JSON.stringify({text:s,model_id:"eleven_turbo_v2_5"})}).then(r=>{if(!r.ok)throw 0;return r.blob();});}
+function playBlob(b){return new Promise(res=>{const a=new Audio(URL.createObjectURL(b));a.onended=res;a.onerror=res;a.play();});}
+async function speakEl(text){const sents=text.match(/[^.!?]+[.!?]+/g)||[text];let prefetch=null;
+ for(let i=0;i<sents.length;i++){const cur=prefetch||fetchEl(sents[i]);prefetch=i+1<sents.length?fetchEl(sents[i+1]):null;
+  try{await playBlob(await cur);}catch{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(sents[i]);speechSynthesis.speak(u);await new Promise(r=>{u.onend=r;});}}}
+function speak(t){if(CFG.elKey){speakEl(t);return;}if(!("speechSynthesis" in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=1.03;speechSynthesis.speak(u);}
 function respond(t){log("lala",t);const r=$("#response");r.textContent=t;r.style.display="block";speak(t);}
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitSilence(){if(!("speechSynthesis" in window))return delay(500);await delay(200);const t0=Date.now();while((speechSynthesis.speaking||speechSynthesis.pending)&&Date.now()-t0<5000)await delay(120);}
@@ -353,7 +360,7 @@ $("#c-exp").onclick=expIcs;
 $("#l-on").onclick=()=>handle("turn on the lights");$("#l-off").onclick=()=>handle("turn off the lights");
 for(const[c,hex]of Object.entries(LC)){const b=document.createElement("button");b.style.background=hex;b.title=c;b.onclick=()=>handle("lights to "+c);$("#l-sw").appendChild(b);}
 /* ---------------- brain (LLM + tools) ---------------- */
-let CFG=JSON.parse(localStorage.getItem("lala.cfg")||'{"key":"","brain":""}');
+let CFG=JSON.parse(localStorage.getItem("lala.cfg")||'{"key":"","brain":"","elKey":""}');
 const TOOLS=[
  {type:"function",function:{name:"get_weather",description:"Current weather + forecast for a city",parameters:{type:"object",properties:{city:{type:"string"}},required:[]}}},
  {type:"function",function:{name:"web_search",description:"Look up a fact online",parameters:{type:"object",properties:{query:{type:"string"}},required:["query"]}}},
@@ -405,9 +412,9 @@ async function brain(text){
  }
  return null;
 }
-$("#gear").onclick=()=>{$("#cfg-key").value=CFG.key||"";$("#cfg-brain").value=CFG.brain||"";$("#modal").style.display="grid";};
+$("#gear").onclick=()=>{$("#cfg-key").value=CFG.key||"";$("#cfg-brain").value=CFG.brain||"";$("#cfg-el").value=CFG.elKey||"";$("#modal").style.display="grid";};
 $("#cfg-close").onclick=()=>$("#modal").style.display="none";
-$("#cfg-save").onclick=()=>{CFG={key:$("#cfg-key").value.trim(),brain:$("#cfg-brain").value.trim()};localStorage.setItem("lala.cfg",JSON.stringify(CFG));$("#modal").style.display="none";toast(CFG.key||CFG.brain?"🧠 Brain connected.":"Brain off — offline commands still work.");};
+$("#cfg-save").onclick=()=>{CFG={key:$("#cfg-key").value.trim(),brain:$("#cfg-brain").value.trim(),elKey:$("#cfg-el").value.trim()};localStorage.setItem("lala.cfg",JSON.stringify(CFG));$("#modal").style.display="none";toast(CFG.key||CFG.brain?"🧠 Brain connected.":CFG.elKey?"🔊 ElevenLabs voice on.":"Brain off — offline commands still work.");};
 
 renderTasks();renderHelp();renderCal();setupMic();
 log("sys","LALA v1.2 standalone loaded — ▶ Run demo, or click the brain. ⚙ adds the LLM brain.");

@@ -22,7 +22,15 @@ Downloads the `v1.2` tag, creates the venv + deps, adds **Start Menu & Desktop
 shortcuts**, offers **start-at-login** and the optional Electron UI, then launches
 LALA. Equivalent file-based: `powershell -ExecutionPolicy Bypass -File scripts\install.ps1`.
 
-**Linux / macOS:** `install.sh` (or `bash install.sh`)
+**macOS one-liner:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/1997mujtabaamjad-del/LALA/v1.2/scripts/install-mac.sh | bash
+```
+
+Downloads the tag, builds the venv, installs `~/bin/lala`, offers start-at-login.
+
+**Linux:** `install.sh` (or `bash install.sh`)
 
 Both create a venv, install every dependency (STT/TTS/VAD/wake + optional Electron
 UI), add a **Start Menu / app-menu / Desktop launcher**, then offer the milestone
