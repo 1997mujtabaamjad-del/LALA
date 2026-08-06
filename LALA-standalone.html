@@ -12,6 +12,15 @@
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 #snow{position:fixed;inset:0;z-index:-1;opacity:.5;pointer-events:none}
 .flapline{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+/* Teams mission control */
+.teamgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tagent{border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:10px;background:rgba(255,255,255,.03);text-align:center;font-size:12px;color:#8f9ab0;transition:all .3s}
+.tagent b{display:block;color:#eef1f8;font-size:13px}
+.tagent .st{display:inline-block;margin-top:6px;padding:2px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.4);font-size:10px}
+.tagent.work{border-color:#fbbf24;box-shadow:0 0 14px rgba(251,191,36,.35)}
+.tagent.work .st{border-color:#fbbf24;color:#fbbf24}
+.tagent.done{border-color:#34d399;box-shadow:0 0 14px rgba(52,211,153,.35)}
+.tagent.done .st{border-color:#34d399;color:#34d399}
 /* ChromaGrid (react-bits equivalent) */
 .chroma-grid{position:relative;display:grid;grid-template-columns:repeat(auto-fit,220px);justify-content:center;gap:.6rem;padding:.5rem;--x:50%;--y:50%;--r:180px}
 .chroma-card{position:relative;display:flex;flex-direction:column;width:220px;border-radius:16px;overflow:hidden;border:1px solid #333;transition:border-color .3s ease;background:var(--card-gradient);--mouse-x:50%;--mouse-y:50%;--spotlight-color:rgba(255,255,255,.3);cursor:pointer}
@@ -187,6 +196,7 @@ label{display:block;font-size:13px;margin:10px 0}
       <button class="tab" data-t="skills">Skills</button>
       <button class="tab" data-t="help">Help</button>
       <button class="tab" data-t="agents">Agents</button>
+      <button class="tab" data-t="teams">Teams</button>
     </div>
     <div class="pane on" id="p-log"><div class="log" id="log"></div></div>
     <div class="pane" id="p-tasks"><p class="muted">▶ runs the behavior + speaks the reply.</p><div id="tasks"></div></div>
@@ -217,6 +227,15 @@ label{display:block;font-size:13px;margin:10px 0}
         <div class="chroma-overlay"></div>
         <div class="chroma-fade"></div>
       </div>
+    </div>
+    <div class="pane" id="p-teams">
+      <p class="muted">Mission control: give the team a goal and watch the CEO delegate live.</p>
+      <div class="teamgrid" id="teamgrid"></div>
+      <div class="row" style="margin-top:10px">
+        <input id="team-goal" placeholder="e.g. prepare everything for tomorrow's interview"/>
+        <button class="btn accent" id="team-go">Assemble</button>
+      </div>
+      <div class="skill" id="team-log">Mission log appears here.</div>
     </div>
   </section>
 </main>
@@ -605,6 +624,37 @@ SplitFlap(document.getElementById("flap"),{words:['LAUNCH READY','SYNC ONLINE','
    if(t>=1){glitch=false;h.style.filter=v.style.filter="none";}}
   requestAnimationFrame(loop);
  })();
+})();
+/* Teams mission control */
+(function(){
+ const TEAM=[["ceo","🧑‍","CEO"],["research","🔬","Research"],["coding","🧑‍","Coding"],["vision","👁","Vision"],["security","🛡","Security"],["finance","💰","Finance"],["scheduler","🗓","Scheduler"],["health","❤️","Health"],["home","🏠","Home"]];
+ const grid=document.getElementById("teamgrid");if(!grid)return;
+ const tiles={};
+ TEAM.forEach(([id,ic,nm])=>{const d=document.createElement("div");d.className="tagent";d.innerHTML=`<span style="font-size:22px">${ic}</span><b>${nm}</b><span class="st">idle</span>`;grid.appendChild(d);tiles[id]=d;});
+ const set=(id,st)=>{const t=tiles[id];if(!t)return;t.className="tagent "+st;t.querySelector(".st").textContent=st;};
+ const logEl=document.getElementById("team-log");
+ const log=m=>{logEl.textContent=m;};
+ function stepsFor(g){g=(g||"").toLowerCase();
+  if(g.includes("interview"))return[["research","company overview + recent news"],["research","last 3 news items"],["coding","open résumé"],["ceo","draft 5 likely questions"],["scheduler","reminder 1h before"]];
+  if(g.includes("morning")||g.includes("day"))return[["scheduler","briefing"],["research","weather"],["scheduler","today's events"]];
+  if(g.includes("trip")||g.includes("travel"))return[["research","destination weather"],["scheduler","calendar conflicts"],["finance","budget summary"]];
+  return[["research",g||"the goal"],["scheduler","follow-up reminder"],["ceo","summary & next step"]];}
+ const delay=ms=>new Promise(r=>setTimeout(r,ms));
+ async function run(goal){
+  log("CEO: decomposing “"+goal+"” …");
+  const steps=stepsFor(goal);
+  for(const[ag,task]of steps){
+   set(ag,"work");log("→ "+ag.toUpperCase()+" working: "+task);
+   await delay(700);
+   set(ag,"done");log("✔ "+ag.toUpperCase()+" done: "+task);
+  }
+  set("ceo","work");await delay(500);set("ceo","done");
+  const sum="Goal “"+goal+"” complete: "+steps.length+" steps across "+new Set(steps.map(s=>s[0])).size+" agents.";
+  log("CEO: "+sum);
+  if("speechSynthesis" in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(sum));}
+  setTimeout(()=>TEAM.forEach(([id])=>set(id,"idle")),4000);
+ }
+ document.getElementById("team-go").onclick=()=>{const g=document.getElementById("team-goal").value.trim()||"prepare my day";run(g);};
 })();
 /* ChromaGrid (react-bits equivalent, no GSAP) */
 (function(){

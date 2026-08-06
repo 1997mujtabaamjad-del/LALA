@@ -1757,6 +1757,53 @@ function renderTasks() {
 
 /* ------------------------------------------------------- Tasks tab end */
 
+/* ------------------------------------------------------- Teams tab */
+const TEAM = [
+  ['ceo', '🧑‍💼', 'CEO'], ['research', '🔬', 'Research'], ['coding', '🧑‍💻', 'Coding'],
+  ['vision', '👁️', 'Vision'], ['security', '🛡️', 'Security'], ['finance', '💰', 'Finance'],
+  ['scheduler', '🗓️', 'Scheduler'], ['health', '❤️', 'Health'], ['home', '🏠', 'Home']
+];
+
+function stepsForGoal(g) {
+  g = (g || '').toLowerCase();
+  if (g.includes('interview')) return [['research', 'company overview + recent news'], ['research', 'last 3 news items'], ['coding', 'open résumé'], ['ceo', 'draft 5 likely questions'], ['scheduler', 'reminder 1h before']];
+  if (g.includes('morning') || g.includes('day')) return [['scheduler', 'briefing'], ['research', 'weather'], ['scheduler', "today's events"]];
+  if (g.includes('trip') || g.includes('travel')) return [['research', 'destination weather'], ['scheduler', 'calendar conflicts'], ['finance', 'budget summary']];
+  return [['research', g || 'the goal'], ['scheduler', 'follow-up reminder'], ['ceo', 'summary & next step']];
+}
+
+function initTeams() {
+  const grid = $('#teamgrid');
+  if (!grid) return;
+  const tiles = {};
+  TEAM.forEach(([id, ic, nm]) => {
+    const d = document.createElement('div');
+    d.className = 'tagent';
+    d.innerHTML = `<span style="font-size:22px">${ic}</span><b>${nm}</b><span class="st">idle</span>`;
+    grid.appendChild(d);
+    tiles[id] = d;
+  });
+  const set = (id, st) => { const t = tiles[id]; if (!t) return; t.className = 'tagent ' + st; t.querySelector('.st').textContent = st; };
+  const logEl = $('#team-log');
+
+  $('#team-go').addEventListener('click', async () => {
+    const goal = $('#team-goal').value.trim() || 'prepare my day';
+    logEl.textContent = 'CEO: decomposing “' + goal + '” …';
+    if (desktop) askBrain('team ' + goal).then((b) => { if (b) logEl.textContent = 'CEO (real): ' + b; }).catch(() => {});
+    const steps = stepsForGoal(goal);
+    for (const [ag, task] of steps) {
+      set(ag, 'work'); logEl.textContent = '→ ' + ag.toUpperCase() + ' working: ' + task;
+      await delay(700);
+      set(ag, 'done'); logEl.textContent = '✔ ' + ag.toUpperCase() + ' done: ' + task;
+    }
+    set('ceo', 'work'); await delay(500); set('ceo', 'done');
+    const sum = 'Goal “' + goal + '” complete: ' + steps.length + ' steps across ' + new Set(steps.map((s) => s[0])).size + ' agents.';
+    logEl.textContent = 'CEO: ' + sum;
+    speak(sum);
+    setTimeout(() => TEAM.forEach(([id]) => set(id, 'idle')), 4000);
+  });
+}
+
 /* ------------------------------------------------------------ UI binding */
 
 function switchTab(name) {
@@ -2053,6 +2100,7 @@ async function init() {
 
   bindUI();
   bindSkills();
+  initTeams();
   renderTasks();
   renderCommands();
   updateRoleChip();

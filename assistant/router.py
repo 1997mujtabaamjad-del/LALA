@@ -172,6 +172,9 @@ def handle(text, memory=None):
     m = re.match(r"^(?:prepare|plan|take care of|get ready for|organize) (.+)$", t)
     if m:
         return "", {"type": "ceo", "goal": m.group(1)}
+    m = re.match(r"^(?:team|assemble the team for|agents handle) (.+)$", t)
+    if m:
+        return "", {"type": "ceo", "goal": m.group(1)}
     if t in ("world status", "status report", "what's my status", "system status"):
         return "", {"type": "world"}
     if t in ("what changed", "anything new"):

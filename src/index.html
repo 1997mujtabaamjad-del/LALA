@@ -108,7 +108,19 @@
         <button class="tab" data-tab="commands" role="tab">Commands</button>
         <button class="tab" data-tab="settings" role="tab">Settings</button>
         <button class="tab" data-tab="help" role="tab">Help</button>
+        <button class="tab" data-tab="teams" role="tab">Teams</button>
       </nav>
+
+      <!-- Teams mission control -->
+      <div id="tab-teams" class="tabpane">
+        <p class="muted">Mission control: give the team a goal and watch the CEO delegate live. On desktop with the brain running, the real agents execute.</p>
+        <div class="teamgrid" id="teamgrid"></div>
+        <div class="row" style="margin-top:10px">
+          <input id="team-goal" placeholder="e.g. prepare everything for tomorrow's interview" />
+          <button id="team-go" class="btn btn-accent">Assemble</button>
+        </div>
+        <div class="skill" id="team-log">Mission log appears here.</div>
+      </div>
 
       <!-- Tasks: one-click preview of every capability -->
       <div id="tab-tasks" class="tabpane">
