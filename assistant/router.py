@@ -271,8 +271,7 @@ def handle(text, memory=None):
         return "", {"type": "briefing"}
     m = re.match(r"^add expense (\d+(?:\.\d+)?) for (.+)$", t)
     if m:
-        return f"Recorded {float(m.group(1)):,.0f} for {m.group(2)}.", \
-            {"type": "expense", "amount": float(m.group(1)), "desc": m.group(2)}
+        return "", {"type": "expense", "amount": float(m.group(1)), "desc": m.group(2)}
     if t in ("finance summary", "spend summary", "expenses summary"):
         return "", {"type": "finance-summary"}
     m = re.match(r"^add contact (.+?) at (.+)$", t)
