@@ -1,21 +1,21 @@
 @echo off
 rem ============================================================
-rem  LALA Desktop App — double-click me from ANYWHERE.
+rem  LALA Desktop App - double-click me from ANYWHERE.
 rem  Finds your LALA folder by itself, starts the brain quietly,
 rem  and opens the real desktop window with the brain logo.
 rem ============================================================
 setlocal enabledelayedexpansion
 
-rem ---- find the LALA folder (where install was run) ----
+rem ---- find the LALA folder: same place as me, or search for lala.bat ----
 set "LALA_DIR="
 if exist "%~dp0.venv\Scripts\python.exe" if exist "%~dp0package.json" set "LALA_DIR=%~dp0"
 if not defined LALA_DIR (
-  for /d %%D in ("%USERPROFILE%\Downloads\LALA-*" "%USERPROFILE%\OneDrive\Desktop\LALA-*" "%USERPROFILE%\Desktop\LALA-*" "%USERPROFILE%\Documents\LALA-*" "%USERPROFILE%\LALA") do (
-    if not defined LALA_DIR if exist "%%D\.venv\Scripts\python.exe" if exist "%%D\package.json" set "LALA_DIR=%%D\"
+  for /f "delims=" %%F in ('dir /s /b "%USERPROFILE%\Downloads\lala.bat" "%USERPROFILE%\OneDrive\Desktop\lala.bat" "%USERPROFILE%\Desktop\lala.bat" "%USERPROFILE%\Documents\lala.bat" "%USERPROFILE%\lala.bat" 2^>nul') do (
+    if not defined LALA_DIR set "LALA_DIR=%%~dpF"
   )
 )
 if not defined LALA_DIR (
-  echo LALA folder not found. Run "install" once first, then double-click me again.
+  echo LALA folder not found. Double-click "install" once first, then me.
   pause
   exit /b 1
 )
