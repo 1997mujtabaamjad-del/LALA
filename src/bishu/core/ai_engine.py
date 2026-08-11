@@ -1,4 +1,4 @@
-"""AI Engine supporting NVIDIA Nemotron-3 Ultra, MiniMax API, local Ollama LLMs with CPU thread throttling, and high-IQ 'Beauty with Brains' local reasoning."""
+"""AI Engine supporting NVIDIA Nemotron-3 Ultra 550B, MiniMax API, local Ollama LLMs with CPU thread throttling, and high-IQ 'Beauty with Brains' local reasoning."""
 
 import os
 import json
@@ -13,9 +13,17 @@ except Exception:
     psutil = None
     HAS_PSUTIL = False
 
+try:
+    import openai
+    HAS_OPENAI = True
+except Exception:
+    openai = None
+    HAS_OPENAI = False
+
 from bishu.config import (
     NVIDIA_API_KEY,
     NVIDIA_MODEL,
+    NVIDIA_BASE_URL,
     MINIMAX_API_KEY,
     MINIMAX_GROUP_ID,
     CPU_CRITICAL_LLM_LIMIT
@@ -23,7 +31,7 @@ from bishu.config import (
 
 
 class AIEngine:
-    """High-IQ 'Beauty with Brains' Interface to NVIDIA Nemotron-3 Ultra, local Ollama LLMs & MiniMax Cloud AI with CPU protection."""
+    """High-IQ 'Beauty with Brains' Interface to NVIDIA Nemotron-3 Ultra 550B, local Ollama LLMs & MiniMax Cloud AI with CPU protection."""
 
     BEAUTY_WITH_BRAINS_SYSTEM = (
         "You are Laalaa, a brilliant, highly articulate, witty, and warm local AI companion (like J.A.R.V.I.S. with charm, high IQ, and elegance). "
@@ -35,47 +43,18 @@ class AIEngine:
     def __init__(self, model_name: str = "gemma2:2b", api_url: str = "http://localhost:11434/api/generate"):
         self.model_name = model_name
         self.api_url = api_url
-        self.nvidia_key = os.getenv("NVIDIA_API_KEY", NVIDIA_API_KEY)
-        self.nvidia_model = os.getenv("NVIDIA_MODEL", NVIDIA_MODEL)
+        self.nvidia_key = os.getenv("NVIDIA_API_KEY", NVIDIA_API_KEY).strip()
+        self.nvidia_model = os.getenv("NVIDIA_MODEL", NVIDIA_MODEL).strip()
+        self.nvidia_base_url = os.getenv("NVIDIA_BASE_URL", NVIDIA_BASE_URL).strip()
 
     def generate(self, prompt: str) -> str:
-        """Generate response using NVIDIA Nemotron-3 API if key exists, MiniMax API, local Ollama, or high-IQ local brain."""
+        """Generate response using NVIDIA Nemotron-3 Ultra 550B API if key exists, MiniMax API, local Ollama, or high-IQ local brain."""
         try:
-            # 1. Try NVIDIA Nemotron-3 Cloud API (NVIDIA NIM build.nvidia.com)
+            # 1. Try NVIDIA Nemotron-3 Ultra 550B Cloud API (build.nvidia.com)
             if self.nvidia_key:
-                try:
-                    print(f"[AIEngine] Querying NVIDIA Nemotron-3 Model ('{self.nvidia_model}')...")
-                    url = "https://integrate.api.nvidia.com/v1/chat/completions"
-                    payload = json.dumps({
-                        "model": self.nvidia_model,
-                        "messages": [
-                            {"role": "system", "content": self.BEAUTY_WITH_BRAINS_SYSTEM},
-                            {"role": "user", "content": prompt}
-                        ],
-                        "temperature": 0.5,
-                        "top_p": 1,
-                        "max_tokens": 512
-                    }).encode("utf-8")
-
-                    req = urllib.request.Request(
-                        url,
-                        data=payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "Authorization": f"Bearer {self.nvidia_key}",
-                            "User-Agent": "LaalaaAssistant/1.0"
-                        }
-                    )
-
-                    with urllib.request.urlopen(req, timeout=12) as resp:
-                        res_data = json.loads(resp.read().decode("utf-8"))
-                        choices = res_data.get("choices", [])
-                        if choices:
-                            text = choices[0].get("message", {}).get("content", "")
-                            if text:
-                                return self._clean_reply(text)
-                except Exception as err:
-                    print(f"[AIEngine] NVIDIA Nemotron-3 API info/fallback: {err}")
+                res_nvidia = self._query_nvidia_nemotron(prompt)
+                if res_nvidia:
+                    return self._clean_reply(res_nvidia)
 
             # 2. Try MiniMax Cloud AI API
             framed_prompt = f"{self.BEAUTY_WITH_BRAINS_SYSTEM}\n\n{prompt}"
@@ -116,7 +95,7 @@ class AIEngine:
                     print(f"[AIEngine] System CPU usage is critically high ({curr_cpu:.1f}% >= {CPU_CRITICAL_LLM_LIMIT}%). Protecting laptop cores.")
                     return self._smart_local_brain(prompt)
 
-            # 3. Fallback to local Ollama High-IQ / Nemotron-3 Model with thread cap
+            # 3. Fallback to local Ollama High-IQ / Nemotron Model with thread cap
             ollama_reply = self._generate_ollama(framed_prompt)
             if ollama_reply:
                 return self._clean_reply(ollama_reply)
@@ -126,6 +105,74 @@ class AIEngine:
 
         # High-IQ Local Brain Fallback when offline or CPU busy
         return self._smart_local_brain(prompt)
+
+    def _query_nvidia_nemotron(self, prompt: str) -> str:
+        """Query NVIDIA Nemotron-3 Ultra 550B via OpenAI client or REST NIM API matching exact NVIDIA NIM schema."""
+        print(f"[AIEngine] Querying NVIDIA Nemotron-3 Ultra 550B Model ('{self.nvidia_model}')...")
+
+        # 1a. Query via official OpenAI Python Client if installed
+        if HAS_OPENAI and openai:
+            try:
+                client = openai.OpenAI(
+                    base_url=self.nvidia_base_url,
+                    api_key=self.nvidia_key
+                )
+                completion = client.chat.completions.create(
+                    model=self.nvidia_model,
+                    messages=[
+                        {"role": "system", "content": self.BEAUTY_WITH_BRAINS_SYSTEM},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=1,
+                    top_p=0.95,
+                    max_tokens=4096,
+                    extra_body={"chat_template_kwargs": {"enable_thinking": True}, "reasoning_budget": 4096}
+                )
+                if completion and completion.choices:
+                    content = completion.choices[0].message.content
+                    if content:
+                        return content
+            except Exception as err:
+                print(f"[AIEngine] OpenAI client NVIDIA call info: {err}")
+
+        # 1b. Query via REST API (Universal fallback)
+        try:
+            url = f"{self.nvidia_base_url.rstrip('/')}/chat/completions"
+            payload = json.dumps({
+                "model": self.nvidia_model,
+                "messages": [
+                    {"role": "system", "content": self.BEAUTY_WITH_BRAINS_SYSTEM},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 1,
+                "top_p": 0.95,
+                "max_tokens": 4096,
+                "chat_template_kwargs": {"enable_thinking": True},
+                "reasoning_budget": 4096
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.nvidia_key}",
+                    "User-Agent": "LaalaaAssistant/1.0"
+                }
+            )
+
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                choices = res_data.get("choices", [])
+                if choices:
+                    msg_data = choices[0].get("message", {})
+                    text = msg_data.get("content", "") or msg_data.get("reasoning_content", "")
+                    if text:
+                        return text
+        except Exception as err:
+            print(f"[AIEngine] REST API NVIDIA Nemotron info: {err}")
+
+        return ""
 
     def _generate_ollama(self, prompt: str) -> str:
         try:
@@ -154,8 +201,8 @@ class AIEngine:
             return ""
 
     def _get_available_ollama_model(self) -> str:
-        """Dynamically detect installed local models in order of high IQ & intelligence including Nemotron-3."""
-        priority_models = ["nemotron3", "nemotron-3", "nemotron", "llama-3.1-nemotron", "llama3.1", "gemma2", "deepseek-r1", "qwen2.5", "phi3", "mistral", "gemma"]
+        """Dynamically detect installed local models in order of high IQ & intelligence including Nemotron-3 Ultra."""
+        priority_models = ["nemotron-3-ultra", "nemotron3-ultra", "nemotron3", "nemotron-3", "nemotron", "llama-3.1-nemotron", "llama3.1", "gemma2", "deepseek-r1", "qwen2.5", "phi3", "mistral", "gemma"]
         try:
             req = urllib.request.Request("http://localhost:11434/api/tags")
             with urllib.request.urlopen(req, timeout=3) as resp:
