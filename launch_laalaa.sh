@@ -1,5 +1,5 @@
 #!/bin/bash
-# Laalaa Live Local Launcher — Auto-detects python3, python, and py launchers
+# Laalaa Live Local Launcher — Bypasses MS Store Alias
 
 cd "$(dirname "$0")"
 
@@ -9,12 +9,12 @@ fi
 
 export PYTHONPATH=src
 
-if command -v python3 &> /dev/null; then
+if command -v py &> /dev/null; then
+    py -3 -m bishu
+elif command -v python3 &> /dev/null; then
     python3 -m bishu
 elif command -v python &> /dev/null; then
     python -m bishu
-elif command -v py &> /dev/null; then
-    py -m bishu
 else
-    echo "Python not found in PATH! Please install Python 3.11."
+    echo "Python 3 not found in PATH! Please install Python 3.11."
 fi
