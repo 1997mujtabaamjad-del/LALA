@@ -1,4 +1,4 @@
-"""Automation engine utilizing PyWhatKit, PyAutoGUI, Subprocess, YOLO Vision AI, Graphify Knowledge Graph, Smart Home Engine, and Voice Engine."""
+"""Automation engine utilizing PyWhatKit, PyAutoGUI, Subprocess, YOLO Vision AI, Graphify Knowledge Graph, Smart Home Engine, Voice Engine, Avatar Engine, Vault Engine, and Research Engine."""
 
 import os
 import re
@@ -25,13 +25,15 @@ except Exception:
 
 
 class AutomationEngine:
-    """Runs automated system actions, app launchers, folder openers, media controls, YOLO Vision AI, Graphify Knowledge Graph, Smart Home Controls, and Voice/Identity Settings."""
+    """Runs automated system actions, app launchers, YOLO Vision, Smart Home Controls, 2D Avatar Gestures, Secure File Vault, and Deep Research Generator."""
 
     def __init__(self):
         self.vision_ai = None
         self.code_agent = None
         self.graph_engine = None
         self.smarthome_engine = None
+        self.vault_engine = None
+        self.research_engine = None
 
     def run(self, action: str, task: dict = None) -> tuple:
         """Execute action, returns (success: bool, description: str)."""
@@ -45,7 +47,86 @@ class AutomationEngine:
         if any(kw in action for kw in ["stop laalaa", "close laalaa", "exit laalaa", "band karo", "khatam karo", "alvida"]):
             return True, "EXIT_APP"
 
-        # 2. Custom Name & User Identity Commands ("call me Mujtaba", "my name is Boss", "mera naam kya hai")
+        # 2. Deep Research Report Generator (College Reports, Business Plans, Slide Deck PPTs)
+        elif "college report" in action or "academic report" in action or "research report" in action:
+            topic = action.replace("college report on", "").replace("college report", "").replace("research report on", "").replace("research report", "").strip()
+            if not self.research_engine:
+                from bishu.core.research_engine import ResearchEngine
+                from bishu.core.ai_engine import AIEngine
+                self.research_engine = ResearchEngine(ai_engine=AIEngine())
+            res = self.research_engine.generate_college_report(topic)
+            return True, res
+
+        elif "business plan" in action or "compile business" in action:
+            topic = action.replace("business plan for", "").replace("business plan on", "").replace("business plan", "").replace("compile business plan", "").strip()
+            if not self.research_engine:
+                from bishu.core.research_engine import ResearchEngine
+                from bishu.core.ai_engine import AIEngine
+                self.research_engine = ResearchEngine(ai_engine=AIEngine())
+            res = self.research_engine.generate_business_plan(topic)
+            return True, res
+
+        elif "slide deck" in action or "ppt presentation" in action or "create slides" in action or "make ppt" in action:
+            topic = action.replace("slide deck on", "").replace("slide deck", "").replace("ppt presentation on", "").replace("create slides for", "").replace("make ppt on", "").strip()
+            if not self.research_engine:
+                from bishu.core.research_engine import ResearchEngine
+                from bishu.core.ai_engine import AIEngine
+                self.research_engine = ResearchEngine(ai_engine=AIEngine())
+            res = self.research_engine.generate_slide_deck(topic)
+            return True, res
+
+        # 3. Secure File Vault Commands (Encrypt, Hide/Unhide, Password Lock)
+        elif "encrypt directory" in action or "encrypt folder" in action:
+            parts = action.split(" password ")
+            d_path = parts[0].replace("encrypt directory", "").replace("encrypt folder", "").strip()
+            p_word = parts[1].strip() if len(parts) > 1 else "1234"
+            if not self.vault_engine:
+                from bishu.core.vault_engine import VaultEngine
+                self.vault_engine = VaultEngine()
+            return True, self.vault_engine.encrypt_directory(d_path, p_word)
+
+        elif "decrypt directory" in action or "decrypt folder" in action:
+            parts = action.split(" password ")
+            d_path = parts[0].replace("decrypt directory", "").replace("decrypt folder", "").strip()
+            p_word = parts[1].strip() if len(parts) > 1 else "1234"
+            if not self.vault_engine:
+                from bishu.core.vault_engine import VaultEngine
+                self.vault_engine = VaultEngine()
+            return True, self.vault_engine.decrypt_directory(d_path, p_word)
+
+        elif "hide file" in action or "hide folder" in action or "hide path" in action:
+            target = action.replace("hide file", "").replace("hide folder", "").replace("hide path", "").strip()
+            if not self.vault_engine:
+                from bishu.core.vault_engine import VaultEngine
+                self.vault_engine = VaultEngine()
+            return True, self.vault_engine.hide_path(target)
+
+        elif "unhide file" in action or "unhide folder" in action or "unhide path" in action:
+            target = action.replace("unhide file", "").replace("unhide folder", "").replace("unhide path", "").strip()
+            if not self.vault_engine:
+                from bishu.core.vault_engine import VaultEngine
+                self.vault_engine = VaultEngine()
+            return True, self.vault_engine.unhide_path(target)
+
+        elif "lock folder" in action or "password lock" in action:
+            parts = action.split(" password ")
+            f_path = parts[0].replace("lock folder", "").replace("password lock", "").strip()
+            p_word = parts[1].strip() if len(parts) > 1 else "1234"
+            if not self.vault_engine:
+                from bishu.core.vault_engine import VaultEngine
+                self.vault_engine = VaultEngine()
+            return True, self.vault_engine.lock_folder(f_path, p_word)
+
+        elif "unlock folder" in action:
+            parts = action.split(" password ")
+            f_path = parts[0].replace("unlock folder", "").strip()
+            p_word = parts[1].strip() if len(parts) > 1 else "1234"
+            if not self.vault_engine:
+                from bishu.core.vault_engine import VaultEngine
+                self.vault_engine = VaultEngine()
+            return True, self.vault_engine.unlock_folder(f_path, p_word)
+
+        # 4. Custom Name & User Identity Commands ("call me Mujtaba", "my name is Boss", "mera naam kya hai")
         elif action.startswith("call me ") or action.startswith("my name is ") or "mera naam " in action and ("hai" in action or "rakho" in action):
             name = (
                 action.replace("call me ", "")
@@ -68,7 +149,7 @@ class AutomationEngine:
             u_name = db.get_fact("user_name", default="Boss")
             return True, f"Aapka naam {u_name} hai!"
 
-        # 3. Dynamic NVIDIA Key Setup Command ("set nvidia key nvapi-...")
+        # 5. Dynamic NVIDIA Key Setup Command ("set nvidia key nvapi-...")
         elif "nvidia key" in action or "set nvidia" in action or "nvidia api" in action:
             key_str = action.replace("set nvidia key", "").replace("nvidia key", "").replace("set nvidia", "").replace("nvidia api", "").replace("=", "").strip()
             if key_str:
@@ -78,7 +159,7 @@ class AutomationEngine:
                 mem.set("NVIDIA_API_KEY", key_str)
                 return True, "NVIDIA API Key saved successfully! Laalaa is now connected to NVIDIA Nemotron-3 Ultra 550B."
 
-        # 4. Voice Customization Commands ("change voice to 1", "voice 1", "list voices")
+        # 6. Voice Customization Commands ("change voice to 1", "voice 1", "list voices")
         elif any(kw in action for kw in ["change voice", "voice change", "awaz badlo", "voice 0", "voice 1", "voice 2", "voice 3"]):
             numbers = re.findall(r'\d+', action)
             v_idx = int(numbers[0]) if numbers else 1
@@ -94,7 +175,7 @@ class AutomationEngine:
             v_summary = "Installed System Voices: " + ", ".join([f"[{i}] {name}" for i, name in enumerate(v_list)])
             return True, v_summary
 
-        # 5. Smart Home IoT Commands
+        # 7. Smart Home IoT Commands
         elif any(kw in action for kw in ["light", "pankha", "fan", "ac", "plug", "socket", "ghar ka status", "smart home"]):
             if not self.smarthome_engine:
                 from bishu.core.smarthome_engine import SmartHomeEngine
@@ -103,7 +184,7 @@ class AutomationEngine:
             if sh_success:
                 return True, sh_desc
 
-        # 6. Graphify Knowledge Graph Query
+        # 8. Graphify Knowledge Graph Query
         elif any(kw in action for kw in ["graphify", "knowledge graph", "memory graph", "show graph"]):
             if not self.graph_engine:
                 from bishu.core.graphify_engine import GraphifyEngine
@@ -111,7 +192,7 @@ class AutomationEngine:
             summary = self.graph_engine.get_summary()
             return True, summary
 
-        # 7. Autonomous Self-Correcting Code Generation
+        # 9. Autonomous Self-Correcting Code Generation
         elif action.startswith("code ") or "write code" in action or "make code" in action or "python script" in action:
             spec = action.replace("write code for", "").replace("write code", "").replace("make code for", "").replace("code ", "").strip()
             if not self.code_agent:
@@ -123,14 +204,14 @@ class AutomationEngine:
             print(final_code)
             return True, f"Code generated and verified for {spec}. Check terminal for output."
 
-        # 8. Pure Urdu / Hindi Self Introduction
+        # 10. Pure Urdu / Hindi Self Introduction
         elif any(kw in action for kw in ["tell me about yourself", "introduce yourself", "who are you", "who r u", "aap kaun hain", "kaun ho tum"]):
             from bishu.core.sqlite_engine import SQLiteEngine
             db = SQLiteEngine()
             u_name = db.get_fact("user_name", default="Boss")
             return True, f"Main Laalaa hoon, aapka shakhsi AI saathi, {u_name}! Main English, Hindi, aur Urdu zubaan mein aapki khidmat ke liye hazir hoon."
 
-        # 9. Pure Urdu / Hindi Greetings
+        # 11. Pure Urdu / Hindi Greetings
         elif any(kw in action for kw in ["aap kaise hain", "kiya haal hai", "aapka kiya haal hai", "kaise ho", "kaise ho aap", "how are you", "how r u"]):
             from bishu.core.sqlite_engine import SQLiteEngine
             db = SQLiteEngine()
@@ -142,7 +223,7 @@ class AutomationEngine:
             u_name = db.get_fact("user_name", default="Boss")
             return True, f"Walaikum Assalam {u_name}! Main Laalaa hoon, farmaiye main aapki kya khidmat kar sakta hoon?"
 
-        # 10. Camera Selection Commands
+        # 12. Camera Selection Commands
         elif any(kw in action for kw in ["camera 0", "webcam 0"]):
             if not self.vision_ai:
                 from bishu.core.vision_ai import VisionAIEngine
@@ -161,7 +242,7 @@ class AutomationEngine:
                 self.vision_ai = VisionAIEngine()
             return self.vision_ai.open_live_camera_preview(duration=12)
 
-        # 11. YOLO Vision Objects Scan
+        # 13. YOLO Vision Objects Scan
         elif any(kw in action for kw in ["yolo", "what do you see", "camera scan", "kya dikh raha hai"]):
             try:
                 if not self.vision_ai:
@@ -171,7 +252,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"YOLO vision error: {e}"
 
-        # 12. Play Songs on YouTube ("play <song>", "gaana bajao <song>")
+        # 14. Play Songs on YouTube ("play <song>", "gaana bajao <song>")
         elif action.startswith("play ") or "gaana bajao" in action or "song" in action:
             topic = action.replace("play ", "").replace("gaana bajao", "").replace("song", "").strip()
             if HAS_PYWHATKIT and pywhatkit:
@@ -183,7 +264,7 @@ class AutomationEngine:
             webbrowser.open(f"https://www.youtube.com/results?search_query={topic}")
             return True, f"YouTube par '{topic}' dhoond raha hoon."
 
-        # 13. Search Google
+        # 15. Search Google
         elif "search" in action or "khojo" in action or "talash" in action:
             topic = action.replace("search google for", "").replace("search ", "").replace("khojo", "").replace("talash karo", "").strip()
             if HAS_PYWHATKIT and pywhatkit:
@@ -195,7 +276,7 @@ class AutomationEngine:
             webbrowser.open(f"https://www.google.com/search?q={topic}")
             return True, f"Google par '{topic}' dhoond raha hoon."
 
-        # 14. Open YouTube / Chrome / WhatsApp / VS Code
+        # 16. Open YouTube / Chrome / WhatsApp / VS Code
         elif "youtube" in action or "you tube" in action:
             webbrowser.open("https://www.youtube.com")
             return True, "YouTube khol raha hoon."
@@ -215,7 +296,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"Failed to open VS Code: {e}"
 
-        # 15. Application Launchers (Notepad, Calculator)
+        # 17. Application Launchers (Notepad, Calculator)
         elif "notepad" in action or "text editor" in action or "notepad kholo" in action:
             try:
                 if os.name == "nt" and hasattr(os, "startfile"):
@@ -235,7 +316,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"Failed to open Calculator: {e}"
 
-        # 16. Volume & Desktop Controls
+        # 18. Volume & Desktop Controls
         elif "volume up" in action or "aawaz badao" in action:
             if HAS_PYAUTOGUI and pyautogui:
                 for _ in range(5):
@@ -251,7 +332,7 @@ class AutomationEngine:
                 pyautogui.hotkey("win", "d")
                 return True, "Desktop dikha raha hoon."
 
-        # 17. Screenshot
+        # 19. Screenshot
         elif "screenshot" in action or "photo kheencho" in action:
             try:
                 if HAS_PYAUTOGUI and pyautogui:
