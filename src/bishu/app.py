@@ -459,14 +459,23 @@ Give a short practical recommendation.
 
 
 def main() -> int:
-    app = QApplication(sys.argv)
-    if hasattr(app, "setQuitOnLastWindowClosed"):
-        app.setQuitOnLastWindowClosed(False)
+    try:
+        app = QApplication(sys.argv)
+        if hasattr(app, "setQuitOnLastWindowClosed"):
+            app.setQuitOnLastWindowClosed(False)
 
-    bishu = BishuApp()
-    bishu.orb.show()
+        print("[LaalaaApp] Starting Laalaa AI Assistant GUI...")
+        bishu = BishuApp()
+        bishu.orb.show()
+        print("[LaalaaApp] Laalaa AI Assistant running successfully!")
 
-    return app.exec_()
+        return app.exec_()
+    except Exception as e:
+        print(f"\n[LaalaaApp CRITICAL ERROR]: Failed to start Laalaa GUI: {e}\n")
+        import traceback
+        traceback.print_exc()
+        input("\nPress ENTER to exit...")
+        return 1
 
 
 if __name__ == "__main__":
