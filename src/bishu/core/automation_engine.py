@@ -25,7 +25,7 @@ except Exception:
 
 
 class AutomationEngine:
-    """Runs automated system actions, app launchers, folder openers, media controls, YOLO Vision AI, Graphify Knowledge Graph, Smart Home Controls, and Voice Settings."""
+    """Runs automated system actions, app launchers, folder openers, media controls, YOLO Vision AI, Graphify Knowledge Graph, Smart Home Controls, and Voice/Identity Settings."""
 
     def __init__(self):
         self.vision_ai = None
@@ -45,7 +45,30 @@ class AutomationEngine:
         if any(kw in action for kw in ["stop laalaa", "close laalaa", "exit laalaa", "band karo", "khatam karo", "alvida"]):
             return True, "EXIT_APP"
 
-        # 2. Dynamic NVIDIA Key Setup Command ("set nvidia key nvapi-...")
+        # 2. Custom Name & User Identity Commands ("call me Mujtaba", "my name is Boss", "mera naam kya hai")
+        elif action.startswith("call me ") or action.startswith("my name is ") or "mera naam " in action and ("hai" in action or "rakho" in action):
+            name = (
+                action.replace("call me ", "")
+                .replace("my name is ", "")
+                .replace("mera naam ", "")
+                .replace(" hai", "")
+                .replace(" rakho", "")
+                .strip()
+                .title()
+            )
+            if name:
+                from bishu.core.sqlite_engine import SQLiteEngine
+                db = SQLiteEngine()
+                db.set_fact("user_name", name)
+                return True, f"Aapka naam {name} save kar liya hai! Ab se main aapko {name} kahkar bulaongi."
+
+        elif any(kw in action for kw in ["what is my name", "mera naam kya hai", "do you know my name", "mera naam batao"]):
+            from bishu.core.sqlite_engine import SQLiteEngine
+            db = SQLiteEngine()
+            u_name = db.get_fact("user_name", default="Boss")
+            return True, f"Aapka naam {u_name} hai!"
+
+        # 3. Dynamic NVIDIA Key Setup Command ("set nvidia key nvapi-...")
         elif "nvidia key" in action or "set nvidia" in action or "nvidia api" in action:
             key_str = action.replace("set nvidia key", "").replace("nvidia key", "").replace("set nvidia", "").replace("nvidia api", "").replace("=", "").strip()
             if key_str:
@@ -55,7 +78,7 @@ class AutomationEngine:
                 mem.set("NVIDIA_API_KEY", key_str)
                 return True, "NVIDIA API Key saved successfully! Laalaa is now connected to NVIDIA Nemotron-3 Ultra 550B."
 
-        # 3. Voice Customization Commands ("change voice to 1", "voice 1", "list voices")
+        # 4. Voice Customization Commands ("change voice to 1", "voice 1", "list voices")
         elif any(kw in action for kw in ["change voice", "voice change", "awaz badlo", "voice 0", "voice 1", "voice 2", "voice 3"]):
             numbers = re.findall(r'\d+', action)
             v_idx = int(numbers[0]) if numbers else 1
@@ -71,7 +94,7 @@ class AutomationEngine:
             v_summary = "Installed System Voices: " + ", ".join([f"[{i}] {name}" for i, name in enumerate(v_list)])
             return True, v_summary
 
-        # 4. Smart Home IoT Commands
+        # 5. Smart Home IoT Commands
         elif any(kw in action for kw in ["light", "pankha", "fan", "ac", "plug", "socket", "ghar ka status", "smart home"]):
             if not self.smarthome_engine:
                 from bishu.core.smarthome_engine import SmartHomeEngine
@@ -80,7 +103,7 @@ class AutomationEngine:
             if sh_success:
                 return True, sh_desc
 
-        # 5. Graphify Knowledge Graph Query
+        # 6. Graphify Knowledge Graph Query
         elif any(kw in action for kw in ["graphify", "knowledge graph", "memory graph", "show graph"]):
             if not self.graph_engine:
                 from bishu.core.graphify_engine import GraphifyEngine
@@ -88,7 +111,7 @@ class AutomationEngine:
             summary = self.graph_engine.get_summary()
             return True, summary
 
-        # 6. Autonomous Self-Correcting Code Generation
+        # 7. Autonomous Self-Correcting Code Generation
         elif action.startswith("code ") or "write code" in action or "make code" in action or "python script" in action:
             spec = action.replace("write code for", "").replace("write code", "").replace("make code for", "").replace("code ", "").strip()
             if not self.code_agent:
@@ -100,17 +123,26 @@ class AutomationEngine:
             print(final_code)
             return True, f"Code generated and verified for {spec}. Check terminal for output."
 
-        # 7. Pure Urdu / Hindi Self Introduction
+        # 8. Pure Urdu / Hindi Self Introduction
         elif any(kw in action for kw in ["tell me about yourself", "introduce yourself", "who are you", "who r u", "aap kaun hain", "kaun ho tum"]):
-            return True, "Main Laalaa hoon, aapka shakhsi AI saathi! Main English, Hindi, aur Urdu zubaan mein aapki khidmat ke liye hazir hoon."
+            from bishu.core.sqlite_engine import SQLiteEngine
+            db = SQLiteEngine()
+            u_name = db.get_fact("user_name", default="Boss")
+            return True, f"Main Laalaa hoon, aapka shakhsi AI saathi, {u_name}! Main English, Hindi, aur Urdu zubaan mein aapki khidmat ke liye hazir hoon."
 
-        # 8. Pure Urdu / Hindi Greetings
+        # 9. Pure Urdu / Hindi Greetings
         elif any(kw in action for kw in ["aap kaise hain", "kiya haal hai", "aapka kiya haal hai", "kaise ho", "kaise ho aap", "how are you", "how r u"]):
-            return True, "Main bilkul khairiyat se hoon, aap bataiye aapka kya haal hai?"
+            from bishu.core.sqlite_engine import SQLiteEngine
+            db = SQLiteEngine()
+            u_name = db.get_fact("user_name", default="Boss")
+            return True, f"Main bilkul khairiyat se hoon, {u_name}! Aap bataiye aapka kya haal hai?"
         elif any(kw in action for kw in ["assalamu alaikum", "assalam o alaikum", "aadaab", "namaste", "hello", "hi laalaa", "hey laalaa"]):
-            return True, "Walaikum Assalam! Main Laalaa hoon, farmaiye main aapki kya khidmat kar sakta hoon?"
+            from bishu.core.sqlite_engine import SQLiteEngine
+            db = SQLiteEngine()
+            u_name = db.get_fact("user_name", default="Boss")
+            return True, f"Walaikum Assalam {u_name}! Main Laalaa hoon, farmaiye main aapki kya khidmat kar sakta hoon?"
 
-        # 9. Camera Selection Commands
+        # 10. Camera Selection Commands
         elif any(kw in action for kw in ["camera 0", "webcam 0"]):
             if not self.vision_ai:
                 from bishu.core.vision_ai import VisionAIEngine
@@ -129,7 +161,7 @@ class AutomationEngine:
                 self.vision_ai = VisionAIEngine()
             return self.vision_ai.open_live_camera_preview(duration=12)
 
-        # 10. YOLO Vision Objects Scan
+        # 11. YOLO Vision Objects Scan
         elif any(kw in action for kw in ["yolo", "what do you see", "camera scan", "kya dikh raha hai"]):
             try:
                 if not self.vision_ai:
@@ -139,7 +171,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"YOLO vision error: {e}"
 
-        # 11. Play Songs on YouTube ("play <song>", "gaana bajao <song>")
+        # 12. Play Songs on YouTube ("play <song>", "gaana bajao <song>")
         elif action.startswith("play ") or "gaana bajao" in action or "song" in action:
             topic = action.replace("play ", "").replace("gaana bajao", "").replace("song", "").strip()
             if HAS_PYWHATKIT and pywhatkit:
@@ -151,7 +183,7 @@ class AutomationEngine:
             webbrowser.open(f"https://www.youtube.com/results?search_query={topic}")
             return True, f"YouTube par '{topic}' dhoond raha hoon."
 
-        # 12. Search Google
+        # 13. Search Google
         elif "search" in action or "khojo" in action or "talash" in action:
             topic = action.replace("search google for", "").replace("search ", "").replace("khojo", "").replace("talash karo", "").strip()
             if HAS_PYWHATKIT and pywhatkit:
@@ -163,7 +195,7 @@ class AutomationEngine:
             webbrowser.open(f"https://www.google.com/search?q={topic}")
             return True, f"Google par '{topic}' dhoond raha hoon."
 
-        # 13. Open YouTube / Chrome / WhatsApp / VS Code
+        # 14. Open YouTube / Chrome / WhatsApp / VS Code
         elif "youtube" in action or "you tube" in action:
             webbrowser.open("https://www.youtube.com")
             return True, "YouTube khol raha hoon."
@@ -183,7 +215,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"Failed to open VS Code: {e}"
 
-        # 14. Application Launchers (Notepad, Calculator)
+        # 15. Application Launchers (Notepad, Calculator)
         elif "notepad" in action or "text editor" in action or "notepad kholo" in action:
             try:
                 if os.name == "nt" and hasattr(os, "startfile"):
@@ -203,7 +235,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"Failed to open Calculator: {e}"
 
-        # 15. Volume & Desktop Controls
+        # 16. Volume & Desktop Controls
         elif "volume up" in action or "aawaz badao" in action:
             if HAS_PYAUTOGUI and pyautogui:
                 for _ in range(5):
@@ -219,7 +251,7 @@ class AutomationEngine:
                 pyautogui.hotkey("win", "d")
                 return True, "Desktop dikha raha hoon."
 
-        # 16. Screenshot
+        # 17. Screenshot
         elif "screenshot" in action or "photo kheencho" in action:
             try:
                 if HAS_PYAUTOGUI and pyautogui:

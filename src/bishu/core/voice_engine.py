@@ -1,15 +1,17 @@
-"""Voice output engine — High-Fidelity Windows SAPI5 / PowerShell System.Speech with phonetic accent normalization for crystal-clear speech clarity."""
+"""Voice output engine — High-Fidelity Windows SAPI5 / PowerShell System.Speech with natural speech fillers & time-based tone adaptation."""
 
 import os
 import re
 import sys
+import time
 import subprocess
 import threading
+import random
 from bishu.config import VOICE_INDEX, VOICE_RATE, VOICE_VOLUME
 
 
 class VoiceEngine:
-    """Multilingual English, Hindi, and Urdu Voice Engine with phonetic accent normalization for crystal-clear clarity."""
+    """Multilingual Hinglish Voice Engine with natural speech fillers & time-based tone adaptation."""
 
     PHONETIC_ACCENT_MAP = {
         "khairiyat": "Khair-ee-yut",
@@ -40,6 +42,8 @@ class VoiceEngine:
         "haan": "Haa"
     }
 
+    NATURAL_FILLERS = ["Hmm... ", "Achha... ", "Ji... ", "Waise... ", "Aap jante hain... "]
+
     def __init__(self, voice_index: int = VOICE_INDEX, rate: int = VOICE_RATE, volume: int = VOICE_VOLUME):
         self.backend = "sapi5"
         self.voice_index = voice_index
@@ -69,6 +73,18 @@ class VoiceEngine:
             self.backend = "powershell"
             print(f"[VoiceEngine] Using Windows PowerShell System.Speech engine fallback: {err}")
 
+    def get_time_based_greeting(self, user_title: str = "Boss") -> str:
+        """Generate time-based greeting & tone based on local hour."""
+        hour = time.localtime().tm_hour
+        if 5 <= hour < 12:
+            return f"Good morning {user_title}! Subah bakhair, aaj kya plan hai?"
+        elif 12 <= hour < 17:
+            return f"Good afternoon {user_title}! Dopahar ka waqt hai, batayiye main kya madad karoon?"
+        elif 17 <= hour < 21:
+            return f"Good evening {user_title}! Shaam mubaarak, kaise hain aap?"
+        else:
+            return f"Late night {user_title}! Raat kafi ho gayi hai, batayiye kya khidmat karoon?"
+
     def get_available_voices(self) -> list:
         """List all available installed TTS voices on Windows."""
         if self.available_voices:
@@ -97,6 +113,16 @@ class VoiceEngine:
         """Set speech rate (-10 to +10)."""
         self.rate = max(-10, min(10, rate))
 
+    def _add_natural_fillers(self, text: str) -> str:
+        """Add subtle conversational natural fillers for realistic Hinglish voice dialogue."""
+        if not text:
+            return ""
+        # Randomly insert filler for longer conversational answers
+        if len(text) > 30 and not any(text.startswith(f.strip()) for f in self.NATURAL_FILLERS):
+            if random.random() < 0.4:
+                text = random.choice(self.NATURAL_FILLERS[:3]) + text
+        return text
+
     def _normalize_accent_phonetics(self, text: str) -> str:
         """Normalize Roman Hindi/Urdu words for clear, natural, human-understandable TTS accent."""
         if not text:
@@ -110,10 +136,13 @@ class VoiceEngine:
         text = text.replace("!", "! ").replace(".", ". ").replace("?", "? ")
         return re.sub(r'\s+', ' ', text).strip()
 
-    def speak(self, text: str, voice_index: int = None):
-        """Speak given text asynchronously in background daemon thread with accent normalization."""
+    def speak(self, text: str, voice_index: int = None, use_fillers: bool = True):
+        """Speak given text asynchronously in background daemon thread with accent normalization & natural fillers."""
         if not text:
             return
+
+        if use_fillers:
+            text = self._add_natural_fillers(text)
 
         clean_text = self._normalize_accent_phonetics(text)
         target_voice = self.voice_index if voice_index is None else voice_index

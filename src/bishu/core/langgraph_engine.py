@@ -1,5 +1,6 @@
-"""LangGraph agent engine providing stateful graph orchestration & multi-agent workflow routing."""
+"""LangGraph agent engine providing stateful graph orchestration & multi-agent workflow routing with time-based tone & custom user identity."""
 
+import time
 import json
 from typing import Dict, Any, List, TypedDict
 
@@ -24,7 +25,7 @@ class AgentState(TypedDict, total=False):
 
 
 class LangGraphEngine:
-    """Stateful LangGraph Agent Orchestrator for Laalaa AI Assistant."""
+    """Stateful LangGraph Agent Orchestrator for Laalaa AI Assistant with Hinglish voice, time-based tone, and custom identity."""
 
     def __init__(self, ai_engine=None, search_engine=None, automation_engine=None, vision_engine=None, code_agent=None):
         self.ai = ai_engine
@@ -131,7 +132,7 @@ class LangGraphEngine:
         """LangGraph Node: Classifies query intent."""
         cmd = state["user_input"].lower().strip()
 
-        if any(w in cmd for w in ["open ", "kholo", "play ", "youtube", "notepad", "calc", "volume", "light", "pankha", "fan", "ac", "stop laalaa"]):
+        if any(w in cmd for w in ["open ", "kholo", "play ", "youtube", "notepad", "calc", "volume", "light", "pankha", "fan", "ac", "stop laalaa", "call me ", "my name is "]):
             state["intent"] = "automation"
         elif cmd.startswith("code ") or "write code" in cmd or "make code" in cmd:
             state["intent"] = "code"
@@ -194,7 +195,7 @@ class LangGraphEngine:
         return state
 
     def _node_llm(self, state: AgentState) -> AgentState:
-        """LangGraph Node: Synthesizes final response via MiniMax Cloud AI or Ollama."""
+        """LangGraph Node: Synthesizes final response via MiniMax Cloud AI or Ollama with custom user identity & time-based tone."""
         if not self.ai:
             state["final_output"] = "Main bilkul khairiyat se hoon! Aap bataiye aapka kya haal hai?"
             return state
@@ -203,17 +204,44 @@ class LangGraphEngine:
         facts = state.get("web_facts") or state.get("vision_facts") or ""
         history_list = state.get("conversation_history", [])
 
+        # Retrieve custom user name & time-of-day tone from SQLite database
+        user_title = "Boss"
+        try:
+            from bishu.core.sqlite_engine import SQLiteEngine
+            db = SQLiteEngine()
+            user_title = db.get_fact("user_name", default="Boss")
+        except Exception:
+            pass
+
+        hour = time.localtime().tm_hour
+        if 5 <= hour < 12:
+            time_tone = "Morning (Fresh, warm, energetic tone)"
+        elif 12 <= hour < 17:
+            time_tone = "Afternoon (Bright, efficient, helpful tone)"
+        elif 17 <= hour < 21:
+            time_tone = "Evening (Relaxed, warm, pleasant tone)"
+        else:
+            time_tone = "Night (Soft, calm, gentle tone)"
+
         history_str = ""
         if history_list:
             lines = [f"{item.get('sender', 'User')}: {item.get('message', '')}" for item in history_list[-5:]]
             history_str = "Recent Conversation History:\n" + "\n".join(lines) + "\n\n"
 
+        persona_context = (
+            f"User's Name/Title: {user_title}\n"
+            f"Current Time Context: {time_tone}\n"
+            f"Instructions: You are Laalaa, a brilliant, warm, witty, 'beauty with brains' AI companion. "
+            f"Address the user as '{user_title}' where natural. Speak warmly in natural Hinglish, English, Hindi, or Urdu matching the user's language. "
+            f"Keep responses engaging, natural, and concise (1 to 2 sentences).\n\n"
+        )
+
         if facts:
-            prompt = f"{history_str}Facts:\n{facts}\n\nUser: {cmd}\nYou are Laalaa, a brilliant, warm, intelligent, and witty AI companion (like J.A.R.V.I.S. with charm and high IQ). Respond eloquently as a close friend in 1 or 2 concise sentences strictly matching the user's language (English, Hindi, or Urdu).\nLaalaa:"
+            prompt = f"{persona_context}{history_str}Facts:\n{facts}\n\nUser Question: {cmd}\nLaalaa:"
         else:
-            prompt = f"{history_str}User: {cmd}\nYou are Laalaa, a brilliant, warm, intelligent, and witty AI companion (like J.A.R.V.I.S. with charm and high IQ). Respond eloquently as a close friend in 1 concise sentence strictly matching the user's language (English, Hindi, or Urdu).\nLaalaa:"
+            prompt = f"{persona_context}{history_str}User Question: {cmd}\nLaalaa:"
 
         reply = self.ai.generate(prompt)
         state["ai_reply"] = reply
-        state["final_output"] = reply or "Main bilkul khairiyat se hoon! Aap ki kya khidmat karoon?"
+        state["final_output"] = reply or f"Main bilkul khairiyat se hoon, {user_title}! Farmaiye main aapki kya khidmat karoon?"
         return state
