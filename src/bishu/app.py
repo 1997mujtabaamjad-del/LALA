@@ -147,14 +147,14 @@ class BishuApp(QObject):
             self.orb.setAttribute(Qt.WA_TranslucentBackground, True)
         self.orb.resize(1100, 1100)
 
+        # Center HUD window right in the middle of primary screen
         if hasattr(QApplication, "primaryScreen"):
             screen = QApplication.primaryScreen()
             if screen:
                 geom = screen.availableGeometry()
-                self.orb.move(
-                    geom.right() - self.orb.width() - 20,
-                    geom.top() + 20,
-                )
+                cx = (geom.width() - self.orb.width()) // 2
+                cy = (geom.height() - self.orb.height()) // 2
+                self.orb.move(max(10, cx), max(10, cy))
 
         # Connect Glass Command Bar signal and Camera Window signal
         if hasattr(self.orb, "command_entered"):
@@ -194,7 +194,10 @@ class BishuApp(QObject):
         self.audio.voice_detected.connect(self.on_voice_detected)
         self.audio.start()
 
-        # Silent Boot: No spoken greeting message on launch (only a quiet desktop notification)
+        # Show Arc Reactor HUD immediately on screen
+        self.show_orb()
+
+        # Silent Boot: Desktop notification
         notify_desktop("Laalaa Online", "Type or speak commands (e.g. 'open youtube', 'notepad', 'how are you').")
 
     def open_camera_window(self):
@@ -478,7 +481,9 @@ def main() -> int:
         print("[LaalaaApp] Starting Laalaa AI Assistant GUI...")
         bishu = BishuApp()
         bishu.orb.show()
-        print("[LaalaaApp] Laalaa AI Assistant running successfully!")
+        bishu.orb.raise_()
+        bishu.orb.activateWindow()
+        print("[LaalaaApp] Laalaa AI Assistant window active and displayed on screen!")
 
         return app.exec_()
     except Exception as e:
