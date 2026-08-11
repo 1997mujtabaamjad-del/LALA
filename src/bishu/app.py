@@ -1,4 +1,4 @@
-"""Bishu application — single-stream deadlock-free J.A.R.V.I.S. companion."""
+"""Laalaa application — single-stream deadlock-free J.A.R.V.I.S. companion."""
 
 import sys
 import time
@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QTimer, QObject, pyqtSignal
 try:
     from PyQt5.QtWidgets import QApplication
 except ImportError as err:
-    print(f"[BishuApp] QtWidgets unavailable ({err}). Using QCoreApplication fallback.")
+    print(f"[LaalaaApp] QtWidgets unavailable ({err}). Using QCoreApplication fallback.")
     from PyQt5.QtCore import QCoreApplication as QApplication
 
 try:
@@ -57,12 +57,12 @@ def notify_desktop(title: str, message: str):
             notification.notify(
                 title=title,
                 message=message,
-                app_name="Bishu Assistant",
+                app_name="Laalaa Assistant",
                 timeout=5
             )
         except Exception:
             pass
-    print(f"[Bishu Notification] {title}: {message}")
+    print(f"[Laalaa Notification] {title}: {message}")
 
 
 class AppSignals(QObject):
@@ -72,7 +72,7 @@ class AppSignals(QObject):
 
 
 class BishuApp(QObject):
-    WAKE_WORDS = ["bishu", "vishu", "vishnu", "bisu", "laalaa", "lala", "hey bishu", "hey vishu", "hey lala"]
+    WAKE_WORDS = ["laalaa", "lala", "hey laalaa", "hey lala", "assalam", "aadaab", "namaste", "bishu", "hey bishu"]
 
     def __init__(self):
         super().__init__()
@@ -123,9 +123,11 @@ class BishuApp(QObject):
                     geom.top() + 20,
                 )
 
-        # Connect Glass Command Bar signal
+        # Connect Glass Command Bar signal and Camera Window signal
         if hasattr(self.orb, "command_entered"):
             self.orb.command_entered.connect(self.handle_user_command)
+        if hasattr(self.orb, "camera_requested"):
+            self.orb.camera_requested.connect(self.open_camera_window)
 
         # Thread-safe UI Signals
         self.app_signals = AppSignals()
@@ -155,19 +157,31 @@ class BishuApp(QObject):
         self.tray = TrayEngine(self.signals)
         self.tray.start()
 
-        # Audio
+        # Audio Engine
         self.audio.voice_detected.connect(self.on_voice_detected)
         self.audio.start()
 
-        self.voice.speak("Bishu 1.0 online.")
-        notify_desktop("Bishu Online", "Type or speak commands (e.g. 'open youtube', 'notepad', 'how are you').")
+        # Silent Boot: No spoken greeting message on application launch (only a quiet desktop notification)
+        notify_desktop("Laalaa Online", "Type or speak commands (e.g. 'open youtube', 'notepad', 'how are you').")
+
+    def open_camera_window(self):
+        """Open floating camera window with live YOLO vision detection."""
+        try:
+            from bishu.core.camera_window import CameraWindow
+            if not hasattr(self, "cam_win") or self.cam_win is None:
+                self.cam_win = CameraWindow()
+            self.cam_win.show()
+            self.cam_win.raise_()
+            self.cam_win.activateWindow()
+        except Exception as e:
+            print(f"[Laalaa] Error opening camera window: {e}")
 
     def handle_user_command(self, cmd: str):
         """Handle command typed into the Glass Command Input Bar or spoken via voice asynchronously."""
         if not cmd:
             return
         cmd = cmd.strip().lower()
-        print(f"[Bishu] User Command Input: '{cmd}'")
+        print(f"[Laalaa] User Command Input: '{cmd}'")
 
         self.show_orb()
         self.app_signals.set_thinking.emit(True)
@@ -182,26 +196,26 @@ class BishuApp(QObject):
                 else:
                     # 2. Check if query benefits from Perplexity live web search
                     web_facts = ""
-                    search_keywords = ["weather", "who is", "what is", "where is", "search", "latest", "news", "temperature"]
+                    search_keywords = ["weather", "mausam", "who is", "what is", "where is", "search", "latest", "news", "temperature"]
                     if any(kw in cmd for kw in search_keywords):
                         web_facts = self.search_engine.search_live(cmd)
 
                     # 3. Query MiniMax / Ollama AI asynchronously
-                    print(f"[Bishu] Querying AI (MiniMax / Ollama) for: '{cmd}'")
+                    print(f"[Laalaa] Querying AI (MiniMax / Ollama) for: '{cmd}'")
                     if web_facts:
-                        prompt = f"Live Web Facts:\n{web_facts}\nUser Question: {cmd}\nYou are Bishu, a warm, intelligent local AI companion (like J.A.R.V.I.S.). Using the live facts above, answer warmly as a close friend in 1 or 2 concise sentences.\nBishu:"
+                        prompt = f"Live Web Facts:\n{web_facts}\nUser Question: {cmd}\nYou are Laalaa, a warm, polite, highly intelligent local AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in pure English, Hindi, or Urdu matching the user's spoken language in 1 or 2 concise sentences.\nLaalaa:"
                     else:
-                        prompt = f"You are Bishu, a warm, intelligent local AI companion (like J.A.R.V.I.S.). Respond warmly as a close friend in 1 short sentence.\nUser: {cmd}\nBishu:"
+                        prompt = f"You are Laalaa, a warm, polite, highly intelligent local AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in pure English, Hindi, or Urdu matching the user's spoken language in 1 short sentence.\nUser: {cmd}\nLaalaa:"
 
                     reply = self.ai.generate(prompt)
                     if reply:
-                        print(f"[Bishu AI Reply]: '{reply}'")
+                        print(f"[Laalaa AI Reply]: '{reply}'")
                         self.voice.speak(reply)
-                        notify_desktop("Bishu", reply)
+                        notify_desktop("Laalaa", reply)
                     else:
-                        self.voice.speak("I am doing great, my friend! How can I help you today?")
+                        self.voice.speak("Main bilkul theek hoon! Aap ki kya khidmat karoon?")
             except Exception as e:
-                print(f"[Bishu] Command error: {e}")
+                print(f"[Laalaa] Command error: {e}")
             finally:
                 time.sleep(1)
                 self.app_signals.set_thinking.emit(False)
@@ -214,20 +228,21 @@ class BishuApp(QObject):
             return
         self.last_voice_trigger = now
 
-        print(f"[Bishu] Voice activity detected (level={volume:.3f})")
+        print(f"[Laalaa] Voice activity detected (level={volume:.3f})")
 
         def _voice_worker():
             time.sleep(0.3)
-            # Transcribe directly from in-memory audio buffer (no PortAudio device locking or sd.wait deadlock!)
+            # Transcribe directly from in-memory audio buffer via OpenAI Whisper STT
             audio_buffer = self.audio.get_buffered_audio()
             spoken_phrase = self.stt.transcribe_buffer(audio_buffer)
-            print(f"[Bishu] Audio transcribed from buffer: '{spoken_phrase}'")
+            print(f"[Laalaa] Audio transcribed from OpenAI Whisper buffer: '{spoken_phrase}'")
 
             if spoken_phrase:
                 self.handle_user_command(spoken_phrase)
             else:
                 self.show_orb()
-                self.voice.speak("Yes boss?")
+                # Wake-Up Response: Speaks "Laalaa haazir hai"
+                self.voice.speak("Laalaa haazir hai")
 
         threading.Thread(target=_voice_worker, daemon=True).start()
 
@@ -254,8 +269,6 @@ class BishuApp(QObject):
     def tick_anim(self):
         self.orb.rotation = (self.orb.rotation + 0.8) % 360
         self.orb.update()
-        if hasattr(QApplication, "processEvents"):
-            QApplication.processEvents()
 
     def tick_monitor(self):
         def _monitor_worker():
@@ -312,7 +325,7 @@ class BishuApp(QObject):
             QTimer.singleShot(ALERT_RED_SECONDS * 1000,
                               lambda: self.app_signals.set_alert.emit(False))
 
-            print(f"[Bishu System Monitor] Resource spike logged: {message}")
+            print(f"[Laalaa System Monitor] Resource spike logged: {message}")
 
         threading.Thread(target=_monitor_worker, daemon=True).start()
 
@@ -322,7 +335,7 @@ class BishuApp(QObject):
 
         _, ram = self.monitor.sample()
         if ram >= RAM_CRITICAL_LLM_LIMIT:
-            print(f"[Bishu] RAM is critically high ({ram:.1f}%). Skipping local LLM inference to protect laptop.")
+            print(f"[Laalaa] RAM is critically high ({ram:.1f}% >= {RAM_CRITICAL_LLM_LIMIT}%). Skipping local LLM inference to protect laptop.")
             return
 
         self.ai_request_running = True
@@ -336,7 +349,7 @@ class BishuApp(QObject):
 
     def _ai_worker(self, alert_message):
         events = self.memory.get("system_events", [])[-5:]
-        prompt = f"""You are Bishu, a local Windows assistant.
+        prompt = f"""You are Laalaa, a local Windows assistant.
 
 System alert:
 {alert_message}
@@ -366,7 +379,7 @@ Give a short practical recommendation.
         })
         self.memory.set("ai_suggestions", suggestions[-50:])
 
-        print("\nBISHU AI SUGGESTION:")
+        print("\nLAALAA AI SUGGESTION:")
         print(suggestion)
 
     def tick_scheduler(self):
@@ -411,4 +424,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-EOF

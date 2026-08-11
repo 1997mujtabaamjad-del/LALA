@@ -1,4 +1,4 @@
-"""Configuration constants for Bishu AI Assistant."""
+"""Configuration constants for Laalaa AI Assistant."""
 
 # MiniMax AI API Configuration (Optional)
 MINIMAX_API_KEY = ""

@@ -94,7 +94,7 @@ class SearchEngine:
         try:
             clean_q = re.sub(r'^(who is|what is|tell me about|search|find|where is|kaun hai|kya hai)\s+', '', query, flags=re.IGNORECASE).strip()
             url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(clean_q)}"
-            req = urllib.request.Request(url, headers={"User-Agent": "BishuAssistant/1.0"})
+            req = urllib.request.Request(url, headers={"User-Agent": "LaalaaAssistant/1.0"})
             with urllib.request.urlopen(req, timeout=5, context=self.ssl_ctx) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 

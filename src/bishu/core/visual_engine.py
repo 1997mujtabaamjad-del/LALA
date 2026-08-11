@@ -50,7 +50,7 @@ class VisualEngine(QWidget if HAS_QT_GUI else object):
 
         if HAS_QT_GUI:
             self.input_box = QLineEdit(self)
-            self.input_box.setPlaceholderText("Type or ask Bishu (e.g. 'open youtube', 'open camera', 'how are you')...")
+            self.input_box.setPlaceholderText("Type or ask Laalaa (e.g. 'open youtube', 'open camera', 'how are you')...")
             self.input_box.setStyleSheet("""
                 QLineEdit {
                     background-color: rgba(8, 20, 45, 240);

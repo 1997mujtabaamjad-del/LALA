@@ -65,7 +65,7 @@ class TrayEngine:
 
             self.tray_icon = QSystemTrayIcon(icon)
             self.tray_icon.setContextMenu(menu)
-            self.tray_icon.setToolTip("Bishu Assistant")
+            self.tray_icon.setToolTip("Laalaa Assistant")
             self.tray_icon.show()
             print("[TrayEngine] System tray icon initialized.")
         except Exception as e:
