@@ -10,3 +10,5 @@ pyttsx3>=2.90
 SpeechRecognition>=3.10
 pyautogui>=0.9.54
 pywhatkit>=5.4
+langgraph>=0.1.0
+langchain-core>=0.2.0

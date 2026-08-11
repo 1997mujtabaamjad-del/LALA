@@ -1,4 +1,4 @@
-"""Laalaa application — single-stream deadlock-free J.A.R.V.I.S. companion with continuous conversation loop."""
+"""Laalaa application — single-stream deadlock-free J.A.R.V.I.S. companion with LangGraph stateful workflow orchestration."""
 
 import sys
 import time
@@ -34,6 +34,7 @@ from bishu.core.audio_engine import AudioEngine
 from bishu.core.voice_engine import VoiceEngine
 from bishu.core.stt_engine import STTEngine
 from bishu.core.search_engine import SearchEngine
+from bishu.core.langgraph_engine import LangGraphEngine
 from bishu.config import (
     OLLAMA_MODEL,
     SAMPLE_LIMIT,
@@ -93,6 +94,15 @@ class BishuApp(QObject):
         self.voice = VoiceEngine()
         self.stt = STTEngine()
         self.search_engine = SearchEngine()
+
+        # LangGraph Stateful Agent Orchestrator
+        self.langgraph = LangGraphEngine(
+            ai_engine=self.ai,
+            search_engine=self.search_engine,
+            automation_engine=self.automation,
+            vision_engine=self.automation.vision_ai,
+            code_agent=self.automation.code_agent
+        )
 
         cpu_samples = self.memory.get("cpu_samples", [])
         ram_samples = self.memory.get("ram_samples", [])
@@ -179,11 +189,11 @@ class BishuApp(QObject):
             print(f"[Laalaa] Error opening camera window: {e}")
 
     def handle_user_command(self, cmd: str):
-        """Handle continuous conversation loop commands typed or spoken asynchronously."""
+        """Handle continuous conversation loop commands via LangGraph agent workflow asynchronously."""
         if not cmd:
             return
         cmd = cmd.strip().lower()
-        print(f"[Laalaa Conversation Loop] User Input: '{cmd}'")
+        print(f"[Laalaa LangGraph] User Input: '{cmd}'")
 
         # Log user message into SQLite conversation store
         self.db.log_chat(sender="User", message=cmd)
@@ -193,53 +203,28 @@ class BishuApp(QObject):
 
         def _exec_worker():
             try:
-                # 1. First check for local system automation command
-                success, desc = self.automation.run(cmd)
-                if success:
-                    if desc == "EXIT_APP":
-                        exit_msg = "Khuda hafiz! Aap se baat karke bahut accha laga."
-                        self.voice.speak(exit_msg)
-                        time.sleep(1.5)
-                        self.exit_app()
-                        return
-                    
-                    self.db.log_chat(sender="Laalaa", message=desc)
-                    self.voice.speak(desc)
-                    notify_desktop("Command Executed", desc)
-                else:
-                    # 2. Check if query benefits from Perplexity live web search
-                    web_facts = ""
-                    search_keywords = ["weather", "mausam", "who is", "what is", "where is", "search", "latest", "news", "temperature"]
-                    if any(kw in cmd for kw in search_keywords):
-                        web_facts = self.search_engine.search_live(cmd)
+                # 1. Fetch recent conversation history from SQLite for LangGraph state
+                recent_turns = self.db.get_recent_chats(limit=6)
+                history = [{"sender": s, "message": m} for _, s, m in recent_turns[:-1]]
 
-                    # 3. Retrieve multi-turn conversation memory history from SQLite
-                    recent_turns = self.db.get_recent_chats(limit=6)
-                    conv_history = ""
-                    if recent_turns:
-                        history_lines = [f"{sender}: {msg}" for _, sender, msg in recent_turns[:-1]]
-                        if history_lines:
-                            conv_history = "\nRecent Conversation History:\n" + "\n".join(history_lines) + "\n"
+                # 2. Execute stateful LangGraph Agent Workflow
+                response = self.langgraph.execute(cmd, history=history)
 
-                    # 4. Query MiniMax / Ollama AI asynchronously
-                    print(f"[Laalaa Conversation Loop] Querying AI (MiniMax / Ollama) for: '{cmd}'")
-                    if web_facts:
-                        prompt = f"{conv_history}\nLive Web Facts:\n{web_facts}\nUser Question: {cmd}\nYou are Laalaa, a warm, polite, highly intelligent local AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in pure English, Hindi, or Urdu matching the user's spoken language in 1 or 2 concise sentences.\nLaalaa:"
-                    else:
-                        prompt = f"{conv_history}\nYou are Laalaa, a warm, polite, highly intelligent local AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in pure English, Hindi, or Urdu matching the user's spoken language in 1 short sentence.\nUser: {cmd}\nLaalaa:"
+                if response == "EXIT_APP":
+                    exit_msg = "Khuda hafiz! Aap se baat karke bahut accha laga."
+                    self.voice.speak(exit_msg)
+                    time.sleep(1.5)
+                    self.exit_app()
+                    return
 
-                    reply = self.ai.generate(prompt)
-                    if reply:
-                        print(f"[Laalaa AI Reply]: '{reply}'")
-                        self.db.log_chat(sender="Laalaa", message=reply)
-                        self.voice.speak(reply)
-                        notify_desktop("Laalaa", reply)
-                    else:
-                        fallback_reply = "Main bilkul theek hoon! Aap ki kya khidmat karoon?"
-                        self.db.log_chat(sender="Laalaa", message=fallback_reply)
-                        self.voice.speak(fallback_reply)
+                if response:
+                    print(f"[Laalaa LangGraph Output]: '{response}'")
+                    self.db.log_chat(sender="Laalaa", message=response)
+                    self.voice.speak(response)
+                    notify_desktop("Laalaa", response)
+
             except Exception as e:
-                print(f"[Laalaa Conversation Loop] Error: {e}")
+                print(f"[Laalaa LangGraph] Workflow error: {e}")
             finally:
                 time.sleep(1)
                 self.app_signals.set_thinking.emit(False)
@@ -252,14 +237,14 @@ class BishuApp(QObject):
             return
         self.last_voice_trigger = now
 
-        print(f"[Laalaa Conversation Loop] Voice activity detected (level={volume:.3f})")
+        print(f"[Laalaa LangGraph] Voice activity detected (level={volume:.3f})")
 
         def _voice_worker():
             time.sleep(0.3)
             # Transcribe directly from in-memory audio buffer via OpenAI Whisper STT
             audio_buffer = self.audio.get_buffered_audio()
             spoken_phrase = self.stt.transcribe_buffer(audio_buffer)
-            print(f"[Laalaa Conversation Loop] OpenAI Whisper Transcribed: '{spoken_phrase}'")
+            print(f"[Laalaa LangGraph] OpenAI Whisper Transcribed: '{spoken_phrase}'")
 
             if spoken_phrase:
                 self.handle_user_command(spoken_phrase)
