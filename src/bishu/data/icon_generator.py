@@ -53,13 +53,29 @@ def generate_raw_png(width=128, height=128):
     return png_header + ihdr_chunk + idat_chunk + iend_chunk
 
 
+def generate_ico_from_png(png_bytes, width=128, height=128):
+    """Package PNG byte stream into Windows .ICO container format."""
+    # ICO Header: Reserved (2 bytes), Type 1=Icon (2 bytes), Image Count 1 (2 bytes)
+    ico_header = struct.pack("<HHH", 0, 1, 1)
+    
+    # ICO Directory Entry: Width, Height, Colors (0), Reserved (0), Planes (1), BPP (32), Size, Offset
+    w_byte = width if width < 256 else 0
+    h_byte = height if height < 256 else 0
+    data_size = len(png_bytes)
+    data_offset = 6 + 16 # Header (6) + 1 Directory Entry (16)
+    
+    ico_entry = struct.pack("<BBBBHHII", w_byte, h_byte, 0, 0, 1, 32, data_size, data_offset)
+    return ico_header + ico_entry + png_bytes
+
+
 def generate_arc_reactor_icon(output_dir: Path = None):
-    """Generate high-res Iron Man Arc Reactor App Icon Logo in PNG format."""
+    """Generate high-res Iron Man Arc Reactor App Icon Logo in PNG and ICO format."""
     if output_dir is None:
         output_dir = Path(__file__).parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
     png_path = output_dir / "reactor_icon.png"
+    ico_path = output_dir / "reactor_icon.ico"
 
     if HAS_QT_IMG:
         try:
@@ -117,8 +133,9 @@ def generate_arc_reactor_icon(output_dir: Path = None):
 
             painter.end()
             img.save(str(png_path), "PNG")
-            print(f"[IconGenerator] Arc Reactor App Icon generated via PyQt5: {png_path.name}")
-            return png_path
+            img.save(str(ico_path), "ICO")
+            print(f"[IconGenerator] Arc Reactor App Icon generated via PyQt5: {png_path.name}, {ico_path.name}")
+            return png_path, ico_path
         except Exception:
             pass
 
@@ -126,8 +143,13 @@ def generate_arc_reactor_icon(output_dir: Path = None):
     png_bytes = generate_raw_png()
     with open(png_path, "wb") as f:
         f.write(png_bytes)
-    print(f"[IconGenerator] Arc Reactor App Icon generated via byte stream: {png_path.name}")
-    return png_path
+
+    ico_bytes = generate_ico_from_png(png_bytes)
+    with open(ico_path, "wb") as f:
+        f.write(ico_bytes)
+
+    print(f"[IconGenerator] Arc Reactor App Icon generated via byte stream: {png_path.name}, {ico_path.name}")
+    return png_path, ico_path
 
 
 if __name__ == "__main__":
