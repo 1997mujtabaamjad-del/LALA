@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bishu"
+version = "1.0.0"
+description = "Bishu — Local AI Voice Assistant"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "PyQt5>=5.15",
+    "psutil>=5.9",
+    "pystray>=0.19",
+    "pillow>=10.0",
+    "plyer>=2.1",
+    "ollama>=0.1.7",
+    "sounddevice>=0.4.6",
+    "numpy>=1.26",
+    "pyttsx3>=2.90"
+]
+
+[project.scripts]
+bishu = "bishu.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
