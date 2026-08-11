@@ -1,4 +1,4 @@
-"""Laalaa application — single-stream deadlock-free J.A.R.V.I.S. companion."""
+"""Laalaa application — single-stream deadlock-free J.A.R.V.I.S. companion with continuous conversation loop."""
 
 import sys
 import time
@@ -21,6 +21,7 @@ except Exception:
 
 from bishu.data.paths import memory_file, schedule_file
 from bishu.core.memory_engine import MemoryEngine
+from bishu.core.sqlite_engine import SQLiteEngine
 from bishu.core.monitor_engine import MonitorEngine
 from bishu.core.scheduler_engine import SchedulerEngine
 from bishu.core.ai_engine import AIEngine
@@ -81,6 +82,7 @@ class BishuApp(QObject):
         data.mkdir(parents=True, exist_ok=True)
 
         self.memory = MemoryEngine(memory_file())
+        self.db = SQLiteEngine()
         self.scheduler = SchedulerEngine(schedule_file())
         self.ai = AIEngine(OLLAMA_MODEL)
         self.automation = AutomationEngine()
@@ -161,7 +163,7 @@ class BishuApp(QObject):
         self.audio.voice_detected.connect(self.on_voice_detected)
         self.audio.start()
 
-        # Silent Boot: No spoken greeting message on application launch (only a quiet desktop notification)
+        # Silent Boot: No spoken greeting message on launch (only a quiet desktop notification)
         notify_desktop("Laalaa Online", "Type or speak commands (e.g. 'open youtube', 'notepad', 'how are you').")
 
     def open_camera_window(self):
@@ -177,11 +179,14 @@ class BishuApp(QObject):
             print(f"[Laalaa] Error opening camera window: {e}")
 
     def handle_user_command(self, cmd: str):
-        """Handle command typed into the Glass Command Input Bar or spoken via voice asynchronously."""
+        """Handle continuous conversation loop commands typed or spoken asynchronously."""
         if not cmd:
             return
         cmd = cmd.strip().lower()
-        print(f"[Laalaa] User Command Input: '{cmd}'")
+        print(f"[Laalaa Conversation Loop] User Input: '{cmd}'")
+
+        # Log user message into SQLite conversation store
+        self.db.log_chat(sender="User", message=cmd)
 
         self.show_orb()
         self.app_signals.set_thinking.emit(True)
@@ -191,6 +196,14 @@ class BishuApp(QObject):
                 # 1. First check for local system automation command
                 success, desc = self.automation.run(cmd)
                 if success:
+                    if desc == "EXIT_APP":
+                        exit_msg = "Khuda hafiz! Aap se baat karke bahut accha laga."
+                        self.voice.speak(exit_msg)
+                        time.sleep(1.5)
+                        self.exit_app()
+                        return
+                    
+                    self.db.log_chat(sender="Laalaa", message=desc)
                     self.voice.speak(desc)
                     notify_desktop("Command Executed", desc)
                 else:
@@ -200,22 +213,33 @@ class BishuApp(QObject):
                     if any(kw in cmd for kw in search_keywords):
                         web_facts = self.search_engine.search_live(cmd)
 
-                    # 3. Query MiniMax / Ollama AI asynchronously
-                    print(f"[Laalaa] Querying AI (MiniMax / Ollama) for: '{cmd}'")
+                    # 3. Retrieve multi-turn conversation memory history from SQLite
+                    recent_turns = self.db.get_recent_chats(limit=6)
+                    conv_history = ""
+                    if recent_turns:
+                        history_lines = [f"{sender}: {msg}" for _, sender, msg in recent_turns[:-1]]
+                        if history_lines:
+                            conv_history = "\nRecent Conversation History:\n" + "\n".join(history_lines) + "\n"
+
+                    # 4. Query MiniMax / Ollama AI asynchronously
+                    print(f"[Laalaa Conversation Loop] Querying AI (MiniMax / Ollama) for: '{cmd}'")
                     if web_facts:
-                        prompt = f"Live Web Facts:\n{web_facts}\nUser Question: {cmd}\nYou are Laalaa, a warm, polite, highly intelligent local AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in pure English, Hindi, or Urdu matching the user's spoken language in 1 or 2 concise sentences.\nLaalaa:"
+                        prompt = f"{conv_history}\nLive Web Facts:\n{web_facts}\nUser Question: {cmd}\nYou are Laalaa, a warm, polite, highly intelligent local AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in pure English, Hindi, or Urdu matching the user's spoken language in 1 or 2 concise sentences.\nLaalaa:"
                     else:
-                        prompt = f"You are Laalaa, a warm, polite, highly intelligent local AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in pure English, Hindi, or Urdu matching the user's spoken language in 1 short sentence.\nUser: {cmd}\nLaalaa:"
+                        prompt = f"{conv_history}\nYou are Laalaa, a warm, polite, highly intelligent local AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in pure English, Hindi, or Urdu matching the user's spoken language in 1 short sentence.\nUser: {cmd}\nLaalaa:"
 
                     reply = self.ai.generate(prompt)
                     if reply:
                         print(f"[Laalaa AI Reply]: '{reply}'")
+                        self.db.log_chat(sender="Laalaa", message=reply)
                         self.voice.speak(reply)
                         notify_desktop("Laalaa", reply)
                     else:
-                        self.voice.speak("Main bilkul theek hoon! Aap ki kya khidmat karoon?")
+                        fallback_reply = "Main bilkul theek hoon! Aap ki kya khidmat karoon?"
+                        self.db.log_chat(sender="Laalaa", message=fallback_reply)
+                        self.voice.speak(fallback_reply)
             except Exception as e:
-                print(f"[Laalaa] Command error: {e}")
+                print(f"[Laalaa Conversation Loop] Error: {e}")
             finally:
                 time.sleep(1)
                 self.app_signals.set_thinking.emit(False)
@@ -228,14 +252,14 @@ class BishuApp(QObject):
             return
         self.last_voice_trigger = now
 
-        print(f"[Laalaa] Voice activity detected (level={volume:.3f})")
+        print(f"[Laalaa Conversation Loop] Voice activity detected (level={volume:.3f})")
 
         def _voice_worker():
             time.sleep(0.3)
             # Transcribe directly from in-memory audio buffer via OpenAI Whisper STT
             audio_buffer = self.audio.get_buffered_audio()
             spoken_phrase = self.stt.transcribe_buffer(audio_buffer)
-            print(f"[Laalaa] Audio transcribed from OpenAI Whisper buffer: '{spoken_phrase}'")
+            print(f"[Laalaa Conversation Loop] OpenAI Whisper Transcribed: '{spoken_phrase}'")
 
             if spoken_phrase:
                 self.handle_user_command(spoken_phrase)
