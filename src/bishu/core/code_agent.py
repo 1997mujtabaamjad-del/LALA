@@ -1,16 +1,62 @@
-"""Autonomous Self-Correcting Python Code Generator Agent for Laalaa."""
+"""Autonomous Self-Correcting Python Code Generator Agent with Clipboard Error Fixer & Logic Explainer for Laalaa."""
 
 import re
 import tempfile
 import py_compile
 from pathlib import Path
 
+try:
+    import pyautogui
+    HAS_PYAUTOGUI = True
+except Exception:
+    pyautogui = None
+    HAS_PYAUTOGUI = False
+
 
 class CodeAgent:
-    """Self-correcting AI code generation agent."""
+    """Self-correcting AI code generation agent, error fixer, and code explainer."""
 
     def __init__(self, ai_engine=None):
         self.ai = ai_engine
+        self.project_preferences = {
+            "style": "clean_PEP8",
+            "framework": "standard_library",
+            "comments": True
+        }
+
+    def set_project_preferences(self, prefs: dict):
+        """Update project code preferences."""
+        self.project_preferences.update(prefs)
+
+    def explain_code(self, code_str: str) -> str:
+        """Explain the logic and architecture of given code snippet."""
+        if not code_str:
+            return "No code provided to explain."
+
+        if not self.ai:
+            from bishu.core.ai_engine import AIEngine
+            from bishu.config import OLLAMA_MODEL
+            self.ai = AIEngine(OLLAMA_MODEL)
+
+        prompt = f"Explain the logic, functions, and architecture of this code clearly in 2 concise paragraphs:\n\n```python\n{code_str}\n```"
+        return self.ai.generate(prompt)
+
+    def fix_clipboard_error(self) -> str:
+        """Read error or code snippet from system clipboard and auto-fix it."""
+        try:
+            import tkinter as tk
+            root = tk.Tk()
+            root.withdraw()
+            clipboard_text = root.clipboard_get()
+            root.destroy()
+        except Exception:
+            clipboard_text = ""
+
+        if not clipboard_text:
+            return "Clipboard is empty. Please copy the error or broken code to your clipboard."
+
+        print(f"[CodeAgent] Auto-fixing clipboard error/code...")
+        return self.self_correcting_loop(f"Fix the following error or broken code snippet:\n{clipboard_text}")
 
     def self_correcting_loop(self, spec: str, max_attempts: int = 3) -> str:
         """Generate Python code for specification and self-correct syntax errors in a loop."""
@@ -28,6 +74,7 @@ class CodeAgent:
 {spec}
 
 Rules:
+- Style preference: {self.project_preferences.get('style')}
 - Provide complete working Python code.
 - Include proper functions and example usage.
 - Do not include explanations outside the code.

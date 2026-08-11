@@ -1,4 +1,4 @@
-"""Automation engine utilizing PyWhatKit, PyAutoGUI, Subprocess, YOLO Vision AI, Graphify Knowledge Graph, Smart Home Engine, Voice Engine, Avatar Engine, Vault Engine, and Research Engine."""
+"""Automation engine utilizing PyWhatKit, PyAutoGUI, Subprocess, YOLO Vision AI, Graphify Knowledge Graph, Smart Home Engine, Voice Engine, Avatar Engine, Vault Engine, Research Engine, Scraper Agent, Image AI Agent, Web Builder, and VSCode Integration."""
 
 import os
 import re
@@ -25,7 +25,7 @@ except Exception:
 
 
 class AutomationEngine:
-    """Runs automated system actions, app launchers, YOLO Vision, Smart Home Controls, 2D Avatar Gestures, Secure File Vault, and Deep Research Generator."""
+    """Runs automated system actions, app launchers, YOLO Vision, Smart Home Controls, 2D Avatar, Vault, Research, Scraper, Image AI, Web Builder, and VSCode Integration."""
 
     def __init__(self):
         self.vision_ai = None
@@ -34,6 +34,10 @@ class AutomationEngine:
         self.smarthome_engine = None
         self.vault_engine = None
         self.research_engine = None
+        self.scraper_agent = None
+        self.image_agent = None
+        self.web_builder = None
+        self.vscode_agent = None
 
     def run(self, action: str, task: dict = None) -> tuple:
         """Execute action, returns (success: bool, description: str)."""
@@ -47,7 +51,96 @@ class AutomationEngine:
         if any(kw in action for kw in ["stop laalaa", "close laalaa", "exit laalaa", "band karo", "khatam karo", "alvida"]):
             return True, "EXIT_APP"
 
-        # 2. Deep Research Report Generator (College Reports, Business Plans, Slide Deck PPTs)
+        # 2. AI Image Generator (Stable Diffusion text-to-image with custom aspect ratios)
+        elif action.startswith("generate image ") or action.startswith("make photo ") or action.startswith("draw "):
+            prompt = action.replace("generate image", "").replace("make photo", "").replace("draw", "").strip()
+            aspect = "16:9"
+            if " 1:1" in action:
+                aspect = "1:1"
+            elif " 9:16" in action:
+                aspect = "9:16"
+            elif " 4:3" in action:
+                aspect = "4:3"
+            if not self.image_agent:
+                from bishu.core.image_agent import ImageAIAgent
+                self.image_agent = ImageAIAgent()
+            res = self.image_agent.generate_image(prompt, aspect_ratio=aspect)
+            return True, res
+
+        # 3. AI Website Template Builder (HTML5 Canvas, CSS Grid, Tailwind JS)
+        elif "build website" in action or "build template" in action or "create html website" in action or "make website" in action:
+            p_str = action.replace("build website for", "").replace("build website", "").replace("build template for", "").replace("build template", "").replace("create html website for", "").replace("make website for", "").strip()
+            if not self.web_builder:
+                from bishu.core.web_builder import WebTemplateBuilder
+                from bishu.core.ai_engine import AIEngine
+                self.web_builder = WebTemplateBuilder(ai_engine=AIEngine())
+            res = self.web_builder.build_template(p_str)
+            return True, res
+
+        # 4. Web Scraper Agent (Raw URLs, Table Links, Page Paragraphs)
+        elif action.startswith("scrape url ") or action.startswith("read url "):
+            url = action.replace("scrape url", "").replace("read url", "").strip()
+            if not self.scraper_agent:
+                from bishu.core.scraper_agent import WebScraperAgent
+                self.scraper_agent = WebScraperAgent()
+            raw_text = self.scraper_agent.read_raw_url(url)
+            return True, f"Raw text extracted from '{url}':\n{raw_text[:500]}..."
+
+        elif "scrape table links" in action or "extract table" in action:
+            url = action.replace("scrape table links from", "").replace("scrape table links", "").replace("extract table from", "").strip()
+            if not self.scraper_agent:
+                from bishu.core.scraper_agent import WebScraperAgent
+                self.scraper_agent = WebScraperAgent()
+            tables = self.scraper_agent.scrape_table_links(url)
+            return True, f"Extracted {len(tables)} table structures from '{url}'."
+
+        elif "extract paragraphs" in action or "scrape paragraphs" in action:
+            url = action.replace("extract paragraphs from", "").replace("extract paragraphs", "").replace("scrape paragraphs from", "").strip()
+            if not self.scraper_agent:
+                from bishu.core.scraper_agent import WebScraperAgent
+                self.scraper_agent = WebScraperAgent()
+            p_list = self.scraper_agent.extract_paragraphs(url)
+            return True, f"Extracted {len(p_list)} text paragraphs from '{url}'."
+
+        # 5. VSCode Workspace Integration (Syntax Validation, Run Tasks, Open Workspace)
+        elif "validate syntax" in action or "check syntax" in action:
+            f_path = action.replace("validate syntax for", "").replace("validate syntax", "").replace("check syntax for", "").strip()
+            if not self.vscode_agent:
+                from bishu.core.vscode_agent import VSCodeIntegration
+                self.vscode_agent = VSCodeIntegration()
+            return True, self.vscode_agent.validate_syntax(f_path)
+
+        elif "vscode task" in action or "run task" in action:
+            t_name = action.replace("vscode task", "").replace("run task", "").strip()
+            if not self.vscode_agent:
+                from bishu.core.vscode_agent import VSCodeIntegration
+                self.vscode_agent = VSCodeIntegration()
+            return True, self.vscode_agent.run_vscode_task(t_name)
+
+        elif "open workspace" in action or "vscode workspace" in action:
+            w_path = action.replace("open workspace", "").replace("vscode workspace", "").strip() or str(Path.cwd())
+            if not self.vscode_agent:
+                from bishu.core.vscode_agent import VSCodeIntegration
+                self.vscode_agent = VSCodeIntegration()
+            return True, self.vscode_agent.open_workspace(w_path)
+
+        # 6. AI Code Fixer, Builder & Explainer
+        elif "fix clipboard error" in action or "fix clipboard" in action or "fix error" in action:
+            if not self.code_agent:
+                from bishu.core.code_agent import CodeAgent
+                self.code_agent = CodeAgent()
+            res = self.code_agent.fix_clipboard_error()
+            return True, f"Clipboard Error Auto-Fixed:\n\n```python\n{res}\n```"
+
+        elif "explain code" in action or "explain logic" in action:
+            c_snippet = action.replace("explain code", "").replace("explain logic", "").strip()
+            if not self.code_agent:
+                from bishu.core.code_agent import CodeAgent
+                self.code_agent = CodeAgent()
+            res = self.code_agent.explain_code(c_snippet)
+            return True, res
+
+        # 7. Deep Research Report Generator (College Reports, Business Plans, Slide Deck PPTs)
         elif "college report" in action or "academic report" in action or "research report" in action:
             topic = action.replace("college report on", "").replace("college report", "").replace("research report on", "").replace("research report", "").strip()
             if not self.research_engine:
@@ -75,7 +168,7 @@ class AutomationEngine:
             res = self.research_engine.generate_slide_deck(topic)
             return True, res
 
-        # 3. Secure File Vault Commands (Encrypt, Hide/Unhide, Password Lock)
+        # 8. Secure File Vault Commands (Encrypt, Hide/Unhide, Password Lock)
         elif "encrypt directory" in action or "encrypt folder" in action:
             parts = action.split(" password ")
             d_path = parts[0].replace("encrypt directory", "").replace("encrypt folder", "").strip()
@@ -126,7 +219,7 @@ class AutomationEngine:
                 self.vault_engine = VaultEngine()
             return True, self.vault_engine.unlock_folder(f_path, p_word)
 
-        # 4. Custom Name & User Identity Commands ("call me Mujtaba", "my name is Boss", "mera naam kya hai")
+        # 9. Custom Name & User Identity Commands ("call me Mujtaba", "my name is Boss", "mera naam kya hai")
         elif action.startswith("call me ") or action.startswith("my name is ") or "mera naam " in action and ("hai" in action or "rakho" in action):
             name = (
                 action.replace("call me ", "")
@@ -149,7 +242,7 @@ class AutomationEngine:
             u_name = db.get_fact("user_name", default="Boss")
             return True, f"Aapka naam {u_name} hai!"
 
-        # 5. Dynamic NVIDIA Key Setup Command ("set nvidia key nvapi-...")
+        # 10. Dynamic NVIDIA Key Setup Command ("set nvidia key nvapi-...")
         elif "nvidia key" in action or "set nvidia" in action or "nvidia api" in action:
             key_str = action.replace("set nvidia key", "").replace("nvidia key", "").replace("set nvidia", "").replace("nvidia api", "").replace("=", "").strip()
             if key_str:
@@ -159,7 +252,7 @@ class AutomationEngine:
                 mem.set("NVIDIA_API_KEY", key_str)
                 return True, "NVIDIA API Key saved successfully! Laalaa is now connected to NVIDIA Nemotron-3 Ultra 550B."
 
-        # 6. Voice Customization Commands ("change voice to 1", "voice 1", "list voices")
+        # 11. Voice Customization Commands ("change voice to 1", "voice 1", "list voices")
         elif any(kw in action for kw in ["change voice", "voice change", "awaz badlo", "voice 0", "voice 1", "voice 2", "voice 3"]):
             numbers = re.findall(r'\d+', action)
             v_idx = int(numbers[0]) if numbers else 1
@@ -175,7 +268,7 @@ class AutomationEngine:
             v_summary = "Installed System Voices: " + ", ".join([f"[{i}] {name}" for i, name in enumerate(v_list)])
             return True, v_summary
 
-        # 7. Smart Home IoT Commands
+        # 12. Smart Home IoT Commands
         elif any(kw in action for kw in ["light", "pankha", "fan", "ac", "plug", "socket", "ghar ka status", "smart home"]):
             if not self.smarthome_engine:
                 from bishu.core.smarthome_engine import SmartHomeEngine
@@ -184,7 +277,7 @@ class AutomationEngine:
             if sh_success:
                 return True, sh_desc
 
-        # 8. Graphify Knowledge Graph Query
+        # 13. Graphify Knowledge Graph Query
         elif any(kw in action for kw in ["graphify", "knowledge graph", "memory graph", "show graph"]):
             if not self.graph_engine:
                 from bishu.core.graphify_engine import GraphifyEngine
@@ -192,7 +285,7 @@ class AutomationEngine:
             summary = self.graph_engine.get_summary()
             return True, summary
 
-        # 9. Autonomous Self-Correcting Code Generation
+        # 14. Autonomous Self-Correcting Code Generation
         elif action.startswith("code ") or "write code" in action or "make code" in action or "python script" in action:
             spec = action.replace("write code for", "").replace("write code", "").replace("make code for", "").replace("code ", "").strip()
             if not self.code_agent:
@@ -204,14 +297,14 @@ class AutomationEngine:
             print(final_code)
             return True, f"Code generated and verified for {spec}. Check terminal for output."
 
-        # 10. Pure Urdu / Hindi Self Introduction
+        # 15. Pure Urdu / Hindi Self Introduction
         elif any(kw in action for kw in ["tell me about yourself", "introduce yourself", "who are you", "who r u", "aap kaun hain", "kaun ho tum"]):
             from bishu.core.sqlite_engine import SQLiteEngine
             db = SQLiteEngine()
             u_name = db.get_fact("user_name", default="Boss")
             return True, f"Main Laalaa hoon, aapka shakhsi AI saathi, {u_name}! Main English, Hindi, aur Urdu zubaan mein aapki khidmat ke liye hazir hoon."
 
-        # 11. Pure Urdu / Hindi Greetings
+        # 16. Pure Urdu / Hindi Greetings
         elif any(kw in action for kw in ["aap kaise hain", "kiya haal hai", "aapka kiya haal hai", "kaise ho", "kaise ho aap", "how are you", "how r u"]):
             from bishu.core.sqlite_engine import SQLiteEngine
             db = SQLiteEngine()
@@ -223,7 +316,7 @@ class AutomationEngine:
             u_name = db.get_fact("user_name", default="Boss")
             return True, f"Walaikum Assalam {u_name}! Main Laalaa hoon, farmaiye main aapki kya khidmat kar sakta hoon?"
 
-        # 12. Camera Selection Commands
+        # 17. Camera Selection Commands
         elif any(kw in action for kw in ["camera 0", "webcam 0"]):
             if not self.vision_ai:
                 from bishu.core.vision_ai import VisionAIEngine
@@ -242,7 +335,7 @@ class AutomationEngine:
                 self.vision_ai = VisionAIEngine()
             return self.vision_ai.open_live_camera_preview(duration=12)
 
-        # 13. YOLO Vision Objects Scan
+        # 18. YOLO Vision Objects Scan
         elif any(kw in action for kw in ["yolo", "what do you see", "camera scan", "kya dikh raha hai"]):
             try:
                 if not self.vision_ai:
@@ -252,7 +345,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"YOLO vision error: {e}"
 
-        # 14. Play Songs on YouTube ("play <song>", "gaana bajao <song>")
+        # 19. Play Songs on YouTube ("play <song>", "gaana bajao <song>")
         elif action.startswith("play ") or "gaana bajao" in action or "song" in action:
             topic = action.replace("play ", "").replace("gaana bajao", "").replace("song", "").strip()
             if HAS_PYWHATKIT and pywhatkit:
@@ -264,7 +357,7 @@ class AutomationEngine:
             webbrowser.open(f"https://www.youtube.com/results?search_query={topic}")
             return True, f"YouTube par '{topic}' dhoond raha hoon."
 
-        # 15. Search Google
+        # 20. Search Google
         elif "search" in action or "khojo" in action or "talash" in action:
             topic = action.replace("search google for", "").replace("search ", "").replace("khojo", "").replace("talash karo", "").strip()
             if HAS_PYWHATKIT and pywhatkit:
@@ -276,7 +369,7 @@ class AutomationEngine:
             webbrowser.open(f"https://www.google.com/search?q={topic}")
             return True, f"Google par '{topic}' dhoond raha hoon."
 
-        # 16. Open YouTube / Chrome / WhatsApp / VS Code
+        # 21. Open YouTube / Chrome / WhatsApp / VS Code
         elif "youtube" in action or "you tube" in action:
             webbrowser.open("https://www.youtube.com")
             return True, "YouTube khol raha hoon."
@@ -296,7 +389,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"Failed to open VS Code: {e}"
 
-        # 17. Application Launchers (Notepad, Calculator)
+        # 22. Application Launchers (Notepad, Calculator)
         elif "notepad" in action or "text editor" in action or "notepad kholo" in action:
             try:
                 if os.name == "nt" and hasattr(os, "startfile"):
@@ -316,7 +409,7 @@ class AutomationEngine:
             except Exception as e:
                 return False, f"Failed to open Calculator: {e}"
 
-        # 18. Volume & Desktop Controls
+        # 23. Volume & Desktop Controls
         elif "volume up" in action or "aawaz badao" in action:
             if HAS_PYAUTOGUI and pyautogui:
                 for _ in range(5):
@@ -332,7 +425,7 @@ class AutomationEngine:
                 pyautogui.hotkey("win", "d")
                 return True, "Desktop dikha raha hoon."
 
-        # 19. Screenshot
+        # 24. Screenshot
         elif "screenshot" in action or "photo kheencho" in action:
             try:
                 if HAS_PYAUTOGUI and pyautogui:
