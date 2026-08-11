@@ -18,7 +18,7 @@ class AppPackagerEngine:
             generate_arc_reactor_icon(self.icon_path.parent)
 
     def install_desktop_and_startmenu_shortcuts(self) -> str:
-        """Create native Windows Desktop and Start Menu App Shortcuts with Arc Reactor ICO logo."""
+        """Create native Windows Desktop and Start Menu App Shortcuts with Laalaa name & Arc Reactor ICO logo."""
         if sys.platform != "win32":
             return "App Shortcuts created for desktop environment."
 
@@ -28,16 +28,16 @@ class AppPackagerEngine:
                 'strDesktop = WshShell.SpecialFolders("Desktop")\n'
                 'strStartMenu = WshShell.SpecialFolders("Programs")\n'
                 f'strAppDir = "{self.root_dir}"\n\n'
-                'Set objShortcutDesktop = WshShell.CreateShortcut(strDesktop & "\\Laalaa Arc Reactor.lnk")\n'
-                'objShortcutDesktop.TargetPath = strAppDir & "\\Laalaa_Arc_Reactor.bat"\n'
+                'Set objShortcutDesktop = WshShell.CreateShortcut(strDesktop & "\\Laalaa.lnk")\n'
+                'objShortcutDesktop.TargetPath = strAppDir & "\\Laalaa.bat"\n'
                 'objShortcutDesktop.WorkingDirectory = strAppDir\n'
-                'objShortcutDesktop.Description = "Laalaa J.A.R.V.I.S. Arc Reactor AI Companion App"\n'
+                'objShortcutDesktop.Description = "Laalaa AI Companion App"\n'
                 f'objShortcutDesktop.IconLocation = strAppDir & "\\src\\bishu\\data\\reactor_icon.ico,0"\n'
                 'objShortcutDesktop.Save\n\n'
-                'Set objShortcutStart = WshShell.CreateShortcut(strStartMenu & "\\Laalaa Arc Reactor.lnk")\n'
-                'objShortcutStart.TargetPath = strAppDir & "\\Laalaa_Arc_Reactor.bat"\n'
+                'Set objShortcutStart = WshShell.CreateShortcut(strStartMenu & "\\Laalaa.lnk")\n'
+                'objShortcutStart.TargetPath = strAppDir & "\\Laalaa.bat"\n'
                 'objShortcutStart.WorkingDirectory = strAppDir\n'
-                'objShortcutStart.Description = "Laalaa J.A.R.V.I.S. Arc Reactor AI Companion App"\n'
+                'objShortcutStart.Description = "Laalaa AI Companion App"\n'
                 f'objShortcutStart.IconLocation = strAppDir & "\\src\\bishu\\data\\reactor_icon.ico,0"\n'
                 'objShortcutStart.Save\n'
             )
@@ -56,7 +56,7 @@ class AppPackagerEngine:
             except Exception:
                 pass
 
-            return "📱 Laalaa App registered! Arc Reactor Shortcut placed on Desktop & Windows Start Menu."
+            return "📱 Laalaa App registered! 'Laalaa' Shortcut placed on Desktop & Windows Start Menu."
         except Exception as e:
             return f"Shortcut installer info: {e}"
 
@@ -69,7 +69,7 @@ class AppPackagerEngine:
             "--onedir",
             "--windowed",
             f"--icon={self.icon_path}",
-            "--name=Laalaa_Arc_Reactor_App",
+            "--name=Laalaa",
             f"--add-data={self.root_dir / 'src' / 'bishu' / 'data'}:bishu/data",
             f"--paths={self.root_dir / 'src'}",
             str(main_script)
@@ -78,7 +78,7 @@ class AppPackagerEngine:
         print("[AppPackagerEngine] Compiling standalone Windows Desktop Application...")
         try:
             subprocess.run(cmd, check=True)
-            dist_path = self.root_dir / "dist" / "Laalaa_Arc_Reactor_App" / "Laalaa_Arc_Reactor_App.exe"
+            dist_path = self.root_dir / "dist" / "Laalaa" / "Laalaa.exe"
             return f"📦 Standalone Windows Application compiled successfully at: {dist_path}"
         except Exception as e:
             return f"PyInstaller build info: {e}"

@@ -1,9 +1,9 @@
 @echo off
-title Laalaa J.A.R.V.I.S. Arc Reactor AI Companion
+title Laalaa AI Companion
 cd /d "%~dp0"
 
 echo ========================================================
-echo   Laalaa J.A.R.V.I.S. Arc Reactor AI Companion
+echo   Laalaa AI Companion
 echo ========================================================
 echo.
 
@@ -50,7 +50,7 @@ git pull origin arena/019fe847-lala >nul 2>&1
 echo [2/3] Verifying required Python dependencies...
 %PY_EXE% -m pip install PyQt5 psutil sounddevice numpy plyer ollama pystray pillow SpeechRecognition pyttsx3 pyautogui pywhatkit langgraph openai >nul 2>&1
 
-echo [3/3] Launching Laalaa Arc Reactor App on Screen...
+echo [3/3] Launching Laalaa AI Companion on Screen...
 echo.
 set PYTHONPATH=src
 %PY_EXE% -m bishu
