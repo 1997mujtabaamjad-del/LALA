@@ -2,9 +2,27 @@
 
 import sys
 import time
+import socket
 import threading
 import subprocess
 from pathlib import Path
+
+# Single-Instance Application Socket Lock
+SINGLE_INSTANCE_PORT = 47829
+_instance_socket = None
+
+
+def enforce_single_instance() -> bool:
+    """Ensure only ONE single instance of Laalaa runs on screen at any time."""
+    global _instance_socket
+    try:
+        _instance_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _instance_socket.bind(("127.0.0.1", SINGLE_INSTANCE_PORT))
+        return True
+    except Exception:
+        print("[LaalaaApp] Another instance of Laalaa AI is already running! Bringing existing window to front.")
+        return False
+
 
 # Safe PyQt5 import with automatic pip installation if missing
 try:
@@ -203,9 +221,6 @@ class BishuApp(QObject):
         # Audio Engine
         self.audio.voice_detected.connect(self.on_voice_detected)
         self.audio.start()
-
-        # Show Arc Reactor HUD immediately on screen
-        self.show_orb()
 
         # Silent Boot: Desktop notification
         notify_desktop("Laalaa Online", "Type or speak commands (e.g. 'open youtube', 'notepad', 'how are you').")
@@ -484,6 +499,11 @@ Give a short practical recommendation.
 
 def main() -> int:
     try:
+        # Enforce single-instance application lock
+        if not enforce_single_instance():
+            print("[LaalaaApp] Laalaa AI Companion is already running on screen / system tray.")
+            return 0
+
         app = QApplication(sys.argv)
         if hasattr(app, "setQuitOnLastWindowClosed"):
             app.setQuitOnLastWindowClosed(False)
