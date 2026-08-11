@@ -19,9 +19,9 @@ OLLAMA_MODEL = "gemma2:2b"
 # Camera Selection Index (0 = Default Webcam, 1 = External USB Camera, 2 = Secondary Camera)
 CAMERA_INDEX = 0
 
-# Voice Output Configuration
+# Voice Output Configuration (Crystal-clear accent & relaxed conversational rate)
 VOICE_INDEX = 1       # 1 = Female Voice (Microsoft Zira / Female TTS Voice)
-VOICE_RATE = 0        # Speech Rate (-10 = Slow, 0 = Normal, +10 = Fast)
+VOICE_RATE = -1       # Speech Rate (-1 = Slightly relaxed pace for crystal-clear accent & speech clarity)
 VOICE_VOLUME = 100    # Volume Level (0 to 100)
 PREFERRED_LANGUAGES = ["en", "hi", "ur"]  # Strictly English, Hindi, and Urdu
 

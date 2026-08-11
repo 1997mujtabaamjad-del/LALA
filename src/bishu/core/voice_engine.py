@@ -1,6 +1,7 @@
-"""Voice output engine — High-Fidelity Windows SAPI5 / PowerShell System.Speech with customizable voice selection."""
+"""Voice output engine — High-Fidelity Windows SAPI5 / PowerShell System.Speech with phonetic accent normalization for crystal-clear speech clarity."""
 
 import os
+import re
 import sys
 import subprocess
 import threading
@@ -8,7 +9,36 @@ from bishu.config import VOICE_INDEX, VOICE_RATE, VOICE_VOLUME
 
 
 class VoiceEngine:
-    """Multilingual English, Hindi, and Urdu Voice Engine with customizable voice selection."""
+    """Multilingual English, Hindi, and Urdu Voice Engine with phonetic accent normalization for crystal-clear clarity."""
+
+    PHONETIC_ACCENT_MAP = {
+        "khairiyat": "Khair-ee-yut",
+        "farmaiye": "Far-my-ay",
+        "khidmat": "Khid-mut",
+        "haazir": "Haa-zeer",
+        "hazir": "Haa-zeer",
+        "walaikum": "Wa-lay-koom",
+        "assalam": "Us-sa-laam",
+        "alaikum": "Ulay-koom",
+        "shakhsi": "Shukh-see",
+        "bilkul": "Bil-kool",
+        "shukriya": "Shook-ree-ya",
+        "bohot": "Bo-hut",
+        "bahut": "Bo-hut",
+        "accha": "Uch-chhaa",
+        "achha": "Uch-chhaa",
+        "kaun": "Kone",
+        "kaise": "Kay-say",
+        "kya": "Kyaa",
+        "kiya": "Kyaa",
+        "aap": "Aap",
+        "aapka": "Aap-kaa",
+        "aapki": "Aap-kee",
+        "thik": "Theek",
+        "theek": "Theek",
+        "ji": "Jee",
+        "haan": "Haa"
+    }
 
     def __init__(self, voice_index: int = VOICE_INDEX, rate: int = VOICE_RATE, volume: int = VOICE_VOLUME):
         self.backend = "sapi5"
@@ -67,14 +97,27 @@ class VoiceEngine:
         """Set speech rate (-10 to +10)."""
         self.rate = max(-10, min(10, rate))
 
+    def _normalize_accent_phonetics(self, text: str) -> str:
+        """Normalize Roman Hindi/Urdu words for clear, natural, human-understandable TTS accent."""
+        if not text:
+            return ""
+
+        # Phonetic substitution for smooth pronunciation
+        for word, phonetic in self.PHONETIC_ACCENT_MAP.items():
+            text = re.sub(r'\b' + re.escape(word) + r'\b', phonetic, text, flags=re.IGNORECASE)
+
+        # Add natural comma pauses for clear speech cadence
+        text = text.replace("!", "! ").replace(".", ". ").replace("?", "? ")
+        return re.sub(r'\s+', ' ', text).strip()
+
     def speak(self, text: str, voice_index: int = None):
-        """Speak given text asynchronously in background daemon thread."""
+        """Speak given text asynchronously in background daemon thread with accent normalization."""
         if not text:
             return
 
-        clean_text = text.replace('"', '').replace("'", "").replace('\n', ' ').strip()
+        clean_text = self._normalize_accent_phonetics(text)
         target_voice = self.voice_index if voice_index is None else voice_index
-        print(f"[VoiceEngine] Speaking out loud (Voice #{target_voice}): '{clean_text}'")
+        print(f"[VoiceEngine] Speaking out loud (Voice #{target_voice}, Rate {self.rate}): '{clean_text}'")
 
         def _worker(msg, v_idx):
             # 1. Windows SAPI5 COM Speech
