@@ -3,15 +3,26 @@
 import sys
 import time
 import threading
+import subprocess
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QTimer, QObject, pyqtSignal
-
+# Safe PyQt5 import with automatic pip installation if missing
 try:
+    from PyQt5.QtCore import Qt, QTimer, QObject, pyqtSignal
     from PyQt5.QtWidgets import QApplication
+    HAS_QT5 = True
 except ImportError as err:
-    print(f"[LaalaaApp] QtWidgets unavailable ({err}). Using QCoreApplication fallback.")
-    from PyQt5.QtCore import QCoreApplication as QApplication
+    print(f"[LaalaaApp] PyQt5 is not installed ({err}). Auto-installing required packages for you...")
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "PyQt5", "psutil", "sounddevice", "numpy", "plyer", "ollama", "pystray", "pillow", "SpeechRecognition", "pyttsx3", "pyautogui", "pywhatkit", "langgraph", "openai"])
+        from PyQt5.QtCore import Qt, QTimer, QObject, pyqtSignal
+        from PyQt5.QtWidgets import QApplication
+        HAS_QT5 = True
+        print("[LaalaaApp] PyQt5 & core dependencies installed successfully!")
+    except Exception as install_err:
+        print(f"[LaalaaApp CRITICAL]: Auto-install failed: {install_err}")
+        print("\nPlease run this command in your terminal:\n  pip install PyQt5 psutil sounddevice numpy plyer\n")
+        sys.exit(1)
 
 try:
     from plyer import notification
