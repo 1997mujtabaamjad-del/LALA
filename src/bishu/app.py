@@ -222,9 +222,15 @@ class BishuApp(QObject):
                     self.db.log_chat(sender="Laalaa", message=response)
                     self.voice.speak(response)
                     notify_desktop("Laalaa", response)
+                else:
+                    fallback_res = "Main bilkul khairiyat se hoon! Farmaiye main aapki kya khidmat karoon?"
+                    self.db.log_chat(sender="Laalaa", message=fallback_res)
+                    self.voice.speak(fallback_res)
 
             except Exception as e:
                 print(f"[Laalaa LangGraph] Workflow error: {e}")
+                fallback_res = "Main bilkul khairiyat se hoon! Farmaiye main aapki kya khidmat karoon?"
+                self.voice.speak(fallback_res)
             finally:
                 time.sleep(1)
                 self.app_signals.set_thinking.emit(False)
@@ -240,8 +246,9 @@ class BishuApp(QObject):
         print(f"[Laalaa LangGraph] Voice activity detected (level={volume:.3f})")
 
         def _voice_worker():
-            time.sleep(0.3)
-            # Transcribe directly from in-memory audio buffer via OpenAI Whisper STT
+            # Allow 1.0 second for the user to complete their spoken sentence
+            time.sleep(1.0)
+            # Transcribe directly from in-memory audio buffer with dynamic peak gain boosting
             audio_buffer = self.audio.get_buffered_audio()
             spoken_phrase = self.stt.transcribe_buffer(audio_buffer)
             print(f"[Laalaa LangGraph] OpenAI Whisper Transcribed: '{spoken_phrase}'")
@@ -250,7 +257,7 @@ class BishuApp(QObject):
                 self.handle_user_command(spoken_phrase)
             else:
                 self.show_orb()
-                # Wake-Up Response: Speaks "Laalaa haazir hai"
+                # Wake-Up Response: Speaks "Laalaa haazir hai" so Laalaa ALWAYS gives an out-loud spoken reply
                 self.voice.speak("Laalaa haazir hai")
 
         threading.Thread(target=_voice_worker, daemon=True).start()

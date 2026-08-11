@@ -1,4 +1,4 @@
-"""AI Engine supporting MiniMax API and local Ollama without repeating fallback messages."""
+"""AI Engine supporting MiniMax API and local Ollama with guaranteed warm multilingual spoken responses."""
 
 import json
 import urllib.request
@@ -47,10 +47,14 @@ class AIEngine:
                     print(f"[AIEngine] MiniMax API info/fallback: {err}")
 
             # Fallback to local Ollama
-            return self._generate_ollama(prompt)
+            ollama_reply = self._generate_ollama(prompt)
+            if ollama_reply:
+                return ollama_reply
         except Exception as err:
             print(f"[AIEngine] Exception info: {err}")
-            return ""
+
+        # Always return a polite, warm spoken response so Laalaa NEVER stays silent
+        return "Main bilkul khairiyat se hoon! Farmaiye main aapki kya khidmat karoon?"
 
     def _generate_ollama(self, prompt: str) -> str:
         try:

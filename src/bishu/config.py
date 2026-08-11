@@ -24,5 +24,5 @@ ALERT_COOLDOWN_SECONDS = 300    # 5 minutes cooldown
 ALERT_RED_SECONDS = 2
 SCHEDULER_INTERVAL_MS = 5000
 
-# Wake-word voice activity threshold
-AUDIO_THRESHOLD = 0.02
+# Wake-word voice activity threshold (Sensitive threshold for catching quiet speech)
+AUDIO_THRESHOLD = 0.005

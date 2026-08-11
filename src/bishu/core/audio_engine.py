@@ -1,4 +1,4 @@
-"""Audio engine — deadlock-free, C++ thread-safe microphone listener."""
+"""Audio engine — deadlock-free, high-sensitivity C++ thread-safe microphone listener with automatic gain boosting."""
 
 import collections
 import time
@@ -15,11 +15,11 @@ except Exception:
 
 
 class AudioEngine(QObject):
-    """Monitors microphone input and emits voice_detected signal cleanly from Python thread."""
+    """Monitors microphone input with ultra-sensitive voice activity detection & peak audio gain normalization."""
 
     voice_detected = pyqtSignal(float)
 
-    def __init__(self, threshold=0.02, sample_rate=16000):
+    def __init__(self, threshold=0.005, sample_rate=16000):
         super().__init__()
         self.threshold = threshold
         self.sample_rate = sample_rate
@@ -28,7 +28,8 @@ class AudioEngine(QObject):
         self._thread = None
         self._monitor_thread = None
         self.latest_volume = 0.0
-        self.buffer = collections.deque(maxlen=12)
+        # Increased deque capacity to 30 chunks (7.5 seconds of audio memory)
+        self.buffer = collections.deque(maxlen=30)
 
     def start(self, callback=None):
         if callback:
@@ -64,11 +65,22 @@ class AudioEngine(QObject):
             self._stream = None
 
     def get_buffered_audio(self) -> np.ndarray:
-        """Get recorded audio directly from in-memory buffer."""
+        """Get recorded audio directly from in-memory buffer with automatic gain boost for quiet speech."""
         if not self.buffer:
             return np.array([], dtype='int16')
         try:
-            return np.concatenate(list(self.buffer), axis=0)
+            raw_audio = np.concatenate(list(self.buffer), axis=0)
+            if len(raw_audio) == 0:
+                return raw_audio
+
+            # Automatic Peak Gain Normalization (Boosts low-volume/quiet speech up to 80% peak scale)
+            max_val = np.max(np.abs(raw_audio))
+            if 50 < max_val < 22000:
+                scale_factor = 25000.0 / max_val
+                boosted_audio = np.clip(raw_audio * scale_factor, -32768, 32767).astype(np.int16)
+                return boosted_audio
+
+            return raw_audio
         except Exception:
             return np.array([], dtype='int16')
 
@@ -88,7 +100,7 @@ class AudioEngine(QObject):
         """Isolated Python Thread: Safely checks volume and emits Qt signals."""
         last_emit = 0.0
         while self._running:
-            time.sleep(0.1)
+            time.sleep(0.08)
             vol = self.latest_volume
             now = time.time()
             if vol > self.threshold and (now - last_emit > 2.0):
