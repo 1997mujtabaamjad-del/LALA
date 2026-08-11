@@ -10,6 +10,7 @@ from pathlib import Path
 try:
     from PyQt5.QtCore import Qt, QTimer, QObject, pyqtSignal
     from PyQt5.QtWidgets import QApplication
+    from PyQt5.QtGui import QIcon
     HAS_QT5 = True
 except ImportError as err:
     print(f"[LaalaaApp] PyQt5 is not installed ({err}). Auto-installing required packages for you...")
@@ -17,6 +18,7 @@ except ImportError as err:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "PyQt5", "psutil", "sounddevice", "numpy", "plyer", "ollama", "pystray", "pillow", "SpeechRecognition", "pyttsx3", "pyautogui", "pywhatkit", "langgraph", "openai"])
         from PyQt5.QtCore import Qt, QTimer, QObject, pyqtSignal
         from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtGui import QIcon
         HAS_QT5 = True
         print("[LaalaaApp] PyQt5 & core dependencies installed successfully!")
     except Exception as install_err:
@@ -146,6 +148,14 @@ class BishuApp(QObject):
         if hasattr(self.orb, "setAttribute"):
             self.orb.setAttribute(Qt.WA_TranslucentBackground, True)
         self.orb.resize(1100, 1100)
+
+        # Set official Arc Reactor Window Icon Logo
+        icon_path = Path(__file__).parent / "data" / "reactor_icon.png"
+        if icon_path.exists() and HAS_QT5:
+            try:
+                self.orb.setWindowIcon(QIcon(str(icon_path)))
+            except Exception:
+                pass
 
         # Center HUD window right in the middle of primary screen
         if hasattr(QApplication, "primaryScreen"):
@@ -477,6 +487,13 @@ def main() -> int:
         app = QApplication(sys.argv)
         if hasattr(app, "setQuitOnLastWindowClosed"):
             app.setQuitOnLastWindowClosed(False)
+
+        icon_path = Path(__file__).parent / "data" / "reactor_icon.png"
+        if icon_path.exists() and HAS_QT5:
+            try:
+                app.setWindowIcon(QIcon(str(icon_path)))
+            except Exception:
+                pass
 
         print("[LaalaaApp] Starting Laalaa AI Assistant GUI...")
         bishu = BishuApp()
