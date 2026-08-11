@@ -20,6 +20,12 @@ if exist "venv\Scripts\activate.bat" (
 )
 
 set PYTHONPATH=src
-python -m bishu
+
+where py >nul 2>nul
+if %errorlevel%==0 (
+    py -3 -m bishu
+) else (
+    python -m bishu
+)
 
 pause

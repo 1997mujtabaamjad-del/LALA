@@ -1,5 +1,5 @@
 #!/bin/bash
-# Laalaa Live Local Launcher — Runs code directly from local src without git pull
+# Laalaa Live Local Launcher — Auto-detects python3, python, and py launchers
 
 cd "$(dirname "$0")"
 
@@ -8,4 +8,13 @@ if [ -d "venv" ]; then
 fi
 
 export PYTHONPATH=src
-python3 -m bishu
+
+if command -v python3 &> /dev/null; then
+    python3 -m bishu
+elif command -v python &> /dev/null; then
+    python -m bishu
+elif command -v py &> /dev/null; then
+    py -m bishu
+else
+    echo "Python not found in PATH! Please install Python 3.11."
+fi
