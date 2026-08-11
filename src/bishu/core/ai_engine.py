@@ -1,14 +1,22 @@
-"""AI Engine supporting MiniMax API, local Ollama LLMs, and high-IQ 'Beauty with Brains' local reasoning."""
+"""AI Engine supporting MiniMax API, local Ollama LLMs with CPU thread throttling, and high-IQ 'Beauty with Brains' local reasoning."""
 
 import json
 import re
 import urllib.request
 import urllib.error
-from bishu.config import MINIMAX_API_KEY, MINIMAX_GROUP_ID
+
+try:
+    import psutil
+    HAS_PSUTIL = True
+except Exception:
+    psutil = None
+    HAS_PSUTIL = False
+
+from bishu.config import MINIMAX_API_KEY, MINIMAX_GROUP_ID, CPU_CRITICAL_LLM_LIMIT
 
 
 class AIEngine:
-    """High-IQ 'Beauty with Brains' Interface to local Ollama LLMs & MiniMax Cloud AI."""
+    """High-IQ 'Beauty with Brains' Interface to local Ollama LLMs & MiniMax Cloud AI with CPU protection."""
 
     BEAUTY_WITH_BRAINS_SYSTEM = (
         "You are Laalaa, a brilliant, highly articulate, witty, and warm local AI companion (like J.A.R.V.I.S. with charm, high IQ, and elegance). "
@@ -57,7 +65,14 @@ class AIEngine:
                 except Exception as err:
                     print(f"[AIEngine] MiniMax API info/fallback: {err}")
 
-            # Fallback to local Ollama High-IQ Model
+            # Check CPU Usage Protection Limit before running heavy local Ollama
+            if HAS_PSUTIL and psutil:
+                curr_cpu = psutil.cpu_percent(interval=None)
+                if curr_cpu >= CPU_CRITICAL_LLM_LIMIT:
+                    print(f"[AIEngine] System CPU usage is critically high ({curr_cpu:.1f}% >= {CPU_CRITICAL_LLM_LIMIT}%). Protecting laptop cores.")
+                    return self._smart_local_brain(prompt)
+
+            # Fallback to local Ollama High-IQ Model with thread cap
             ollama_reply = self._generate_ollama(framed_prompt)
             if ollama_reply:
                 return self._clean_reply(ollama_reply)
@@ -65,17 +80,20 @@ class AIEngine:
         except Exception as err:
             print(f"[AIEngine] Exception info: {err}")
 
-        # High-IQ Local Brain Fallback when offline
+        # High-IQ Local Brain Fallback when offline or CPU busy
         return self._smart_local_brain(prompt)
 
     def _generate_ollama(self, prompt: str) -> str:
         try:
             model = self._get_available_ollama_model()
-            print(f"[AIEngine] Querying Local Ollama LLM Model ('{model}')...")
+            print(f"[AIEngine] Querying Local Ollama LLM Model ('{model}') with 4-thread CPU cap...")
             payload = json.dumps({
                 "model": model,
                 "prompt": prompt,
-                "stream": False
+                "stream": False,
+                "options": {
+                    "num_thread": 4  # Cap Ollama CPU threads to 4 so 12 cores remain free for Windows & HUD UI
+                }
             }).encode("utf-8")
 
             req = urllib.request.Request(
