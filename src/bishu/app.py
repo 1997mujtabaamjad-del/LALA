@@ -1,4 +1,4 @@
-"""Laalaa application — single-stream deadlock-free J.A.R.V.I.S. companion with LangGraph stateful workflow orchestration."""
+"""Laalaa application — single-stream deadlock-free J.A.R.V.I.S. companion with LangGraph & Telegram Mobile Gateway."""
 
 import sys
 import time
@@ -35,8 +35,10 @@ from bishu.core.voice_engine import VoiceEngine
 from bishu.core.stt_engine import STTEngine
 from bishu.core.search_engine import SearchEngine
 from bishu.core.langgraph_engine import LangGraphEngine
+from bishu.core.mobile_gateway import MobileGatewayEngine
 from bishu.config import (
     OLLAMA_MODEL,
+    TELEGRAM_BOT_TOKEN,
     SAMPLE_LIMIT,
     MIN_BASELINE_SAMPLES,
     CPU_HARD_LIMIT,
@@ -103,6 +105,14 @@ class BishuApp(QObject):
             vision_engine=self.automation.vision_ai,
             code_agent=self.automation.code_agent
         )
+
+        # Telegram Mobile Phone Gateway
+        self.mobile_gateway = MobileGatewayEngine(
+            telegram_token=TELEGRAM_BOT_TOKEN,
+            app_callback=self.handle_mobile_command
+        )
+        if TELEGRAM_BOT_TOKEN:
+            self.mobile_gateway.start_telegram_bot()
 
         cpu_samples = self.memory.get("cpu_samples", [])
         ram_samples = self.memory.get("ram_samples", [])
@@ -187,6 +197,23 @@ class BishuApp(QObject):
             self.cam_win.activateWindow()
         except Exception as e:
             print(f"[Laalaa] Error opening camera window: {e}")
+
+    def handle_mobile_command(self, cmd: str) -> str:
+        """Handle incoming mobile commands from Telegram phone bot asynchronously."""
+        if not cmd:
+            return ""
+        cmd = cmd.strip()
+        print(f"[Laalaa Mobile Gateway] Command from smartphone: '{cmd}'")
+        self.db.log_chat(sender="User (Phone)", message=cmd)
+
+        recent_turns = self.db.get_recent_chats(limit=6)
+        history = [{"sender": s, "message": m} for _, s, m in recent_turns[:-1]]
+
+        response = self.langgraph.execute(cmd, history=history)
+        if response:
+            self.db.log_chat(sender="Laalaa", message=response)
+            return response
+        return "Command executed successfully on Laalaa!"
 
     def handle_user_command(self, cmd: str):
         """Handle continuous conversation loop commands via LangGraph agent workflow asynchronously."""
@@ -342,6 +369,10 @@ class BishuApp(QObject):
                               lambda: self.app_signals.set_alert.emit(False))
 
             print(f"[Laalaa System Monitor] Resource spike logged: {message}")
+
+            # Send proactive resource spike notification to user's Telegram phone if configured
+            if hasattr(self, "mobile_gateway") and self.mobile_gateway:
+                self.mobile_gateway.send_telegram_msg(f"⚠️ Laalaa System Alert: {message}")
 
         threading.Thread(target=_monitor_worker, daemon=True).start()
 

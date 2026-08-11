@@ -4,6 +4,10 @@
 MINIMAX_API_KEY = ""
 MINIMAX_GROUP_ID = ""
 
+# Telegram Bot Mobile Integration (Optional — set token to control Laalaa from your phone)
+TELEGRAM_BOT_TOKEN = ""
+TELEGRAM_CHAT_ID = ""
+
 # Set your preferred Ollama model here: "gemma2:2b", "qwen2.5:0.5b", "deepseek-r1:1.5b", or "llama3.1:latest"
 OLLAMA_MODEL = "gemma2:2b"
 
