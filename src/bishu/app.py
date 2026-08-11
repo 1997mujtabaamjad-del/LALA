@@ -257,8 +257,8 @@ class BishuApp(QObject):
                 self.handle_user_command(spoken_phrase)
             else:
                 self.show_orb()
-                # Wake-Up Response: Speaks "Laalaa haazir hai" so Laalaa ALWAYS gives an out-loud spoken reply
-                self.voice.speak("Laalaa haazir hai")
+                # Wake-Up Response: Speaks "Ji boss, farmaiye!" out loud
+                self.voice.speak("Ji boss, farmaiye!")
 
         threading.Thread(target=_voice_worker, daemon=True).start()
 

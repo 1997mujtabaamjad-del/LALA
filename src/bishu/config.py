@@ -11,7 +11,7 @@ OLLAMA_MODEL = "gemma2:2b"
 CAMERA_INDEX = 0
 
 # Voice Output Configuration
-VOICE_INDEX = 0       # 0 = Primary Voice, 1 = Secondary Voice, 2 = Hindi/Urdu Voice
+VOICE_INDEX = 1       # 1 = Female Voice (Microsoft Zira / Female TTS Voice)
 VOICE_RATE = 0        # Speech Rate (-10 = Slow, 0 = Normal, +10 = Fast)
 VOICE_VOLUME = 100    # Volume Level (0 to 100)
 PREFERRED_LANGUAGES = ["en", "hi", "ur"]  # Strictly English, Hindi, and Urdu
