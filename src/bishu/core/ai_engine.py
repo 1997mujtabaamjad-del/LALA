@@ -1,4 +1,4 @@
-"""AI Engine supporting NVIDIA Nemotron, MiniMax API, local Ollama LLMs with CPU thread throttling, and high-IQ 'Beauty with Brains' local reasoning."""
+"""AI Engine supporting NVIDIA Nemotron-3 Ultra, MiniMax API, local Ollama LLMs with CPU thread throttling, and high-IQ 'Beauty with Brains' local reasoning."""
 
 import os
 import json
@@ -23,7 +23,7 @@ from bishu.config import (
 
 
 class AIEngine:
-    """High-IQ 'Beauty with Brains' Interface to NVIDIA Nemotron, local Ollama LLMs & MiniMax Cloud AI with CPU protection."""
+    """High-IQ 'Beauty with Brains' Interface to NVIDIA Nemotron-3 Ultra, local Ollama LLMs & MiniMax Cloud AI with CPU protection."""
 
     BEAUTY_WITH_BRAINS_SYSTEM = (
         "You are Laalaa, a brilliant, highly articulate, witty, and warm local AI companion (like J.A.R.V.I.S. with charm, high IQ, and elegance). "
@@ -39,12 +39,12 @@ class AIEngine:
         self.nvidia_model = os.getenv("NVIDIA_MODEL", NVIDIA_MODEL)
 
     def generate(self, prompt: str) -> str:
-        """Generate response using NVIDIA Nemotron API if key exists, MiniMax API, local Ollama, or high-IQ local brain."""
+        """Generate response using NVIDIA Nemotron-3 API if key exists, MiniMax API, local Ollama, or high-IQ local brain."""
         try:
-            # 1. Try NVIDIA Nemotron Cloud API (NVIDIA NIM build.nvidia.com)
+            # 1. Try NVIDIA Nemotron-3 Cloud API (NVIDIA NIM build.nvidia.com)
             if self.nvidia_key:
                 try:
-                    print(f"[AIEngine] Querying NVIDIA Nemotron Model ('{self.nvidia_model}')...")
+                    print(f"[AIEngine] Querying NVIDIA Nemotron-3 Model ('{self.nvidia_model}')...")
                     url = "https://integrate.api.nvidia.com/v1/chat/completions"
                     payload = json.dumps({
                         "model": self.nvidia_model,
@@ -75,7 +75,7 @@ class AIEngine:
                             if text:
                                 return self._clean_reply(text)
                 except Exception as err:
-                    print(f"[AIEngine] NVIDIA Nemotron API info/fallback: {err}")
+                    print(f"[AIEngine] NVIDIA Nemotron-3 API info/fallback: {err}")
 
             # 2. Try MiniMax Cloud AI API
             framed_prompt = f"{self.BEAUTY_WITH_BRAINS_SYSTEM}\n\n{prompt}"
@@ -116,7 +116,7 @@ class AIEngine:
                     print(f"[AIEngine] System CPU usage is critically high ({curr_cpu:.1f}% >= {CPU_CRITICAL_LLM_LIMIT}%). Protecting laptop cores.")
                     return self._smart_local_brain(prompt)
 
-            # 3. Fallback to local Ollama High-IQ / Nemotron Model with thread cap
+            # 3. Fallback to local Ollama High-IQ / Nemotron-3 Model with thread cap
             ollama_reply = self._generate_ollama(framed_prompt)
             if ollama_reply:
                 return self._clean_reply(ollama_reply)
@@ -154,8 +154,8 @@ class AIEngine:
             return ""
 
     def _get_available_ollama_model(self) -> str:
-        """Dynamically detect installed local models in order of high IQ & intelligence including Nemotron."""
-        priority_models = ["nemotron", "llama3.1-nemotron", "llama3.1", "gemma2", "deepseek-r1", "qwen2.5", "phi3", "mistral", "gemma"]
+        """Dynamically detect installed local models in order of high IQ & intelligence including Nemotron-3."""
+        priority_models = ["nemotron3", "nemotron-3", "nemotron", "llama-3.1-nemotron", "llama3.1", "gemma2", "deepseek-r1", "qwen2.5", "phi3", "mistral", "gemma"]
         try:
             req = urllib.request.Request("http://localhost:11434/api/tags")
             with urllib.request.urlopen(req, timeout=3) as resp:
@@ -163,7 +163,7 @@ class AIEngine:
                 models = data.get("models", [])
                 if models:
                     names = [m.get("name") for m in models]
-                    # Check for priority models including Nemotron
+                    # Check for priority models including Nemotron-3
                     for p in priority_models:
                         for n in names:
                             if p in n:

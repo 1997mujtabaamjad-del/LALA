@@ -1,8 +1,8 @@
 """Configuration constants for Laalaa AI Assistant."""
 
-# NVIDIA Nemotron AI API Configuration (Optional — NVIDIA NIM API build.nvidia.com)
+# NVIDIA Nemotron-3 Ultra AI API Configuration (NVIDIA NIM API build.nvidia.com)
 NVIDIA_API_KEY = ""
-NVIDIA_MODEL = "nvidia/llama-3.1-nemotron-70b-instruct"
+NVIDIA_MODEL = "nvidia/nemotron-3-super"
 
 # MiniMax AI API Configuration (Optional)
 MINIMAX_API_KEY = ""
@@ -12,7 +12,7 @@ MINIMAX_GROUP_ID = ""
 TELEGRAM_BOT_TOKEN = ""
 TELEGRAM_CHAT_ID = ""
 
-# Set your preferred Ollama model here: "gemma2:2b", "qwen2.5:0.5b", "deepseek-r1:1.5b", or "llama3.1:latest"
+# Set your preferred Ollama model here: "nemotron-3", "gemma2:2b", "qwen2.5:0.5b", "deepseek-r1:1.5b", or "llama3.1:latest"
 OLLAMA_MODEL = "gemma2:2b"
 
 # Camera Selection Index (0 = Default Webcam, 1 = External USB Camera, 2 = Secondary Camera)
