@@ -1,4 +1,4 @@
-"""AI Engine supporting NVIDIA Nemotron-3 Ultra 550B, MiniMax API, local Ollama LLMs with CPU thread throttling, and high-IQ 'Beauty with Brains' local reasoning."""
+"""AI Engine supporting built-in NVIDIA Nemotron-3 Ultra 550B, MiniMax API, local Ollama LLMs, and high-IQ 'Beauty with Brains' local reasoning."""
 
 import os
 import json
@@ -28,10 +28,12 @@ from bishu.config import (
     MINIMAX_GROUP_ID,
     CPU_CRITICAL_LLM_LIMIT
 )
+from bishu.data.paths import memory_file
+from bishu.core.memory_engine import MemoryEngine
 
 
 class AIEngine:
-    """High-IQ 'Beauty with Brains' Interface to NVIDIA Nemotron-3 Ultra 550B, local Ollama LLMs & MiniMax Cloud AI with CPU protection."""
+    """High-IQ 'Beauty with Brains' Interface with built-in NVIDIA Nemotron-3 Ultra 550B, local Ollama LLMs & MiniMax Cloud AI."""
 
     BEAUTY_WITH_BRAINS_SYSTEM = (
         "You are Laalaa, a brilliant, highly articulate, witty, and warm local AI companion (like J.A.R.V.I.S. with charm, high IQ, and elegance). "
@@ -47,9 +49,29 @@ class AIEngine:
         self.nvidia_model = os.getenv("NVIDIA_MODEL", NVIDIA_MODEL).strip()
         self.nvidia_base_url = os.getenv("NVIDIA_BASE_URL", NVIDIA_BASE_URL).strip()
 
+        # Check persistent memory storage if NVIDIA_API_KEY in config is empty
+        if not self.nvidia_key:
+            try:
+                mem = MemoryEngine(memory_file())
+                saved_key = mem.get("NVIDIA_API_KEY", "")
+                if saved_key:
+                    self.nvidia_key = saved_key.strip()
+            except Exception:
+                pass
+
     def generate(self, prompt: str) -> str:
-        """Generate response using NVIDIA Nemotron-3 Ultra 550B API if key exists, MiniMax API, local Ollama, or high-IQ local brain."""
+        """Generate response using built-in NVIDIA Nemotron-3 Ultra 550B API if key exists, MiniMax API, local Ollama, or high-IQ local brain."""
         try:
+            # Re-check key in case user updated it dynamically
+            if not self.nvidia_key:
+                try:
+                    mem = MemoryEngine(memory_file())
+                    saved_key = mem.get("NVIDIA_API_KEY", "")
+                    if saved_key:
+                        self.nvidia_key = saved_key.strip()
+                except Exception:
+                    pass
+
             # 1. Try NVIDIA Nemotron-3 Ultra 550B Cloud API (build.nvidia.com)
             if self.nvidia_key:
                 res_nvidia = self._query_nvidia_nemotron(prompt)
