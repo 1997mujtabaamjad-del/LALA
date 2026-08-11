@@ -4,7 +4,13 @@ import io
 import os
 import wave
 import tempfile
-import numpy as np
+
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except Exception:
+    np = None
+    HAS_NUMPY = False
 
 try:
     import speech_recognition as sr
@@ -39,13 +45,13 @@ class STTEngine:
         """Safe alias for backwards compatibility."""
         return ""
 
-    def transcribe_buffer(self, audio_data: np.ndarray) -> str:
+    def transcribe_buffer(self, audio_data) -> str:
         """Transcribe in-memory audio buffer specializing in English, Hindi, and Urdu via OpenAI Whisper."""
         if audio_data is None or len(audio_data) == 0:
             return ""
 
         # 1. Try local OpenAI Whisper model
-        if self.whisper_model:
+        if self.whisper_model and HAS_NUMPY and np is None:
             # 1a. Direct NumPy float32 array processing
             try:
                 if isinstance(audio_data, np.ndarray):
@@ -71,10 +77,10 @@ class STTEngine:
                         wf.setnchannels(1)
                         wf.setsampwidth(2) # 16-bit
                         wf.setframerate(self.sample_rate)
-                        if isinstance(audio_data, np.ndarray):
+                        if HAS_NUMPY and isinstance(audio_data, np.ndarray):
                             wf.writeframes(audio_data.tobytes())
                         else:
-                            wf.writeframes(audio_data)
+                            wf.writeframes(bytes(audio_data))
 
                     res = self.whisper_model.transcribe(tmp_file.name, fp16=False)
                     text = res.get("text", "").strip().lower()
@@ -95,10 +101,10 @@ class STTEngine:
                         wf.setnchannels(1)
                         wf.setsampwidth(2)
                         wf.setframerate(self.sample_rate)
-                        if isinstance(audio_data, np.ndarray):
+                        if HAS_NUMPY and isinstance(audio_data, np.ndarray):
                             wf.writeframes(audio_data.tobytes())
                         else:
-                            wf.writeframes(audio_data)
+                            wf.writeframes(bytes(audio_data))
 
                     with open(tmp_file.name, "rb") as audio_file:
                         transcript = client.audio.transcriptions.create(
@@ -121,10 +127,10 @@ class STTEngine:
                         wf.setnchannels(1)
                         wf.setsampwidth(2)
                         wf.setframerate(self.sample_rate)
-                        if isinstance(audio_data, np.ndarray):
+                        if HAS_NUMPY and isinstance(audio_data, np.ndarray):
                             wf.writeframes(audio_data.tobytes())
                         else:
-                            wf.writeframes(audio_data)
+                            wf.writeframes(bytes(audio_data))
                     wav_io.seek(0)
 
                     with sr.AudioFile(wav_io) as source:
