@@ -209,9 +209,9 @@ class LangGraphEngine:
             history_str = "Recent Conversation History:\n" + "\n".join(lines) + "\n\n"
 
         if facts:
-            prompt = f"{history_str}Facts:\n{facts}\n\nUser: {cmd}\nYou are Laalaa, a warm, polite, intelligent AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in 1 or 2 concise sentences matching the user's language (English, Hindi, Urdu).\nLaalaa:"
+            prompt = f"{history_str}Facts:\n{facts}\n\nUser: {cmd}\nYou are Laalaa, a brilliant, warm, intelligent, and witty AI companion (like J.A.R.V.I.S. with charm and high IQ). Respond eloquently as a close friend in 1 or 2 concise sentences strictly matching the user's language (English, Hindi, or Urdu).\nLaalaa:"
         else:
-            prompt = f"{history_str}User: {cmd}\nYou are Laalaa, a warm, polite, intelligent AI companion (like J.A.R.V.I.S.). Respond politely as a close friend in 1 concise sentence matching the user's language (English, Hindi, Urdu).\nLaalaa:"
+            prompt = f"{history_str}User: {cmd}\nYou are Laalaa, a brilliant, warm, intelligent, and witty AI companion (like J.A.R.V.I.S. with charm and high IQ). Respond eloquently as a close friend in 1 concise sentence strictly matching the user's language (English, Hindi, or Urdu).\nLaalaa:"
 
         reply = self.ai.generate(prompt)
         state["ai_reply"] = reply
