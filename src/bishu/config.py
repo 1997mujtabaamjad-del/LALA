@@ -1,5 +1,9 @@
 """Configuration constants for Laalaa AI Assistant."""
 
+# NVIDIA Nemotron AI API Configuration (Optional — NVIDIA NIM API build.nvidia.com)
+NVIDIA_API_KEY = ""
+NVIDIA_MODEL = "nvidia/llama-3.1-nemotron-70b-instruct"
+
 # MiniMax AI API Configuration (Optional)
 MINIMAX_API_KEY = ""
 MINIMAX_GROUP_ID = ""

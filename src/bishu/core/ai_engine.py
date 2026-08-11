@@ -1,5 +1,6 @@
-"""AI Engine supporting MiniMax API, local Ollama LLMs with CPU thread throttling, and high-IQ 'Beauty with Brains' local reasoning."""
+"""AI Engine supporting NVIDIA Nemotron, MiniMax API, local Ollama LLMs with CPU thread throttling, and high-IQ 'Beauty with Brains' local reasoning."""
 
+import os
 import json
 import re
 import urllib.request
@@ -12,11 +13,17 @@ except Exception:
     psutil = None
     HAS_PSUTIL = False
 
-from bishu.config import MINIMAX_API_KEY, MINIMAX_GROUP_ID, CPU_CRITICAL_LLM_LIMIT
+from bishu.config import (
+    NVIDIA_API_KEY,
+    NVIDIA_MODEL,
+    MINIMAX_API_KEY,
+    MINIMAX_GROUP_ID,
+    CPU_CRITICAL_LLM_LIMIT
+)
 
 
 class AIEngine:
-    """High-IQ 'Beauty with Brains' Interface to local Ollama LLMs & MiniMax Cloud AI with CPU protection."""
+    """High-IQ 'Beauty with Brains' Interface to NVIDIA Nemotron, local Ollama LLMs & MiniMax Cloud AI with CPU protection."""
 
     BEAUTY_WITH_BRAINS_SYSTEM = (
         "You are Laalaa, a brilliant, highly articulate, witty, and warm local AI companion (like J.A.R.V.I.S. with charm, high IQ, and elegance). "
@@ -28,16 +35,53 @@ class AIEngine:
     def __init__(self, model_name: str = "gemma2:2b", api_url: str = "http://localhost:11434/api/generate"):
         self.model_name = model_name
         self.api_url = api_url
+        self.nvidia_key = os.getenv("NVIDIA_API_KEY", NVIDIA_API_KEY)
+        self.nvidia_model = os.getenv("NVIDIA_MODEL", NVIDIA_MODEL)
 
     def generate(self, prompt: str) -> str:
-        """Generate response using MiniMax API if key exists, otherwise local Ollama or high-IQ local brain."""
+        """Generate response using NVIDIA Nemotron API if key exists, MiniMax API, local Ollama, or high-IQ local brain."""
         try:
-            # Framing prompt with 'Beauty with Brains' persona
-            framed_prompt = f"{self.BEAUTY_WITH_BRAINS_SYSTEM}\n\n{prompt}"
+            # 1. Try NVIDIA Nemotron Cloud API (NVIDIA NIM build.nvidia.com)
+            if self.nvidia_key:
+                try:
+                    print(f"[AIEngine] Querying NVIDIA Nemotron Model ('{self.nvidia_model}')...")
+                    url = "https://integrate.api.nvidia.com/v1/chat/completions"
+                    payload = json.dumps({
+                        "model": self.nvidia_model,
+                        "messages": [
+                            {"role": "system", "content": self.BEAUTY_WITH_BRAINS_SYSTEM},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.5,
+                        "top_p": 1,
+                        "max_tokens": 512
+                    }).encode("utf-8")
 
+                    req = urllib.request.Request(
+                        url,
+                        data=payload,
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {self.nvidia_key}",
+                            "User-Agent": "LaalaaAssistant/1.0"
+                        }
+                    )
+
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        res_data = json.loads(resp.read().decode("utf-8"))
+                        choices = res_data.get("choices", [])
+                        if choices:
+                            text = choices[0].get("message", {}).get("content", "")
+                            if text:
+                                return self._clean_reply(text)
+                except Exception as err:
+                    print(f"[AIEngine] NVIDIA Nemotron API info/fallback: {err}")
+
+            # 2. Try MiniMax Cloud AI API
+            framed_prompt = f"{self.BEAUTY_WITH_BRAINS_SYSTEM}\n\n{prompt}"
             if MINIMAX_API_KEY:
                 try:
-                    print("[AIEngine] Querying MiniMax Cloud AI API (Beauty with Brains Persona)...")
+                    print("[AIEngine] Querying MiniMax Cloud AI API...")
                     url = f"https://api.minimax.chat/v1/text/chatcompletion_v2?GroupID={MINIMAX_GROUP_ID}" if MINIMAX_GROUP_ID else "https://api.minimax.chat/v1/text/chatcompletion_v2"
                     payload = json.dumps({
                         "model": "abab6.5s-chat",
@@ -72,7 +116,7 @@ class AIEngine:
                     print(f"[AIEngine] System CPU usage is critically high ({curr_cpu:.1f}% >= {CPU_CRITICAL_LLM_LIMIT}%). Protecting laptop cores.")
                     return self._smart_local_brain(prompt)
 
-            # Fallback to local Ollama High-IQ Model with thread cap
+            # 3. Fallback to local Ollama High-IQ / Nemotron Model with thread cap
             ollama_reply = self._generate_ollama(framed_prompt)
             if ollama_reply:
                 return self._clean_reply(ollama_reply)
@@ -86,7 +130,7 @@ class AIEngine:
     def _generate_ollama(self, prompt: str) -> str:
         try:
             model = self._get_available_ollama_model()
-            print(f"[AIEngine] Querying Local Ollama LLM Model ('{model}') with 4-thread CPU cap...")
+            print(f"[AIEngine] Querying Local Ollama Model ('{model}') with 4-thread CPU cap...")
             payload = json.dumps({
                 "model": model,
                 "prompt": prompt,
@@ -110,8 +154,8 @@ class AIEngine:
             return ""
 
     def _get_available_ollama_model(self) -> str:
-        """Dynamically detect installed local models in order of high IQ & intelligence."""
-        priority_models = ["llama3.1", "gemma2", "deepseek-r1", "qwen2.5", "phi3", "mistral", "gemma"]
+        """Dynamically detect installed local models in order of high IQ & intelligence including Nemotron."""
+        priority_models = ["nemotron", "llama3.1-nemotron", "llama3.1", "gemma2", "deepseek-r1", "qwen2.5", "phi3", "mistral", "gemma"]
         try:
             req = urllib.request.Request("http://localhost:11434/api/tags")
             with urllib.request.urlopen(req, timeout=3) as resp:
@@ -119,7 +163,7 @@ class AIEngine:
                 models = data.get("models", [])
                 if models:
                     names = [m.get("name") for m in models]
-                    # Check for priority models
+                    # Check for priority models including Nemotron
                     for p in priority_models:
                         for n in names:
                             if p in n:
