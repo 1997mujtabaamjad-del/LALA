@@ -1,0 +1,14 @@
+PyQt5>=5.15
+psutil>=5.9
+pystray>=0.19
+pillow>=10.0
+plyer>=2.1
+ollama>=0.1.7
+sounddevice>=0.4.6
+numpy>=1.26
+pyttsx3>=2.90
+SpeechRecognition>=3.10
+pyautogui>=0.9.54
+pywhatkit>=5.4
+langgraph>=0.1.0
+langchain-core>=0.2.0
