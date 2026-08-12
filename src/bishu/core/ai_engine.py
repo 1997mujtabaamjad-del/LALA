@@ -1,17 +1,10 @@
-"""AI Engine supporting built-in NVIDIA Nemotron-3 Ultra 550B, MiniMax API, local Ollama LLMs, and dynamic Multi-Model Auto-Switching."""
+"""AI Engine locked to NVIDIA Nemotron-3 Ultra 550B with zero model switching noise."""
 
 import os
 import json
 import re
 import urllib.request
 import urllib.error
-
-try:
-    import psutil
-    HAS_PSUTIL = True
-except Exception:
-    psutil = None
-    HAS_PSUTIL = False
 
 try:
     import openai
@@ -25,15 +18,14 @@ from bishu.config import (
     NVIDIA_MODEL,
     NVIDIA_BASE_URL,
     MINIMAX_API_KEY,
-    MINIMAX_GROUP_ID,
-    CPU_CRITICAL_LLM_LIMIT
+    MINIMAX_GROUP_ID
 )
 from bishu.data.paths import memory_file
 from bishu.core.memory_engine import MemoryEngine
 
 
 class AIEngine:
-    """High-IQ 'Beauty with Brains' Interface with Dynamic Multi-Model Auto-Switching across NVIDIA Nemotron-3 Ultra 550B, MiniMax, and local Ollama."""
+    """High-IQ 'Beauty with Brains' Interface locked directly to NVIDIA Nemotron-3 Ultra 550B."""
 
     BEAUTY_WITH_BRAINS_SYSTEM = (
         "You are Laalaa, a brilliant, highly articulate, witty, and warm local AI companion (like J.A.R.V.I.S. with charm, high IQ, and elegance). "
@@ -60,7 +52,7 @@ class AIEngine:
                 pass
 
     def generate(self, prompt: str, task_type: str = "fast_chat") -> str:
-        """Generate response with dynamic multi-model auto-switching based on task complexity, API availability, and CPU load."""
+        """Generate response directly using NVIDIA Nemotron-3 Ultra 550B API, MiniMax, or high-IQ local brain."""
         try:
             # Re-check key in case user updated it dynamically
             if not self.nvidia_key:
@@ -72,31 +64,23 @@ class AIEngine:
                 except Exception:
                     pass
 
-            from bishu.core.model_router import ModelRouterAgent
-            router = ModelRouterAgent()
-            provider, target_model = router.select_best_model(task_type)
-
-            # 1. Route to NVIDIA Nemotron-3 Ultra 550B if selected by router
-            if provider == "nvidia_nemotron" and self.nvidia_key:
+            # 1. Primary: NVIDIA Nemotron-3 Ultra 550B Cloud API
+            if self.nvidia_key:
                 res_nvidia = self._query_nvidia_nemotron(prompt)
                 if res_nvidia:
                     return self._clean_reply(res_nvidia)
 
-            # 2. Route to MiniMax Cloud AI API if selected by router
+            # 2. Secondary: MiniMax Cloud AI API
             framed_prompt = f"{self.BEAUTY_WITH_BRAINS_SYSTEM}\n\n{prompt}"
-            if provider == "minimax_cloud" and MINIMAX_API_KEY:
-                res_minimax = self._query_minimax(framed_prompt)
-                if res_minimax:
-                    return self._clean_reply(res_minimax)
+            if MINIMAX_API_KEY:
+                try:
+                    res_minimax = self._query_minimax(framed_prompt)
+                    if res_minimax:
+                        return self._clean_reply(res_minimax)
+                except Exception:
+                    pass
 
-            # Check CPU Usage Protection Limit before running heavy local Ollama
-            if HAS_PSUTIL and psutil:
-                curr_cpu = psutil.cpu_percent(interval=None)
-                if curr_cpu >= CPU_CRITICAL_LLM_LIMIT:
-                    print(f"[AIEngine] System CPU usage is critically high ({curr_cpu:.1f}% >= {CPU_CRITICAL_LLM_LIMIT}%). Protecting laptop cores.")
-                    return self._smart_local_brain(prompt)
-
-            # 3. Route to local Ollama High-IQ / Nemotron Model with thread cap
+            # 3. Local High-IQ Ollama Model
             ollama_reply = self._generate_ollama(framed_prompt)
             if ollama_reply:
                 return self._clean_reply(ollama_reply)
@@ -104,7 +88,7 @@ class AIEngine:
         except Exception as err:
             print(f"[AIEngine] Exception info: {err}")
 
-        # High-IQ Local Brain Fallback when offline or CPU busy
+        # 4. High-IQ Local Brain Fallback
         return self._smart_local_brain(prompt)
 
     def _query_nvidia_nemotron(self, prompt: str) -> str:
@@ -207,13 +191,12 @@ class AIEngine:
     def _generate_ollama(self, prompt: str) -> str:
         try:
             model = self._get_available_ollama_model()
-            print(f"[AIEngine] Querying Local Ollama Model ('{model}') with 4-thread CPU cap...")
             payload = json.dumps({
                 "model": model,
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "num_thread": 4  # Cap Ollama CPU threads to 4 so 12 cores remain free for Windows & HUD UI
+                    "num_thread": 4
                 }
             }).encode("utf-8")
 
@@ -226,13 +209,12 @@ class AIEngine:
             with urllib.request.urlopen(req, timeout=18) as resp:
                 res_data = json.loads(resp.read().decode("utf-8"))
                 return res_data.get("response", "").strip()
-        except Exception as err:
-            print(f"[AIEngine] Ollama info: {err}")
+        except Exception:
             return ""
 
     def _get_available_ollama_model(self) -> str:
-        """Dynamically detect installed local models in order of high IQ & intelligence including Nemotron-3 Ultra."""
-        priority_models = ["nemotron-3-ultra", "nemotron3-ultra", "nemotron3", "nemotron-3", "nemotron", "llama-3.1-nemotron", "llama3.1", "gemma2", "deepseek-r1", "qwen2.5", "phi3", "mistral", "gemma"]
+        """Detect installed local models."""
+        priority_models = ["nemotron-3-ultra", "nemotron3", "nemotron", "llama-3.1-nemotron", "llama3.1", "gemma2", "deepseek-r1", "qwen2.5"]
         try:
             req = urllib.request.Request("http://localhost:11434/api/tags")
             with urllib.request.urlopen(req, timeout=3) as resp:
@@ -240,7 +222,6 @@ class AIEngine:
                 models = data.get("models", [])
                 if models:
                     names = [m.get("name") for m in models]
-                    # Check for priority models including Nemotron-3
                     for p in priority_models:
                         for n in names:
                             if p in n:
