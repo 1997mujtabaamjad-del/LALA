@@ -1,5 +1,10 @@
 """Configuration constants for Laalaa AI Assistant."""
 
+# ElevenLabs AI Voice Configuration (Leo Voice)
+ELEVENLABS_API_KEY = ""
+ELEVENLABS_VOICE_ID = "d0grukerEzs069eKIauC"    # ElevenLabs Leo Voice ID
+ELEVENLABS_MODEL_ID = "eleven_multilingual_v2"  # Multilingual v2 for English, Hindi, Urdu
+
 # NVIDIA Nemotron-3 Ultra 550B AI API Configuration (NVIDIA NIM API build.nvidia.com)
 NVIDIA_API_KEY = ""
 NVIDIA_MODEL = "nvidia/nemotron-3-ultra-550b-a55b"

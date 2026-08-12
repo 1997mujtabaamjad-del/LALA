@@ -1,17 +1,20 @@
-"""Voice output engine — High-Fidelity Windows SAPI5 / PowerShell System.Speech with natural speech fillers & time-based tone adaptation."""
+"""Voice output engine — High-Fidelity ElevenLabs Leo Voice, Windows SAPI5 / PowerShell System.Speech with natural speech fillers & time-based tone adaptation."""
 
 import os
 import re
 import sys
 import time
+import json
 import subprocess
 import threading
 import random
-from bishu.config import VOICE_INDEX, VOICE_RATE, VOICE_VOLUME
+import urllib.request
+import urllib.error
+from bishu.config import VOICE_INDEX, VOICE_RATE, VOICE_VOLUME, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL_ID
 
 
 class VoiceEngine:
-    """Multilingual Hinglish Voice Engine with natural speech fillers & time-based tone adaptation."""
+    """Multilingual Hinglish Voice Engine supporting ElevenLabs Leo Voice (d0grukerEzs069eKIauC), SAPI5, and PowerShell TTS."""
 
     PHONETIC_ACCENT_MAP = {
         "khairiyat": "Khair-ee-yut",
@@ -136,8 +139,56 @@ class VoiceEngine:
         text = text.replace("!", "! ").replace(".", ". ").replace("?", "? ")
         return re.sub(r'\s+', ' ', text).strip()
 
+    def _speak_elevenlabs(self, text: str) -> bool:
+        """Synthesize high-fidelity voice output via ElevenLabs API using Leo Voice ID (d0grukerEzs069eKIauC)."""
+        key = os.getenv("ELEVENLABS_API_KEY", ELEVENLABS_API_KEY).strip()
+        voice_id = os.getenv("ELEVENLABS_VOICE_ID", ELEVENLABS_VOICE_ID).strip()
+        
+        if not key:
+            return False
+
+        try:
+            import tempfile
+
+            url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+            payload = json.dumps({
+                "text": text,
+                "model_id": ELEVENLABS_MODEL_ID,
+                "voice_settings": {
+                    "stability": 0.5,
+                    "similarity_boost": 0.8
+                }
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    "Accept": "audio/mpeg",
+                    "Content-Type": "application/json",
+                    "xi-api-key": key
+                }
+            )
+
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                audio_data = resp.read()
+                if audio_data and len(audio_data) > 500:
+                    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_f:
+                        tmp_f.write(audio_data)
+                        tmp_name = tmp_f.name
+
+                    print(f"[VoiceEngine] Played ElevenLabs Leo Voice audio ({len(audio_data)} bytes).")
+                    if sys.platform == "win32":
+                        ps_cmd = f'(New-Object Media.SoundPlayer "{tmp_name}").PlaySync()'
+                        subprocess.run(["powershell", "-Command", ps_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    return True
+        except Exception as e:
+            print(f"[VoiceEngine] ElevenLabs Leo Voice info: {e}")
+            
+        return False
+
     def speak(self, text: str, voice_index: int = None, use_fillers: bool = True):
-        """Speak given text asynchronously in background daemon thread with accent normalization & natural fillers."""
+        """Speak given text asynchronously in background daemon thread with ElevenLabs Leo Voice & SAPI5/PowerShell fallback."""
         if not text:
             return
 
@@ -149,7 +200,11 @@ class VoiceEngine:
         print(f"[VoiceEngine] Speaking out loud (Voice #{target_voice}, Rate {self.rate}): '{clean_text}'")
 
         def _worker(msg, v_idx):
-            # 1. Windows SAPI5 COM Speech
+            # 1. Try ElevenLabs Leo Voice if API Key is set
+            if self._speak_elevenlabs(msg):
+                return
+
+            # 2. Windows SAPI5 COM Speech Fallback
             if self.backend == "sapi5":
                 try:
                     import pythoncom
@@ -169,7 +224,7 @@ class VoiceEngine:
                 except Exception as e:
                     print(f"[VoiceEngine] SAPI5 info: {e}, falling back to PowerShell...")
 
-            # 2. Universal Windows PowerShell System.Speech Fallback
+            # 3. Universal Windows PowerShell System.Speech Fallback
             if sys.platform == "win32":
                 try:
                     ps_cmd = (
