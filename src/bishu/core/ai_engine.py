@@ -251,12 +251,34 @@ class AIEngine:
         return self.model_name
 
     def _smart_local_brain(self, query: str) -> str:
-        """High-IQ local fallback reasoning engine for charming, intelligent answers."""
+        """High-IQ local fallback reasoning engine that extracts live facts & answers user questions."""
         q = query.lower().strip()
 
-        # Hindi / Urdu Greetings
+        # 1. Extract live facts from SearchEngine / Perplexity if present in prompt
+        if "facts:" in q:
+            try:
+                facts_match = re.search(r'facts:\s*(.*?)(?=\n\n|\nuser|\nlaalaa|$)', query, re.IGNORECASE | re.DOTALL)
+                if facts_match:
+                    extracted_facts = facts_match.group(1).strip()
+                    if extracted_facts and len(extracted_facts) > 10:
+                        return extracted_facts
+            except Exception:
+                pass
+
+        # 2. Weather & Temperature Query Direct Answer
+        if any(w in q for w in ["weather", "temperature", "mausam", "temp"]):
+            try:
+                from bishu.core.search_engine import SearchEngine
+                search = SearchEngine()
+                w_res = search.search_live(q)
+                if w_res:
+                    return w_res
+            except Exception:
+                pass
+
+        # 3. Hindi / Urdu Greetings
         if any(w in q for w in ["kaise ho", "kya haal", "khairiyat", "how are you"]):
-            return "Main bilkul khairiyat se hoon! Dimaag aur dil, dono aapki khidmat mein tayyar hain. Aap bataiye?"
+            return "Main bilkul khairiyat se hoon, Boss! Dimaag aur dil, dono aapki khidmat mein tayyar hain. Aap bataiye?"
 
         if any(w in q for w in ["who are you", "tum kaun ho", "aap kaun hain"]):
             return "Main Laalaa hoon — beauty with brains! Aapki shakhsi AI saathi, jo hamesha ek qadam aage sochti hai."
