@@ -1,4 +1,4 @@
-"""SQLite database memory engine for persistent long-term conversation & telemetry storage."""
+"""SQLite database memory engine for persistent long-term conversation, mood tracking & telemetry storage."""
 
 import os
 import sqlite3
@@ -20,7 +20,7 @@ class SQLiteEngine:
         return sqlite3.connect(str(self.db_path), check_same_thread=False)
 
     def _init_db(self):
-        """Initialize SQLite database tables for chat history, system events, and user facts."""
+        """Initialize SQLite database tables for chat history, system events, user facts, and mood tracker."""
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -56,6 +56,16 @@ class SQLiteEngine:
                     )
                 """)
 
+                # 4. Mood Tracker & Mental Wellness Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS mood_tracker (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT,
+                        mood TEXT,
+                        notes TEXT
+                    )
+                """)
+
                 conn.commit()
                 print(f"[SQLiteEngine] SQLite Database initialized at: {self.db_path}")
         except Exception as e:
@@ -74,6 +84,20 @@ class SQLiteEngine:
                 conn.commit()
         except Exception as e:
             print(f"[SQLiteEngine] Log chat error: {e}")
+
+    def log_mood(self, mood: str, notes: str = ""):
+        """Log a mental wellness mood entry in SQLite database."""
+        try:
+            ts = time.strftime("%Y-%m-%d %H:%M:%S")
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO mood_tracker (timestamp, mood, notes) VALUES (?, ?, ?)",
+                    (ts, mood, notes)
+                )
+                conn.commit()
+        except Exception as e:
+            print(f"[SQLiteEngine] Log mood error: {e}")
 
     def log_system_event(self, cpu: float, ram: float, message: str):
         """Save system resource telemetry event to SQLite database."""
