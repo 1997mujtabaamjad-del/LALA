@@ -341,14 +341,20 @@ class BishuApp(QObject):
         threading.Thread(target=_voice_worker, daemon=True).start()
 
     def show_orb(self):
-        self.orb.show()
-        if hasattr(self.orb, "raise_"):
-            self.orb.raise_()
-        if hasattr(self.orb, "activateWindow"):
-            self.orb.activateWindow()
+        try:
+            self.orb.show()
+            if hasattr(self.orb, "raise_"):
+                self.orb.raise_()
+            if hasattr(self.orb, "activateWindow"):
+                self.orb.activateWindow()
+        except Exception:
+            pass
 
     def hide_orb(self):
-        self.orb.hide()
+        try:
+            self.orb.hide()
+        except Exception:
+            pass
 
     def reload_schedule(self):
         self.scheduler.reload()
@@ -361,69 +367,79 @@ class BishuApp(QObject):
         QApplication.instance().quit()
 
     def tick_anim(self):
-        self.orb.rotation = (self.orb.rotation + 0.8) % 360
-        self.orb.update()
+        try:
+            self.orb.rotation = (self.orb.rotation + 0.8) % 360
+            self.orb.update()
+        except Exception:
+            pass
 
     def tick_monitor(self):
         def _monitor_worker():
-            cpu, ram = self.monitor.sample()
+            try:
+                if self.memory.get("MUTE_ALERTS"):
+                    return
 
-            self.memory.set("cpu_samples", self.monitor.cpu_history)
-            self.memory.set("ram_samples", self.monitor.ram_history)
+                cpu, ram = self.monitor.sample()
 
-            cpu_hist = self.monitor.cpu_history[:-1]
-            ram_hist = self.monitor.ram_history[:-1]
+                self.memory.set("cpu_samples", self.monitor.cpu_history)
+                self.memory.set("ram_samples", self.monitor.ram_history)
 
-            cpu_base = sum(cpu_hist) / len(cpu_hist) if cpu_hist else cpu
-            ram_base = sum(ram_hist) / len(ram_hist) if ram_hist else ram
+                cpu_hist = self.monitor.cpu_history[:-1]
+                ram_hist = self.monitor.ram_history[:-1]
 
-            enough = (
-                len(cpu_hist) >= MIN_BASELINE_SAMPLES
-                and len(ram_hist) >= MIN_BASELINE_SAMPLES
-            )
+                cpu_base = sum(cpu_hist) / len(cpu_hist) if cpu_hist else cpu
+                ram_base = sum(ram_hist) / len(ram_hist) if ram_hist else ram
 
-            reasons = []
+                enough = (
+                    len(cpu_hist) >= MIN_BASELINE_SAMPLES
+                    and len(ram_hist) >= MIN_BASELINE_SAMPLES
+                )
 
-            if cpu >= CPU_HARD_LIMIT:
-                reasons.append(f"High CPU: {cpu:.1f}%")
-            elif enough and cpu >= cpu_base + CPU_SPIKE_DELTA:
-                reasons.append(f"CPU spike: {cpu:.1f}%")
+                reasons = []
 
-            if ram >= RAM_HARD_LIMIT:
-                reasons.append(f"High RAM: {ram:.1f}%")
-            elif enough and ram >= ram_base + RAM_SPIKE_DELTA:
-                reasons.append(f"RAM spike: {ram:.1f}%")
+                if cpu >= CPU_HARD_LIMIT:
+                    reasons.append(f"High CPU: {cpu:.1f}%")
+                elif enough and cpu >= cpu_base + CPU_SPIKE_DELTA:
+                    reasons.append(f"CPU spike: {cpu:.1f}%")
 
-            if not reasons:
-                return
+                if ram >= RAM_HARD_LIMIT:
+                    reasons.append(f"High RAM: {ram:.1f}%")
+                elif enough and ram >= ram_base + RAM_SPIKE_DELTA:
+                    reasons.append(f"RAM spike: {ram:.1f}%")
 
-            now = time.monotonic()
-            if now - self.last_alert < ALERT_COOLDOWN_SECONDS:
-                return
+                if not reasons:
+                    return
 
-            self.last_alert = now
-            message = " | ".join(reasons)
+                now = time.monotonic()
+                if now - self.last_alert < ALERT_COOLDOWN_SECONDS:
+                    return
 
-            self.pending_alert_message = message
+                self.last_alert = now
+                message = " | ".join(reasons)
 
-            events = self.memory.get("system_events", [])
-            events.append({
-                "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "cpu": cpu,
-                "ram": ram,
-                "message": message,
-            })
-            self.memory.set("system_events", events[-100:])
+                self.pending_alert_message = message
 
-            self.app_signals.set_alert.emit(True)
-            QTimer.singleShot(ALERT_RED_SECONDS * 1000,
-                              lambda: self.app_signals.set_alert.emit(False))
+                events = self.memory.get("system_events", [])
+                events.append({
+                    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "cpu": cpu,
+                    "ram": ram,
+                    "message": message,
+                })
+                self.memory.set("system_events", events[-100:])
 
-            print(f"[Laalaa System Monitor] Resource spike logged: {message}")
+                self.app_signals.set_alert.emit(True)
+                QTimer.singleShot(ALERT_RED_SECONDS * 1000,
+                                  lambda: self.app_signals.set_alert.emit(False))
 
-            # Send proactive resource spike notification to user's Telegram phone if configured
-            if hasattr(self, "mobile_gateway") and self.mobile_gateway:
-                self.mobile_gateway.send_telegram_msg(f"⚠️ Laalaa System Alert: {message}")
+                print(f"[Laalaa System Monitor] Resource spike logged: {message}")
+
+                # Send proactive resource spike notification to user's Telegram phone if configured
+                if hasattr(self, "mobile_gateway") and self.mobile_gateway:
+                    self.mobile_gateway.send_telegram_msg(f"⚠️ Laalaa System Alert: {message}")
+
+            except Exception:
+                pass
 
         threading.Thread(target=_monitor_worker, daemon=True).start()
 
@@ -481,32 +497,35 @@ Give a short practical recommendation.
         print(suggestion)
 
     def tick_scheduler(self):
-        self.scheduler.reload()
-        due = self.scheduler.due_tasks()
+        try:
+            self.scheduler.reload()
+            due = self.scheduler.due_tasks()
 
-        for task in due:
-            action = task.get("action", "")
+            for task in due:
+                action = task.get("action", "")
 
-            if not self.safety.is_allowed(action):
-                print(f"Blocked unsafe action: {action}")
-                continue
+                if not self.safety.is_allowed(action):
+                    print(f"Blocked unsafe action: {action}")
+                    continue
 
-            self.orb.set_task_flash(True)
-            QTimer.singleShot(
-                4000,
-                lambda: self.orb.set_task_flash(False),
-            )
+                self.orb.set_task_flash(True)
+                QTimer.singleShot(
+                    4000,
+                    lambda: self.orb.set_task_flash(False),
+                )
 
-            success, description = self.automation.run(action, task)
+                success, description = self.automation.run(action, task)
 
-            actions = self.memory.get("scheduled_actions", [])
-            actions.append({
-                "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "action": action,
-                "success": success,
-                "description": description,
-            })
-            self.memory.set("scheduled_actions", actions[-100:])
+                actions = self.memory.get("scheduled_actions", [])
+                actions.append({
+                    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "action": action,
+                    "success": success,
+                    "description": description,
+                })
+                self.memory.set("scheduled_actions", actions[-100:])
+        except Exception:
+            pass
 
 
 def main() -> int:
