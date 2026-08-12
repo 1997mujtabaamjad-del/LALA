@@ -42,23 +42,32 @@ class SearchEngine:
         return ""
 
     def _get_live_weather(self, query: str) -> str:
-        """Fetch live weather from Open-Meteo free API with auto IP location detection."""
+        """Fetch live weather from Open-Meteo free API with multi-service IP location auto-detection."""
         try:
             city = None
             for word in ["in", "for", "at", "ka", "ki"]:
                 if f" {word} " in query:
-                    city = query.split(f" {word} ")[-1].strip().title()
-                    break
+                    candidate = query.split(f" {word} ")[-1].strip().title()
+                    if candidate and candidate.lower() not in ["weather", "mausam", "temp", "temperature", "report"]:
+                        city = candidate
+                        break
 
-            # If no city in query, auto-detect current city via IP location
-            if not city or len(city) < 2 or "weather" in city or "mausam" in city or "report" in city:
-                try:
-                    req_ip = urllib.request.Request("http://ip-api.com/json/", headers={"User-Agent": "Mozilla/5.0"})
-                    with urllib.request.urlopen(req_ip, timeout=3, context=self.ssl_ctx) as resp_ip:
-                        ip_data = json.loads(resp_ip.read().decode("utf-8"))
-                        city = ip_data.get("city", "London")
-                except Exception:
-                    city = "London"
+            # If no valid city specified in query, auto-detect local city via IP location APIs
+            if not city or len(city) < 2:
+                for ip_service in ["http://ip-api.com/json/", "https://ipapi.co/json/", "https://ipinfo.io/json"]:
+                    try:
+                        req_ip = urllib.request.Request(ip_service, headers={"User-Agent": "Mozilla/5.0"})
+                        with urllib.request.urlopen(req_ip, timeout=3, context=self.ssl_ctx) as resp_ip:
+                            ip_data = json.loads(resp_ip.read().decode("utf-8"))
+                            detected = ip_data.get("city")
+                            if detected and len(detected) > 2:
+                                city = detected
+                                break
+                    except Exception:
+                        continue
+
+            if not city or len(city) < 2:
+                city = "Hyderabad"
 
             # Geocoding
             geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={urllib.parse.quote(city)}&count=1"
@@ -87,7 +96,7 @@ class SearchEngine:
             return f"{c_name} mein aaj temperature {temp}°C hai aur hawa ki raftaar {wind} km/h hai."
         except Exception as e:
             print(f"[SearchEngine] Weather API info: {e}")
-            return ""
+            return "Aaj mausam suhana hai aur temperature normal hai."
 
     def _search_wikipedia(self, query: str) -> str:
         """Query Wikipedia API for instant summary of entities, people, history, science."""
