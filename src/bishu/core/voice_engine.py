@@ -1,4 +1,4 @@
-"""Voice output engine — High-Fidelity ElevenLabs Leo Voice, Windows SAPI5 / PowerShell System.Speech with natural speech fillers & time-based tone adaptation."""
+"""Voice output engine — High-Fidelity ElevenLabs Leo Voice with Autonomous Credit Fallback to Windows SAPI5 / PowerShell System.Speech."""
 
 import os
 import re
@@ -11,10 +11,12 @@ import random
 import urllib.request
 import urllib.error
 from bishu.config import VOICE_INDEX, VOICE_RATE, VOICE_VOLUME, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL_ID
+from bishu.data.paths import memory_file
+from bishu.core.memory_engine import MemoryEngine
 
 
 class VoiceEngine:
-    """Multilingual Hinglish Voice Engine supporting ElevenLabs Leo Voice (d0grukerEzs069eKIauC), SAPI5, and PowerShell TTS."""
+    """Multilingual Hinglish Voice Engine supporting ElevenLabs Leo Voice (d0grukerEzs069eKIauC) with autonomous credit exhaustion fallback."""
 
     PHONETIC_ACCENT_MAP = {
         "khairiyat": "Khair-ee-yut",
@@ -140,12 +142,23 @@ class VoiceEngine:
         return re.sub(r'\s+', ' ', text).strip()
 
     def _speak_elevenlabs(self, text: str) -> bool:
-        """Synthesize high-fidelity voice output via ElevenLabs API using Leo Voice ID (d0grukerEzs069eKIauC)."""
+        """Synthesize high-fidelity voice output via ElevenLabs API using Leo Voice ID (d0grukerEzs069eKIauC).
+        Autonomously falls back to local SAPI5 if credits are finished or quota exceeded.
+        """
         key = os.getenv("ELEVENLABS_API_KEY", ELEVENLABS_API_KEY).strip()
-        voice_id = os.getenv("ELEVENLABS_VOICE_ID", ELEVENLABS_VOICE_ID).strip()
-        
+        if not key:
+            try:
+                mem = MemoryEngine(memory_file())
+                saved_key = mem.get("ELEVENLABS_API_KEY", "")
+                if saved_key:
+                    key = saved_key.strip()
+            except Exception:
+                pass
+
         if not key:
             return False
+
+        voice_id = os.getenv("ELEVENLABS_VOICE_ID", ELEVENLABS_VOICE_ID).strip()
 
         try:
             import tempfile
@@ -182,13 +195,16 @@ class VoiceEngine:
                         ps_cmd = f'(New-Object Media.SoundPlayer "{tmp_name}").PlaySync()'
                         subprocess.run(["powershell", "-Command", ps_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     return True
+        except urllib.error.HTTPError as http_err:
+            if http_err.code in [401, 402, 429]:
+                print(f"[VoiceEngine] ElevenLabs credits finished or quota exceeded (HTTP {http_err.code}). Autonomously switching to local SAPI5/PowerShell voice!")
         except Exception as e:
-            print(f"[VoiceEngine] ElevenLabs Leo Voice info: {e}")
+            print(f"[VoiceEngine] ElevenLabs info/fallback: {e}")
             
         return False
 
     def speak(self, text: str, voice_index: int = None, use_fillers: bool = True):
-        """Speak given text asynchronously in background daemon thread with ElevenLabs Leo Voice & SAPI5/PowerShell fallback."""
+        """Speak given text asynchronously in background daemon thread with ElevenLabs Leo Voice & autonomous local fallback."""
         if not text:
             return
 
@@ -204,7 +220,7 @@ class VoiceEngine:
             if self._speak_elevenlabs(msg):
                 return
 
-            # 2. Windows SAPI5 COM Speech Fallback
+            # 2. Autonomous Local Windows SAPI5 COM Speech Fallback
             if self.backend == "sapi5":
                 try:
                     import pythoncom
