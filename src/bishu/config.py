@@ -1,5 +1,9 @@
 """Configuration constants for Laalaa AI Assistant."""
 
+# Discord Developer Integration (Optional — discord.com/developers)
+DISCORD_BOT_TOKEN = ""
+DISCORD_WEBHOOK_URL = ""
+
 # ElevenLabs AI Voice Configuration
 ELEVENLABS_API_KEY = ""
 ELEVENLABS_VOICE_ID = "d0grukerEzs069eKIauC"    # ElevenLabs Leo Voice ID
