@@ -1,4 +1,4 @@
-"""Voice output engine — High-Fidelity Clear Male Voice (Microsoft David), ElevenLabs, SAPI5, and PowerShell TTS."""
+"""Voice output engine — High-Fidelity Clear Male Voice (Microsoft David), ElevenLabs, SAPI5, and PowerShell TTS with forced Male Gender Selection."""
 
 import os
 import re
@@ -14,7 +14,7 @@ from bishu.config import VOICE_INDEX, VOICE_RATE, VOICE_VOLUME, ELEVENLABS_API_K
 
 
 class VoiceEngine:
-    """Multilingual Voice Engine configured with clear crisp Male Voice (Microsoft David) and ElevenLabs support."""
+    """Multilingual Voice Engine configured with forced clear crisp Male Voice (Microsoft David) and ElevenLabs support."""
 
     def __init__(self, voice_index: int = VOICE_INDEX, rate: int = VOICE_RATE, volume: int = VOICE_VOLUME):
         self.backend = "sapi5"
@@ -25,7 +25,7 @@ class VoiceEngine:
         self._init_speaker()
 
     def _init_speaker(self):
-        """Initialize Windows SAPI5 or PowerShell System.Speech TTS Engine with Male Voice priority."""
+        """Initialize Windows SAPI5 or PowerShell System.Speech TTS Engine with forced Male Voice selection."""
         try:
             import win32com.client
             sp = win32com.client.Dispatch("SAPI.SpVoice")
@@ -36,16 +36,18 @@ class VoiceEngine:
             voices = sp.GetVoices()
             self.available_voices = [voices.Item(i).GetDescription() for i in range(voices.Count)]
             
-            # Select Male Voice (David / Index 0)
-            if 0 <= self.voice_index < len(self.available_voices):
+            # Forcibly search for Microsoft David or Male Voice
+            male_found = False
+            for i in range(voices.Count):
+                v_desc = voices.Item(i).GetDescription().lower()
+                if "david" in v_desc or "male" in v_desc or "george" in v_desc or "mark" in v_desc:
+                    sp.Voice = voices.Item(i)
+                    self.voice_index = i
+                    male_found = True
+                    break
+
+            if not male_found and 0 <= self.voice_index < len(self.available_voices):
                 sp.Voice = voices.Item(self.voice_index)
-            else:
-                # Try finding a male voice by name
-                for i in range(voices.Count):
-                    if "david" in voices.Item(i).GetDescription().lower() or "male" in voices.Item(i).GetDescription().lower():
-                        sp.Voice = voices.Item(i)
-                        self.voice_index = i
-                        break
                 
             self.backend = "sapi5"
             print(f"[VoiceEngine] SAPI5 Speech Engine ready! Active Male Voice [{self.voice_index}]: '{self.available_voices[self.voice_index] if self.available_voices else 'Default'}'")
@@ -152,13 +154,13 @@ class VoiceEngine:
         return False
 
     def speak(self, text: str, voice_index: int = None):
-        """Speak given text asynchronously in background daemon thread using clear Male Voice."""
+        """Speak given text asynchronously in background daemon thread using forced Male Voice (Microsoft David)."""
         if not text:
             return
 
         clean_text = self._clean_text_for_speech(text)
         target_voice = self.voice_index if voice_index is None else voice_index
-        print(f"[VoiceEngine] Speaking out loud in Clear Male Voice (Voice #{target_voice}): '{clean_text}'")
+        print(f"[VoiceEngine] Speaking out loud in Forced Male Voice (Microsoft David): '{clean_text}'")
 
         def _worker(msg, v_idx):
             # 1. Try ElevenLabs API if key is set
@@ -176,8 +178,19 @@ class VoiceEngine:
                         sp.Volume = self.volume
                         sp.Rate = self.rate
                         voices = sp.GetVoices()
-                        if 0 <= v_idx < voices.Count:
+                        
+                        # Search for Microsoft David Male Voice
+                        male_set = False
+                        for i in range(voices.Count):
+                            v_desc = voices.Item(i).GetDescription().lower()
+                            if "david" in v_desc or "male" in v_desc or "george" in v_desc or "mark" in v_desc:
+                                sp.Voice = voices.Item(i)
+                                male_set = True
+                                break
+
+                        if not male_set and 0 <= v_idx < voices.Count:
                             sp.Voice = voices.Item(v_idx)
+
                         sp.Speak(msg, 0)  # 0 = Synchronous speech in daemon thread
                         return
                     finally:
@@ -185,15 +198,14 @@ class VoiceEngine:
                 except Exception as e:
                     print(f"[VoiceEngine] SAPI5 info: {e}, falling back to PowerShell...")
 
-            # 3. Universal Windows PowerShell System.Speech Fallback (David Male Voice)
+            # 3. Universal Windows PowerShell System.Speech Forced Male Voice Fallback
             if sys.platform == "win32":
                 try:
                     ps_cmd = (
                         f'Add-Type -AssemblyName System.Speech; '
                         f'$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; '
                         f'$s.Volume = {self.volume}; $s.Rate = {self.rate}; '
-                        f'$v = $s.GetInstalledVoices(); '
-                        f'if ({v_idx} -lt $v.Count) {{ $s.SelectVoice($v[{v_idx}].VoiceInfo.Name) }}; '
+                        f'try {{ $s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Male) }} catch {{}}; '
                         f'$s.Speak("{msg}")'
                     )
                     subprocess.run(["powershell", "-Command", ps_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
