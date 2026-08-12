@@ -1,4 +1,4 @@
-"""AI Engine supporting built-in NVIDIA Nemotron-3 Ultra 550B, MiniMax API, local Ollama LLMs, and high-IQ 'Beauty with Brains' local reasoning."""
+"""AI Engine supporting built-in NVIDIA Nemotron-3 Ultra 550B, MiniMax API, local Ollama LLMs, and dynamic Multi-Model Auto-Switching."""
 
 import os
 import json
@@ -33,7 +33,7 @@ from bishu.core.memory_engine import MemoryEngine
 
 
 class AIEngine:
-    """High-IQ 'Beauty with Brains' Interface with built-in NVIDIA Nemotron-3 Ultra 550B, local Ollama LLMs & MiniMax Cloud AI."""
+    """High-IQ 'Beauty with Brains' Interface with Dynamic Multi-Model Auto-Switching across NVIDIA Nemotron-3 Ultra 550B, MiniMax, and local Ollama."""
 
     BEAUTY_WITH_BRAINS_SYSTEM = (
         "You are Laalaa, a brilliant, highly articulate, witty, and warm local AI companion (like J.A.R.V.I.S. with charm, high IQ, and elegance). "
@@ -59,8 +59,8 @@ class AIEngine:
             except Exception:
                 pass
 
-    def generate(self, prompt: str) -> str:
-        """Generate response using built-in NVIDIA Nemotron-3 Ultra 550B API if key exists, MiniMax API, local Ollama, or high-IQ local brain."""
+    def generate(self, prompt: str, task_type: str = "fast_chat") -> str:
+        """Generate response with dynamic multi-model auto-switching based on task complexity, API availability, and CPU load."""
         try:
             # Re-check key in case user updated it dynamically
             if not self.nvidia_key:
@@ -72,43 +72,22 @@ class AIEngine:
                 except Exception:
                     pass
 
-            # 1. Try NVIDIA Nemotron-3 Ultra 550B Cloud API (build.nvidia.com)
-            if self.nvidia_key:
+            from bishu.core.model_router import ModelRouterAgent
+            router = ModelRouterAgent()
+            provider, target_model = router.select_best_model(task_type)
+
+            # 1. Route to NVIDIA Nemotron-3 Ultra 550B if selected by router
+            if provider == "nvidia_nemotron" and self.nvidia_key:
                 res_nvidia = self._query_nvidia_nemotron(prompt)
                 if res_nvidia:
                     return self._clean_reply(res_nvidia)
 
-            # 2. Try MiniMax Cloud AI API
+            # 2. Route to MiniMax Cloud AI API if selected by router
             framed_prompt = f"{self.BEAUTY_WITH_BRAINS_SYSTEM}\n\n{prompt}"
-            if MINIMAX_API_KEY:
-                try:
-                    print("[AIEngine] Querying MiniMax Cloud AI API...")
-                    url = f"https://api.minimax.chat/v1/text/chatcompletion_v2?GroupID={MINIMAX_GROUP_ID}" if MINIMAX_GROUP_ID else "https://api.minimax.chat/v1/text/chatcompletion_v2"
-                    payload = json.dumps({
-                        "model": "abab6.5s-chat",
-                        "messages": [
-                            {"sender_type": "USER", "sender_name": "User", "text": framed_prompt}
-                        ]
-                    }).encode("utf-8")
-
-                    req = urllib.request.Request(
-                        url,
-                        data=payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "Authorization": f"Bearer {MINIMAX_API_KEY}"
-                        }
-                    )
-
-                    with urllib.request.urlopen(req, timeout=12) as resp:
-                        res_data = json.loads(resp.read().decode("utf-8"))
-                        choices = res_data.get("choices", [])
-                        if choices:
-                            text = choices[0].get("message", {}).get("text", "")
-                            if text:
-                                return self._clean_reply(text)
-                except Exception as err:
-                    print(f"[AIEngine] MiniMax API info/fallback: {err}")
+            if provider == "minimax_cloud" and MINIMAX_API_KEY:
+                res_minimax = self._query_minimax(framed_prompt)
+                if res_minimax:
+                    return self._clean_reply(res_minimax)
 
             # Check CPU Usage Protection Limit before running heavy local Ollama
             if HAS_PSUTIL and psutil:
@@ -117,7 +96,7 @@ class AIEngine:
                     print(f"[AIEngine] System CPU usage is critically high ({curr_cpu:.1f}% >= {CPU_CRITICAL_LLM_LIMIT}%). Protecting laptop cores.")
                     return self._smart_local_brain(prompt)
 
-            # 3. Fallback to local Ollama High-IQ / Nemotron Model with thread cap
+            # 3. Route to local Ollama High-IQ / Nemotron Model with thread cap
             ollama_reply = self._generate_ollama(framed_prompt)
             if ollama_reply:
                 return self._clean_reply(ollama_reply)
@@ -194,6 +173,35 @@ class AIEngine:
         except Exception as err:
             print(f"[AIEngine] REST API NVIDIA Nemotron info: {err}")
 
+        return ""
+
+    def _query_minimax(self, prompt: str) -> str:
+        """Query MiniMax Cloud AI API."""
+        try:
+            url = f"https://api.minimax.chat/v1/text/chatcompletion_v2?GroupID={MINIMAX_GROUP_ID}" if MINIMAX_GROUP_ID else "https://api.minimax.chat/v1/text/chatcompletion_v2"
+            payload = json.dumps({
+                "model": "abab6.5s-chat",
+                "messages": [
+                    {"sender_type": "USER", "sender_name": "User", "text": prompt}
+                ]
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {MINIMAX_API_KEY}"
+                }
+            )
+
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                choices = res_data.get("choices", [])
+                if choices:
+                    return choices[0].get("message", {}).get("text", "")
+        except Exception as e:
+            print(f"[AIEngine] MiniMax query info: {e}")
         return ""
 
     def _generate_ollama(self, prompt: str) -> str:
