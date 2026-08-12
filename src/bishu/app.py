@@ -222,6 +222,9 @@ class BishuApp(QObject):
         self.audio.voice_detected.connect(self.on_voice_detected)
         self.audio.start()
 
+        # Show Arc Reactor HUD immediately on screen
+        self.show_orb()
+
         # Silent Boot: Desktop notification
         notify_desktop("Laalaa Online", "Type or speak commands (e.g. 'open youtube', 'notepad', 'how are you').")
 
@@ -312,19 +315,28 @@ class BishuApp(QObject):
         print(f"[Laalaa LangGraph] Voice activity detected (level={volume:.3f})")
 
         def _voice_worker():
-            # Allow 1.0 second for the user to complete their spoken sentence
-            time.sleep(1.0)
-            # Transcribe directly from in-memory audio buffer with dynamic peak gain boosting
+            time.sleep(0.8)
             audio_buffer = self.audio.get_buffered_audio()
-            spoken_phrase = self.stt.transcribe_buffer(audio_buffer)
-            print(f"[Laalaa LangGraph] OpenAI Whisper Transcribed: '{spoken_phrase}'")
 
-            if spoken_phrase:
-                self.handle_user_command(spoken_phrase)
-            else:
+            # Automatic Hands-Free Wake Word Spotting
+            from bishu.core.wake_word_engine import WakeWordEngine
+            ww_engine = WakeWordEngine(stt_engine=self.stt)
+            is_wake, wake_word, cmd_part = ww_engine.check_wake_word(audio_buffer)
+
+            if is_wake:
                 self.show_orb()
-                # Wake-Up Response: Speaks "Ji boss, farmaiye!" out loud
-                self.voice.speak("Ji boss, farmaiye!")
+                if cmd_part:
+                    self.handle_user_command(cmd_part)
+                else:
+                    self.voice.speak("Ji boss, farmaiye!")
+            else:
+                spoken_phrase = self.stt.transcribe_buffer(audio_buffer)
+                if spoken_phrase:
+                    self.handle_user_command(spoken_phrase)
+                else:
+                    self.show_orb()
+                    # Wake-Up Response: Speaks "Ji boss, farmaiye!" out loud
+                    self.voice.speak("Ji boss, farmaiye!")
 
         threading.Thread(target=_voice_worker, daemon=True).start()
 
