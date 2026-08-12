@@ -1,4 +1,4 @@
-"""Voice output engine — High-Fidelity ElevenLabs Leo Voice with Autonomous Credit Fallback to Windows SAPI5 / PowerShell System.Speech."""
+"""Voice output engine — High-Fidelity Clear Male Voice (Microsoft David), ElevenLabs, SAPI5, and PowerShell TTS."""
 
 import os
 import re
@@ -11,43 +11,10 @@ import random
 import urllib.request
 import urllib.error
 from bishu.config import VOICE_INDEX, VOICE_RATE, VOICE_VOLUME, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL_ID
-from bishu.data.paths import memory_file
-from bishu.core.memory_engine import MemoryEngine
 
 
 class VoiceEngine:
-    """Multilingual Hinglish Voice Engine supporting ElevenLabs Leo Voice (d0grukerEzs069eKIauC) with autonomous credit exhaustion fallback."""
-
-    PHONETIC_ACCENT_MAP = {
-        "khairiyat": "Khair-ee-yut",
-        "farmaiye": "Far-my-ay",
-        "khidmat": "Khid-mut",
-        "haazir": "Haa-zeer",
-        "hazir": "Haa-zeer",
-        "walaikum": "Wa-lay-koom",
-        "assalam": "Us-sa-laam",
-        "alaikum": "Ulay-koom",
-        "shakhsi": "Shukh-see",
-        "bilkul": "Bil-kool",
-        "shukriya": "Shook-ree-ya",
-        "bohot": "Bo-hut",
-        "bahut": "Bo-hut",
-        "accha": "Uch-chhaa",
-        "achha": "Uch-chhaa",
-        "kaun": "Kone",
-        "kaise": "Kay-say",
-        "kya": "Kyaa",
-        "kiya": "Kyaa",
-        "aap": "Aap",
-        "aapka": "Aap-kaa",
-        "aapki": "Aap-kee",
-        "thik": "Theek",
-        "theek": "Theek",
-        "ji": "Jee",
-        "haan": "Haa"
-    }
-
-    NATURAL_FILLERS = ["Hmm... ", "Achha... ", "Ji... ", "Waise... ", "Aap jante hain... "]
+    """Multilingual Voice Engine configured with clear crisp Male Voice (Microsoft David) and ElevenLabs support."""
 
     def __init__(self, voice_index: int = VOICE_INDEX, rate: int = VOICE_RATE, volume: int = VOICE_VOLUME):
         self.backend = "sapi5"
@@ -58,7 +25,7 @@ class VoiceEngine:
         self._init_speaker()
 
     def _init_speaker(self):
-        """Initialize Windows SAPI5 or PowerShell System.Speech TTS Engine."""
+        """Initialize Windows SAPI5 or PowerShell System.Speech TTS Engine with Male Voice priority."""
         try:
             import win32com.client
             sp = win32com.client.Dispatch("SAPI.SpVoice")
@@ -69,11 +36,19 @@ class VoiceEngine:
             voices = sp.GetVoices()
             self.available_voices = [voices.Item(i).GetDescription() for i in range(voices.Count)]
             
+            # Select Male Voice (David / Index 0)
             if 0 <= self.voice_index < len(self.available_voices):
                 sp.Voice = voices.Item(self.voice_index)
+            else:
+                # Try finding a male voice by name
+                for i in range(voices.Count):
+                    if "david" in voices.Item(i).GetDescription().lower() or "male" in voices.Item(i).GetDescription().lower():
+                        sp.Voice = voices.Item(i)
+                        self.voice_index = i
+                        break
                 
             self.backend = "sapi5"
-            print(f"[VoiceEngine] SAPI5 Speech Engine ready! Active Voice [{self.voice_index}]: '{self.available_voices[self.voice_index] if self.available_voices else 'Default'}'")
+            print(f"[VoiceEngine] SAPI5 Speech Engine ready! Active Male Voice [{self.voice_index}]: '{self.available_voices[self.voice_index] if self.available_voices else 'Default'}'")
         except Exception as err:
             self.backend = "powershell"
             print(f"[VoiceEngine] Using Windows PowerShell System.Speech engine fallback: {err}")
@@ -82,13 +57,13 @@ class VoiceEngine:
         """Generate time-based greeting & tone based on local hour."""
         hour = time.localtime().tm_hour
         if 5 <= hour < 12:
-            return f"Good morning {user_title}! Subah bakhair, aaj kya plan hai?"
+            return f"Good morning {user_title}! How can I help you today?"
         elif 12 <= hour < 17:
-            return f"Good afternoon {user_title}! Dopahar ka waqt hai, batayiye main kya madad karoon?"
+            return f"Good afternoon {user_title}! What can I do for you?"
         elif 17 <= hour < 21:
-            return f"Good evening {user_title}! Shaam mubaarak, kaise hain aap?"
+            return f"Good evening {user_title}! How can I assist you?"
         else:
-            return f"Late night {user_title}! Raat kafi ho gayi hai, batayiye kya khidmat karoon?"
+            return f"Hello {user_title}! What do you need help with tonight?"
 
     def get_available_voices(self) -> list:
         """List all available installed TTS voices on Windows."""
@@ -118,43 +93,19 @@ class VoiceEngine:
         """Set speech rate (-10 to +10)."""
         self.rate = max(-10, min(10, rate))
 
-    def _add_natural_fillers(self, text: str) -> str:
-        """Add subtle conversational natural fillers for realistic Hinglish voice dialogue."""
-        if not text:
-            return ""
-        # Randomly insert filler for longer conversational answers
-        if len(text) > 30 and not any(text.startswith(f.strip()) for f in self.NATURAL_FILLERS):
-            if random.random() < 0.4:
-                text = random.choice(self.NATURAL_FILLERS[:3]) + text
-        return text
-
-    def _normalize_accent_phonetics(self, text: str) -> str:
-        """Normalize Roman Hindi/Urdu words for clear, natural, human-understandable TTS accent."""
+    def _clean_text_for_speech(self, text: str) -> str:
+        """Clean markdown formatting and ensure clean, plain, understandable words."""
         if not text:
             return ""
 
-        # Phonetic substitution for smooth pronunciation
-        for word, phonetic in self.PHONETIC_ACCENT_MAP.items():
-            text = re.sub(r'\b' + re.escape(word) + r'\b', phonetic, text, flags=re.IGNORECASE)
-
-        # Add natural comma pauses for clear speech cadence
-        text = text.replace("!", "! ").replace(".", ". ").replace("?", "? ")
+        # Remove markdown symbols and extra punctuation
+        text = re.sub(r'[*_#`~]', '', text)
+        text = text.replace("!", ". ").replace("?", "? ").replace(":", ". ")
         return re.sub(r'\s+', ' ', text).strip()
 
     def _speak_elevenlabs(self, text: str) -> bool:
-        """Synthesize high-fidelity voice output via ElevenLabs API using Leo Voice ID (d0grukerEzs069eKIauC).
-        Autonomously falls back to local SAPI5 if credits are finished or quota exceeded.
-        """
+        """Synthesize high-fidelity voice output via ElevenLabs API if key is configured."""
         key = os.getenv("ELEVENLABS_API_KEY", ELEVENLABS_API_KEY).strip()
-        if not key:
-            try:
-                mem = MemoryEngine(memory_file())
-                saved_key = mem.get("ELEVENLABS_API_KEY", "")
-                if saved_key:
-                    key = saved_key.strip()
-            except Exception:
-                pass
-
         if not key:
             return False
 
@@ -190,37 +141,31 @@ class VoiceEngine:
                         tmp_f.write(audio_data)
                         tmp_name = tmp_f.name
 
-                    print(f"[VoiceEngine] Played ElevenLabs Leo Voice audio ({len(audio_data)} bytes).")
+                    print(f"[VoiceEngine] Played ElevenLabs Male Voice audio ({len(audio_data)} bytes).")
                     if sys.platform == "win32":
                         ps_cmd = f'(New-Object Media.SoundPlayer "{tmp_name}").PlaySync()'
                         subprocess.run(["powershell", "-Command", ps_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     return True
-        except urllib.error.HTTPError as http_err:
-            if http_err.code in [401, 402, 429]:
-                print(f"[VoiceEngine] ElevenLabs credits finished or quota exceeded (HTTP {http_err.code}). Autonomously switching to local SAPI5/PowerShell voice!")
         except Exception as e:
-            print(f"[VoiceEngine] ElevenLabs info/fallback: {e}")
+            print(f"[VoiceEngine] ElevenLabs voice info/fallback: {e}")
             
         return False
 
-    def speak(self, text: str, voice_index: int = None, use_fillers: bool = True):
-        """Speak given text asynchronously in background daemon thread with ElevenLabs Leo Voice & autonomous local fallback."""
+    def speak(self, text: str, voice_index: int = None):
+        """Speak given text asynchronously in background daemon thread using clear Male Voice."""
         if not text:
             return
 
-        if use_fillers:
-            text = self._add_natural_fillers(text)
-
-        clean_text = self._normalize_accent_phonetics(text)
+        clean_text = self._clean_text_for_speech(text)
         target_voice = self.voice_index if voice_index is None else voice_index
-        print(f"[VoiceEngine] Speaking out loud (Voice #{target_voice}, Rate {self.rate}): '{clean_text}'")
+        print(f"[VoiceEngine] Speaking out loud in Clear Male Voice (Voice #{target_voice}): '{clean_text}'")
 
         def _worker(msg, v_idx):
-            # 1. Try ElevenLabs Leo Voice if API Key is set
+            # 1. Try ElevenLabs API if key is set
             if self._speak_elevenlabs(msg):
                 return
 
-            # 2. Autonomous Local Windows SAPI5 COM Speech Fallback
+            # 2. Windows SAPI5 Male Voice (Microsoft David)
             if self.backend == "sapi5":
                 try:
                     import pythoncom
@@ -240,7 +185,7 @@ class VoiceEngine:
                 except Exception as e:
                     print(f"[VoiceEngine] SAPI5 info: {e}, falling back to PowerShell...")
 
-            # 3. Universal Windows PowerShell System.Speech Fallback
+            # 3. Universal Windows PowerShell System.Speech Fallback (David Male Voice)
             if sys.platform == "win32":
                 try:
                     ps_cmd = (

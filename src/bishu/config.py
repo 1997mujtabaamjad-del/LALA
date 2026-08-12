@@ -1,6 +1,6 @@
 """Configuration constants for Laalaa AI Assistant."""
 
-# ElevenLabs AI Voice Configuration (Leo Voice)
+# ElevenLabs AI Voice Configuration
 ELEVENLABS_API_KEY = ""
 ELEVENLABS_VOICE_ID = "d0grukerEzs069eKIauC"    # ElevenLabs Leo Voice ID
 ELEVENLABS_MODEL_ID = "eleven_multilingual_v2"  # Multilingual v2 for English, Hindi, Urdu
@@ -24,9 +24,9 @@ OLLAMA_MODEL = "gemma2:2b"
 # Camera Selection Index (0 = Default Webcam, 1 = External USB Camera, 2 = Secondary Camera)
 CAMERA_INDEX = 0
 
-# Voice Output Configuration (Crystal-clear accent & relaxed conversational rate)
-VOICE_INDEX = 1       # 1 = Female Voice (Microsoft Zira / Female TTS Voice)
-VOICE_RATE = -1       # Speech Rate (-1 = Slightly relaxed pace for crystal-clear accent & speech clarity)
+# Voice Output Configuration (Clear Crisp Male Voice)
+VOICE_INDEX = 0       # 0 = Male Voice (Microsoft David / Clear Male TTS Voice)
+VOICE_RATE = 0        # Speech Rate (0 = Normal clear pace)
 VOICE_VOLUME = 100    # Volume Level (0 to 100)
 PREFERRED_LANGUAGES = ["en", "hi", "ur"]  # Strictly English, Hindi, and Urdu
 
