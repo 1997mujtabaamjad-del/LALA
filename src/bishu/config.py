@@ -28,16 +28,16 @@ PREFERRED_LANGUAGES = ["en", "hi", "ur"]  # Strictly English, Hindi, and Urdu
 SAMPLE_LIMIT = 60
 MIN_BASELINE_SAMPLES = 8
 
-CPU_HARD_LIMIT = 95.0
+CPU_HARD_LIMIT = 99.0          # Only trigger alert if CPU is sustained at 99%+
 RAM_HARD_LIMIT = 98.0
 RAM_CRITICAL_LLM_LIMIT = 85.0  # Strict Cap: Do NOT run local LLM if RAM >= 85%
 CPU_CRITICAL_LLM_LIMIT = 90.0  # Strict Cap: Do NOT run heavy local LLM if CPU >= 90%
 
-CPU_SPIKE_DELTA = 30.0
-RAM_SPIKE_DELTA = 20.0
-MONITOR_INTERVAL_SECONDS = 15   # Sample every 15s
-ALERT_COOLDOWN_SECONDS = 300    # 5 minutes cooldown
-ALERT_RED_SECONDS = 2
+CPU_SPIKE_DELTA = 40.0
+RAM_SPIKE_DELTA = 25.0
+MONITOR_INTERVAL_SECONDS = 30   # Sample every 30s
+ALERT_COOLDOWN_SECONDS = 600    # 10 minutes cooldown between alerts
+ALERT_RED_SECONDS = 1
 SCHEDULER_INTERVAL_MS = 5000
 
 # Wake-word voice activity threshold (Sensitive threshold for catching quiet speech)
